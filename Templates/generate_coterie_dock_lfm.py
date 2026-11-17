@@ -21,6 +21,7 @@ from Templates.theme_gothic import (  # noqa: E402
     TEXT_MUTED,
     assert_align,
     root_datalinks_xml,
+    suite_credits_tab_xml,
     validate_generated_lfm_xml,
     xml_esc,
 )
@@ -174,6 +175,7 @@ def generate_coterie_dock_lfm() -> str:
         <tabControl name="pgcDock" align="client" margins="{{left=4, right=4, top=4, bottom=4}}">
 {_build_tab1_scene_and_initiative()}
 {_build_tab2_storyteller_coterie()}
+{suite_credits_tab_xml("Sobre", ACCENT_DOCK, BORDER_VAMP, "Painel Coterie & Iniciativa (br.com.v20.CoterieDock)", compact=True)}
         </tabControl>
     </rectangle>
 

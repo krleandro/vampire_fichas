@@ -176,9 +176,18 @@ def main() -> None:
                 assert nm not in seen_ctrl_names, f"Controle duplicado '{nm}' em {rel_p}"
                 seen_ctrl_names.add(nm)
         tabs = list(r_el.iter("tab"))
-        assert len(tabs) == 8, f"{rel_p} deve possuir 8 abas (incluindo tabMagiaSangue), encontrou {len(tabs)}"
+        assert len(tabs) == 9, f"{rel_p} deve possuir 9 abas (incluindo tabMagiaSangue e tabSobreSuite), encontrou {len(tabs)}"
         bm_tabs = [t for t in tabs if t.attrib.get("name") == "tabMagiaSangue"]
         assert len(bm_tabs) == 1, f"tabMagiaSangue ausente em {rel_p}"
+        sobre_tabs = [t for t in tabs if t.attrib.get("name") == "tabSobreSuite"]
+        assert len(sobre_tabs) == 1, f"tabSobreSuite ausente em {rel_p}"
+        sobre_texts = " | ".join(el.attrib.get("text", "") for el in sobre_tabs[0].iter("label"))
+        assert "Suite de plugins para Vampiro - A máscara V 20" in sobre_texts, (
+            f"Título de identificação da suíte ausente em tabSobreSuite ({rel_p})"
+        )
+        assert "Desenvolvida por Mestre Carlos (krmirim)" in sobre_texts, (
+            f"Crédito do autor ausente em tabSobreSuite ({rel_p})"
+        )
         expected_vis = "true" if cid in ("tremere", "giovanni") else "false"
         assert bm_tabs[0].attrib.get("visible") == expected_vis, (
             f"tabMagiaSangue em {rel_p} deve iniciar visible='{expected_vis}', obteve '{bm_tabs[0].attrib.get('visible')}'"
@@ -215,6 +224,13 @@ def main() -> None:
         compiler, gui_sdk, "Sheets/frmMortal.lfm", "br.com.v20.Mortal", "frmMortal"
     )
     assert mortal_root.attrib.get("title") == "Vampiro V20 - Mortal"
+    mortal_tabs = list(mortal_root.iter("tab"))
+    assert len(mortal_tabs) == 8, f"frmMortal.lfm deve possuir 8 abas (incluindo tabSobreSuite), encontrou {len(mortal_tabs)}"
+    mortal_sobre = [t for t in mortal_tabs if t.attrib.get("name") == "tabSobreSuite"]
+    assert len(mortal_sobre) == 1, "tabSobreSuite ausente em frmMortal.lfm"
+    mortal_sobre_texts = " | ".join(el.attrib.get("text", "") for el in mortal_sobre[0].iter("label"))
+    assert "Suite de plugins para Vampiro - A máscara V 20" in mortal_sobre_texts
+    assert "Desenvolvida por Mestre Carlos (krmirim)" in mortal_sobre_texts
 
     dock_root = verify_lfm_xml_and_compile(
         compiler,
@@ -226,6 +242,13 @@ def main() -> None:
     )
     assert dock_root.attrib.get("title") == "Vampiro V20 - Painel da Coterie & Iniciativa"
     assert dock_root.attrib.get("width") == "340" and dock_root.attrib.get("height") == "580"
+    dock_tabs = list(dock_root.iter("tab"))
+    assert len(dock_tabs) == 3, f"frmV20CoterieDock.lfm deve possuir 3 abas (incluindo tabSobreSuite), encontrou {len(dock_tabs)}"
+    dock_sobre = [t for t in dock_tabs if t.attrib.get("name") == "tabSobreSuite"]
+    assert len(dock_sobre) == 1, "tabSobreSuite ausente em frmV20CoterieDock.lfm"
+    dock_sobre_texts = " | ".join(el.attrib.get("text", "") for el in dock_sobre[0].iter("label"))
+    assert "Suite de plugins para Vampiro - A máscara V 20" in dock_sobre_texts
+    assert "Desenvolvida por Mestre Carlos (krmirim)" in dock_sobre_texts
     seen_dock_names: set[str] = set()
     for el in dock_root.iter():
         if el is not dock_root and el.tag != "event" and "name" in el.attrib:
@@ -291,7 +314,7 @@ def main() -> None:
 
     # Verificar campos estruturais obrigatórios em frmBrujah.lfm
     brujah_tabs = list(brujah_root.iter("tab"))
-    assert len(brujah_tabs) == 8, f"frmBrujah.lfm deve possuir 8 abas, encontrou {len(brujah_tabs)}"
+    assert len(brujah_tabs) == 9, f"frmBrujah.lfm deve possuir 9 abas, encontrou {len(brujah_tabs)}"
     brujah_fields = {el.attrib.get("field") for el in brujah_root.iter() if "field" in el.attrib}
     for req_field in (
         "nome",

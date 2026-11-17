@@ -45,6 +45,7 @@ from Templates.theme_gothic import (  # noqa: E402
     health_track_xml,
     lua_str_list,
     root_datalinks_xml,
+    suite_credits_tab_xml,
     trait_row_xml,
     validate_generated_lfm_xml,
     xml_esc,
@@ -1068,6 +1069,7 @@ def generate_vampire_lfm(clan_id: str) -> str:
 {build_tab6_morality(clan, accent)}
 {build_tab7_xp(accent, border=BORDER_VAMP, is_vampire=True)}
 {build_tab8_blood_magic(clan, accent)}
+{suite_credits_tab_xml("9. Sobre", accent, BORDER_VAMP, f"Clã {clan['name']} ({data_type})")}
         </tabControl>
     </rectangle>
 

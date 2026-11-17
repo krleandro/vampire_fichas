@@ -19,7 +19,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BUILD_SCRIPT = os.path.join(ROOT, "tools", "build_v20_suite.py")
 DLL_PATH = r"C:\Users\Cliente\AppData\Local\Firecast\lua54x64.dll"
 
-EXPECTED_VERSION = "1.0.0"
+EXPECTED_VERSION = "1.0.1"
 
 EXPECTED_SHEETS: list[tuple[str, str, str, str, str]] = [
     ("brujah", "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah", "Vampiro V20 - Brujah"),
@@ -1193,6 +1193,9 @@ def main() -> None:
                 info_val = (info_el.findtext(meta_tag) or "").strip()
                 root_val = (mod_root.findtext(meta_tag) or "").strip()
                 assert info_val and info_val == root_val, f"Tag <{meta_tag}> inconsistente no module.xml assemblado"
+            assert (info_el.findtext("author") or "").strip() == "Mestre Carlos (krmirim)", (
+                f"Autor inesperado em module.xml: {info_el.findtext('author')}"
+            )
 
             # Garante presença de todas as 32 entradas de formulários (16 .lfm + 16 .lfm.lua)
             for _, exp_lfm, _, _, _, _ in EXPECTED_ALL_FORMS:

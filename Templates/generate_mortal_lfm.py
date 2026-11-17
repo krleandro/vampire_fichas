@@ -37,6 +37,7 @@ from Templates.theme_gothic import (  # noqa: E402
     header_bar_xml,
     lua_str_list,
     root_datalinks_xml,
+    suite_credits_tab_xml,
     validate_generated_lfm_xml,
     xml_esc,
 )
@@ -370,6 +371,7 @@ def generate_mortal_lfm() -> str:
 {build_tab5_combat(ACCENT_MORTAL, border=BORDER_MORTAL, is_vampire=False)}
 {build_mortal_tab6()}
 {build_tab7_xp(ACCENT_MORTAL, border=BORDER_MORTAL, extra_top_card=narrador_switch_card, is_vampire=False)}
+{suite_credits_tab_xml("8. Sobre", ACCENT_MORTAL, BORDER_MORTAL, "Mortal / Carniçal / Numina (br.com.v20.Mortal)")}
         </tabControl>
     </rectangle>
 

@@ -913,6 +913,43 @@ def health_track_xml(accent_color: str, border_color: str, is_vampire: bool = Tr
                 </rectangle>"""
 
 
+def suite_credits_tab_xml(
+    tab_title: str,
+    accent_color: str,
+    border_color: str,
+    model_label: str,
+    compact: bool = False,
+) -> str:
+    pad = "8" if compact else "14"
+    title_sz = "13" if compact else "17"
+    author_sz = "12" if compact else "14"
+    meta_sz = "10" if compact else "11"
+    hero_h = "156" if compact else "176"
+    body_h = "230" if compact else "210"
+    total_h = "420" if compact else "430"
+
+    return f"""            <tab name="tabSobreSuite" title="{xml_esc(tab_title)}">
+                <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
+                    <layout align="top" height="{total_h}">
+                        <rectangle name="crdSobreIdentificacao" align="top" height="{hero_h}" color="{BG_PANEL}" strokeColor="{accent_color}" strokeSize="1" xradius="6" yradius="6" padding="{{left={pad}, right={pad}, top=14, bottom=14}}" margins="{{bottom=10}}">
+                            <label name="lblSobreSelo" align="top" height="20" text="IDENTIFICAÇÃO DA SUÍTE • RRPG FIRECAST SDK 3.7b" fontColor="{TEXT_MUTED}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                            <label name="lblSobreTituloPrincipal" align="top" height="44" text="Suite de plugins para Vampiro - A máscara V 20" wordWrap="true" fontColor="{TEXT_GOLD}" fontSize="{title_sz}" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
+                            <label name="lblSobreAutoria" align="top" height="30" text="Desenvolvida por Mestre Carlos (krmirim)" wordWrap="true" fontColor="{accent_color}" fontSize="{author_sz}" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{top=4}}"/>
+                            <label name="lblSobreVersaoModelo" align="top" height="28" text="{xml_esc(f'Versão 1.0.1 • {model_label}')}" wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
+                        </rectangle>
+
+                        <rectangle name="crdSobreModulos" align="top" height="{body_h}" color="{BG_PANEL}" strokeColor="{border_color}" strokeSize="1" xradius="6" yradius="6" padding="{{left={pad}, right={pad}, top=12, bottom=12}}">
+                            <label name="lblSobreEscopoTitulo" align="top" height="22" text="ECOSSISTEMA INTEGRADO V20 (16 FORMULÁRIOS)" fontColor="{accent_color}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <label name="lblSobreItem1" align="top" height="36" text="• 15 Modelos de Ficha dedicados: 13 Clãs Tradicionais, Caitiff e Ficha Mortal (Humano, Carniçal e Numina)." wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("leading")}" margins="{{top=6}}"/>
+                            <label name="lblSobreItem2" align="top" height="36" text="• Painel acoplável TablesDock da Coterie &amp; Iniciativa V20 sincronizado na sala com proteção anti-metajogo." wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("leading")}" margins="{{top=4}}"/>
+                            <label name="lblSobreItem3" align="top" height="42" text="• Automação universal de 17 Disciplinas, 9 Linhas e 20 Rituais de Magia do Sangue, 14 Fraquezas, 20 Manobras de Combate Assistido, Gerações 4ª–15ª e Auditoria de XP." wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("leading")}" margins="{{top=4}}"/>
+                            <label name="lblSobreReferencia" align="top" height="26" text="Referência mecânica: Vampire: The Masquerade — 20th Anniversary Edition (V20)." wordWrap="true" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=8}}"/>
+                        </rectangle>
+                    </layout>
+                </scrollBox>
+            </tab>"""
+
+
 def validate_generated_lfm_xml(xml_text: str) -> None:
     root = ET.fromstring(xml_text)
     seen_names: set[str] = set()
