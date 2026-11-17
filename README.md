@@ -8,7 +8,7 @@ Versão Atual: **`1.0.2`**
 
 ## 📥 Download e Instalação Direta
 
-- **[Baixar `Vampiro_V20_Suite.rpk` (Clique aqui)](https://github.com/krleandro/vampire_fichas/raw/HEAD/dist/Vampiro_V20_Suite.rpk)**
+- **[Baixar `Vampiro_V20_Suite.rpk` (Clique aqui)](https://github.com/krleandro/vampire_fichas/raw/main/dist/Vampiro_V20_Suite.rpk)**
 
 1. Baixe o arquivo `Vampiro_V20_Suite.rpk` acima e dê **duplo clique** nele com o RRPG Firecast aberto (ou vá em *Plugins → Instalar Plugin*).
 2. As futuras atualizações serão detectadas **automaticamente** ao abrir qualquer ficha ou pelo botão **`Verificar / Atualizar`** na aba **`Sobre`**.

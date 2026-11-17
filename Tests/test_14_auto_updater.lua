@@ -8,8 +8,8 @@ assert(_G.V20AutoUpdater == AU, "_G.V20AutoUpdater deve estar exposto globalment
 -- 1. Constantes oficiais apontando para krleandro/vampire_fichas
 assert(AU.MODULE_ID == "br.com.v20.suite")
 assert(AU.REPO_URL == "https://github.com/krleandro/vampire_fichas")
-assert(AU.MANIFEST_URL == "https://raw.githubusercontent.com/krleandro/vampire_fichas/HEAD/module.xml")
-assert(AU.RPK_URL == "https://github.com/krleandro/vampire_fichas/raw/HEAD/dist/Vampiro_V20_Suite.rpk")
+assert(AU.MANIFEST_URL == "https://raw.githubusercontent.com/krleandro/vampire_fichas/main/module.xml")
+assert(AU.RPK_URL == "https://github.com/krleandro/vampire_fichas/raw/main/dist/Vampiro_V20_Suite.rpk")
 
 -- 2. Comparação semântica de versões (Core/version_updater.lua)
 assert(VU.isNewVersion("1.0.2", "1.0.3") == true)
