@@ -6,6 +6,7 @@ V20 = V20 or {
     DisciplinesCatalog = require("Data.disciplines_catalog"),
     BackgroundsCatalog = require("Data.backgrounds_catalog"),
     MeritsFlawsCatalog = require("Data.merits_flaws_catalog"),
+    BloodMagicCatalog  = require("Data.blood_magic_catalog"),
 
     Dice               = require("Core.dice"),
     Blood              = require("Core.generation_blood"),
@@ -16,8 +17,11 @@ V20 = V20 or {
     Creation           = require("Core.creation"),
     Experience         = require("Core.experience"),
     ClanWeaknesses     = require("Core.clan_weaknesses"),
+    BloodMagicEngine   = require("Core.blood_magic_engine"),
 }
 
-V20.ClanWeaknesses = V20.ClanWeaknesses or require("Core.clan_weaknesses")
+V20.ClanWeaknesses    = V20.ClanWeaknesses or require("Core.clan_weaknesses")
+V20.BloodMagicCatalog = V20.BloodMagicCatalog or require("Data.blood_magic_catalog")
+V20.BloodMagicEngine  = V20.BloodMagicEngine or require("Core.blood_magic_engine")
 
 return V20
