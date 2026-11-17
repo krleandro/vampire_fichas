@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/build_v20_suite.py — Compilador Multi-DataType e Empacotador SDK 3.7b para Vampiro_V20_Suite.rpk."""
+"""tools/build_v20_suite.py — Compilador Multi-DataType e Empacotador SDK 3.7b para Vampiro_V20_Suite.rpk (15 Modelos)."""
 import datetime
 import glob
 import hashlib
@@ -19,6 +19,24 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SKILL_COMPILER = r"C:\Users\Cliente\.gemini\config\skills\firecast-ficha\scripts\compile_firecast_rpk.py"
 REF_SDK_DIR = r"c:\Users\Cliente\OneDrive\Documentos\event\firecast_event_ficha\sdk"
 REF_CLN = r"c:\Users\Cliente\OneDrive\Documentos\event\firecast_event_ficha\output\rdkObjs\_rdkCompiledLang.cln"
+
+CLAN_FORM_FILES = [
+    "Sheets/frmBrujah.lfm",
+    "Sheets/frmGangrel.lfm",
+    "Sheets/frmMalkavian.lfm",
+    "Sheets/frmNosferatu.lfm",
+    "Sheets/frmToreador.lfm",
+    "Sheets/frmTremere.lfm",
+    "Sheets/frmVentrue.lfm",
+    "Sheets/frmAssamite.lfm",
+    "Sheets/frmSetite.lfm",
+    "Sheets/frmGiovanni.lfm",
+    "Sheets/frmLasombra.lfm",
+    "Sheets/frmRavnos.lfm",
+    "Sheets/frmTzimisce.lfm",
+    "Sheets/frmCaitiff.lfm",
+]
+LFM_ENTRIES = CLAN_FORM_FILES + ["Sheets/frmMortal.lfm"]
 
 
 def _xml_text(val: str) -> str:
@@ -104,7 +122,7 @@ def build_multi_assembled_xml(mod_path: str, lfm_entries: list[str], rpk_filenam
 def main() -> None:
     compiler = load_base_compiler()
     subprocess.run(
-        [sys.executable, os.path.join(ROOT, "Templates", "generate_vampire_lfm.py"), "--clan", "brujah"],
+        [sys.executable, os.path.join(ROOT, "Templates", "generate_vampire_lfm.py"), "--all-clans"],
         check=True,
     )
     subprocess.run(
@@ -145,10 +163,9 @@ def main() -> None:
                 compiler.validate_lua_syntax(src_txt, f"@{rel_entry}")
             packaged_modules[rel_entry] = src_txt
 
-    lfm_entries = ["Sheets/frmBrujah.lfm", "Sheets/frmMortal.lfm"]
-    compiled_map = {}
+    compiled_map: dict[str, str] = {}
     anchor = 'local __o_Utils = require("utils.lua");'
-    for rel in lfm_entries:
+    for rel in LFM_ENTRIES:
         raw_lua = compiler.compile_lfm_to_lua(os.path.join(ROOT, rel))
         if anchor not in raw_lua:
             raise RuntimeError(f"Âncora de cabeçalho SDK não encontrada ao compilar {rel}")
@@ -173,7 +190,7 @@ def main() -> None:
     out_rpk = os.path.join(dist_dir, "Vampiro_V20_Suite.rpk")
     out_rdk = os.path.join(dist_dir, "Vampiro_V20_Suite.rdk")
     assembled_xml = build_multi_assembled_xml(
-        os.path.join(ROOT, "module.xml"), lfm_entries, "Vampiro_V20_Suite.rpk"
+        os.path.join(ROOT, "module.xml"), LFM_ENTRIES, "Vampiro_V20_Suite.rpk"
     )
 
     with zipfile.ZipFile(out_rpk, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -192,7 +209,7 @@ def main() -> None:
                 zf.write(s, f"sdk/{item}")
 
     shutil.copy2(out_rpk, out_rdk)
-    print(f"[OK] Gerado {out_rpk} e {out_rdk}")
+    print(f"[OK] Gerado {out_rpk} e {out_rdk} ({len(LFM_ENTRIES)} modelos de ficha)")
 
 
 if __name__ == "__main__":
