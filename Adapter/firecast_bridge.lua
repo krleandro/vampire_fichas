@@ -1,0 +1,1590 @@
+local V20 = require("Core.v20_init")
+
+local Bridge = {}
+
+local function safeNum(val, default)
+    local n = tonumber(val)
+    if n == nil or n ~= n or n == math.huge or n == -math.huge then
+        return default
+    end
+    return n
+end
+
+local function safeInt(val, default)
+    return math.floor(safeNum(val, default or 0))
+end
+
+local function isTrue(val)
+    return val == true or val == "true"
+end
+
+local function isFalse(val)
+    return val == false or val == "false"
+end
+
+local function normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    if type(opts) == "table" and (opts.getMesaDe ~= nil or opts.interpretarRolagem ~= nil) then
+        dialogsApi = firecastApi
+        firecastApi = opts
+        opts = {}
+    end
+    return opts or {}, firecastApi, dialogsApi
+end
+
+local function getFirecastAndDialogs(firecastApi, dialogsApi)
+    local fc = firecastApi or _G.Firecast
+    local dlg = dialogsApi or _G.Dialogs or { showMessage = _G.showMessage or function() end }
+    if type(dlg.showMessage) ~= "function" then
+        dlg = { showMessage = _G.showMessage or function() end }
+    end
+    return fc, dlg
+end
+
+local function buildKnownBuffLookup()
+    local map = {}
+    for _, discId in ipairs(V20.DisciplinesCatalog.ORDER) do
+        local cat = V20.DisciplinesCatalog.DISCIPLINES[discId]
+        if cat and cat.powers then
+            for _, pw in ipairs(cat.powers) do
+                if pw.toggleBuff and pw.toggleBuff.id then
+                    map[pw.toggleBuff.id] = pw.toggleBuff
+                end
+            end
+        end
+    end
+    return map
+end
+
+local KNOWN_BUFFS = buildKnownBuffLookup()
+local BUFF_CACHE = setmetatable({}, { __mode = "k" })
+
+function Bridge.deserializeBuffs(sheet)
+    local out = {}
+    if type(sheet) ~= "table" then return out end
+    local cached = BUFF_CACHE[sheet] or (not rawget(sheet, "__nodeFacadeFlag") and rawget(sheet, "_active_buffs_tbl") or nil)
+    if type(cached) == "table" then
+        for k, v in pairs(cached) do
+            if v then out[k] = (type(v) == "table") and v or (KNOWN_BUFFS[k] or { id = k }) end
+        end
+    end
+    if type(sheet.buffs_ativos_csv) == "string" and sheet.buffs_ativos_csv ~= "" then
+        for token in sheet.buffs_ativos_csv:gmatch("[^,%s]+") do
+            if KNOWN_BUFFS[token] then
+                out[token] = KNOWN_BUFFS[token]
+            elseif out[token] == nil then
+                out[token] = { id = token }
+            end
+        end
+    end
+    for bid, bdef in pairs(KNOWN_BUFFS) do
+        if isTrue(sheet["buff_toggle_" .. bid]) then
+            out[bid] = bdef
+        end
+    end
+    return out
+end
+
+function Bridge.serializeBuffs(sheet, activeBuffs)
+    if type(sheet) ~= "table" then return end
+    local copy = {}
+    local ids = {}
+    for k, v in pairs(activeBuffs or {}) do
+        if v then
+            copy[k] = v
+            table.insert(ids, tostring(k))
+        end
+    end
+    table.sort(ids)
+    BUFF_CACHE[sheet] = copy
+    if not rawget(sheet, "__nodeFacadeFlag") then
+        rawset(sheet, "_active_buffs_tbl", copy)
+    end
+    sheet.buffs_ativos_csv = table.concat(ids, ",")
+    for bid, _ in pairs(KNOWN_BUFFS) do
+        if sheet["buff_toggle_" .. bid] ~= nil then
+            sheet["buff_toggle_" .. bid] = (copy[bid] ~= nil)
+        end
+    end
+end
+
+function Bridge.extractRollFaces(rolado)
+    local faces = {}
+    if type(rolado) == "table" and type(rolado.ops) == "table" then
+        for _, op in ipairs(rolado.ops) do
+            if op.tipo == "dado" and type(op.resultados) == "table" then
+                for _, v in ipairs(op.resultados) do
+                    table.insert(faces, tonumber(v) or 0)
+                end
+            end
+        end
+    end
+    return faces
+end
+
+function Bridge.formatChatReport(actorName, label, evalRes, faces, warnings)
+    local facesStr = table.concat(faces or {}, ", ")
+    local statusTag = "FALHA SIMPLES"
+    if evalRes.outcome == "botch" then
+        statusTag = "💀 FALHA CRÍTICA (BOTCH)!"
+    elseif evalRes.outcome == "success" then
+        statusTag = string.format("🩸 %d Sucesso(s) — %s!", evalRes.totalSuccesses, evalRes.degree)
+    end
+    local msg = string.format(
+        "[%s] %s | Dif %d | Dados [%s] -> %s",
+        actorName or "Personagem",
+        label or "Teste V20",
+        evalRes.difficulty,
+        facesStr,
+        statusTag
+    )
+    if warnings and #warnings > 0 then
+        msg = msg .. " (" .. table.concat(warnings, " ") .. ")"
+    end
+    return msg
+end
+
+function Bridge.isStoryteller(sheet, firecastApi)
+    local fc = firecastApi or _G.Firecast
+    if not fc or not fc.getMesaDe then return true end
+    local mesa = fc.getMesaDe(sheet)
+    if mesa == nil then return true end
+    return (mesa.meuJogador ~= nil and mesa.meuJogador.isMestre == true)
+end
+
+function Bridge.getCurrentLogin(sheet, firecastApi)
+    local fc = firecastApi or _G.Firecast
+    if fc and fc.getMesaDe then
+        local mesa = fc.getMesaDe(sheet)
+        if mesa and mesa.meuJogador and mesa.meuJogador.login and mesa.meuJogador.login ~= "" then
+            return tostring(mesa.meuJogador.login)
+        end
+    end
+    if type(sheet) == "table" and type(sheet.jogador) == "string" and sheet.jogador ~= "" then
+        return sheet.jogador
+    end
+    return "Local"
+end
+
+function Bridge.notify(sheet, msg, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    local mesa = (fc and fc.getMesaDe) and fc.getMesaDe(sheet) or nil
+    if mesa ~= nil and mesa.activeChat ~= nil and mesa.activeChat.enviarMensagem ~= nil then
+        mesa.activeChat:enviarMensagem(msg)
+    else
+        dlg.showMessage(msg)
+    end
+    return msg
+end
+
+function Bridge.isVampireSheet(sheet)
+    if type(sheet) ~= "table" then return true end
+    if isFalse(sheet.is_vampire) then return false end
+    if sheet.mortal_sobrenatural_modo ~= nil and sheet.mortal_sobrenatural_modo ~= "" then
+        return false
+    end
+    return true
+end
+
+function Bridge.collectBackgrounds(sheet, ndbApi)
+    local list = {}
+    if type(sheet) ~= "table" then return list end
+    local ndb = ndbApi or _G.NDB
+
+    for _, bgId in ipairs(V20.BackgroundsCatalog.ORDER) do
+        local dots = safeInt(sheet["bg_" .. bgId], 0)
+        if dots > 0 then
+            table.insert(list, { bg_id = bgId, nivel = dots, ativo = true })
+        end
+    end
+
+    if ndb and ndb.getChildNodes and sheet.rclAntecedentes_node then
+        local children = ndb.getChildNodes(sheet.rclAntecedentes_node) or {}
+        for _, ch in ipairs(children) do
+            if type(ch) == "table" then
+                table.insert(list, ch)
+            end
+        end
+    end
+
+    if type(sheet.backgrounds_list) == "table" then
+        for _, ch in ipairs(sheet.backgrounds_list) do
+            if type(ch) == "table" then
+                table.insert(list, ch)
+            end
+        end
+    end
+
+    return list
+end
+
+function Bridge.collectDisciplines(sheet, ndbApi)
+    local byId = {}
+    local ordered = {}
+    if type(sheet) ~= "table" then return ordered end
+    local ndb = ndbApi or _G.NDB
+
+    local function upsert(discId, lvl, cat, activeAuto)
+        if type(discId) ~= "string" or discId == "" then return end
+        local n = math.max(0, safeInt(lvl, 0))
+        if n <= 0 then return end
+        local existing = byId[discId]
+        if not existing then
+            existing = {
+                disc_id = discId,
+                nivel = n,
+                categoria_custo = cat,
+                activeAuto = isTrue(activeAuto),
+            }
+            byId[discId] = existing
+            table.insert(ordered, existing)
+        else
+            if n > existing.nivel then existing.nivel = n end
+            if cat and not existing.categoria_custo then existing.categoria_custo = cat end
+            if isTrue(activeAuto) then existing.activeAuto = true end
+        end
+    end
+
+    for i = 1, 9 do
+        local sid = sheet["disc_slot" .. i .. "_id"]
+        local slvl = sheet["disc_slot" .. i .. "_nivel"]
+        local scat = sheet["disc_slot" .. i .. "_cat"]
+        local sauto = sheet["disc_slot" .. i .. "_auto"]
+        upsert(sid, slvl, scat, sauto)
+    end
+
+    for _, discId in ipairs(V20.DisciplinesCatalog.ORDER) do
+        local directLvl = sheet["disc_" .. discId]
+        if directLvl ~= nil then
+            upsert(discId, directLvl, nil, false)
+        end
+    end
+
+    if ndb and ndb.getChildNodes and sheet.rclDisciplinas_node then
+        local children = ndb.getChildNodes(sheet.rclDisciplinas_node) or {}
+        for _, ch in ipairs(children) do
+            if type(ch) == "table" then
+                upsert(ch.disc_id, ch.nivel, ch.categoria_custo, ch.ativa_turno or ch.activeAuto)
+            end
+        end
+    end
+
+    if type(sheet.disciplines_list) == "table" then
+        for _, ch in ipairs(sheet.disciplines_list) do
+            if type(ch) == "table" then
+                upsert(ch.disc_id, ch.nivel, ch.categoria_custo, ch.ativa_turno or ch.activeAuto)
+            end
+        end
+    end
+
+    return ordered
+end
+
+function Bridge.collectMeritsFlaws(sheet, ndbApi)
+    local list = {}
+    local seenIds = {}
+    if type(sheet) ~= "table" then return list end
+    local ndb = ndbApi or _G.NDB
+
+    for i = 1, 6 do
+        local itemId = sheet["mf_slot" .. i .. "_id"]
+        local customName = sheet["mf_slot" .. i .. "_nome"]
+        local pts = sheet["mf_slot" .. i .. "_pontos"]
+        local ativo = sheet["mf_slot" .. i .. "_ativo"]
+        if not isFalse(ativo) then
+            if type(itemId) == "string" and itemId ~= "" and itemId ~= "custom" then
+                seenIds[itemId] = true
+                table.insert(list, {
+                    item_id = itemId,
+                    tipo = sheet["mf_slot" .. i .. "_tipo"],
+                    pontos = (pts ~= nil and pts ~= "") and safeInt(pts, nil) or nil,
+                    mod_tipo = sheet["mf_slot" .. i .. "_mod"],
+                    ativo = true,
+                })
+            elseif type(customName) == "string" and customName ~= "" and safeInt(pts, 0) > 0 then
+                table.insert(list, {
+                    nome = customName,
+                    tipo = sheet["mf_slot" .. i .. "_tipo"] or "qualidade",
+                    pontos = safeInt(pts, 0),
+                    mod_tipo = sheet["mf_slot" .. i .. "_mod"],
+                    ativo = true,
+                })
+            end
+        end
+    end
+
+    for _, mfId in ipairs(V20.MeritsFlawsCatalog.ORDER) do
+        if isTrue(sheet["mf_" .. mfId]) and not seenIds[mfId] then
+            seenIds[mfId] = true
+            table.insert(list, { item_id = mfId, ativo = true })
+        end
+    end
+
+    if ndb and ndb.getChildNodes and sheet.rclQualidadesDefeitos_node then
+        local children = ndb.getChildNodes(sheet.rclQualidadesDefeitos_node) or {}
+        for _, ch in ipairs(children) do
+            if type(ch) == "table" then
+                table.insert(list, ch)
+            end
+        end
+    end
+
+    if type(sheet.merits_flaws_list) == "table" then
+        for _, ch in ipairs(sheet.merits_flaws_list) do
+            if type(ch) == "table" then
+                table.insert(list, ch)
+            end
+        end
+    end
+
+    return list
+end
+
+function Bridge.sheetToEngineState(sheet)
+    sheet = sheet or {}
+    return {
+        isVampire = Bridge.isVampireSheet(sheet),
+        isGhoul = isTrue(sheet.isGhoul) or (sheet.mortal_sobrenatural_modo == "carnical"),
+        cla_id = sheet.cla_id,
+        generation = safeInt(sheet.geracao, 13),
+        currentBlood = safeInt(sheet.sangue_atual, 0),
+        spentThisTurn = safeInt(sheet.sangue_gasto_turno, 0),
+        thinBloodUsed = safeInt(sheet.sangue_fraco_usado, 0),
+        fdv_perm = safeInt(sheet.fdv_perm, 1),
+        fdv_temp = safeInt(sheet.fdv_temp, 0),
+        attr_forca = safeInt(sheet.attr_forca, 1),
+        attr_destreza = safeInt(sheet.attr_destreza, 1),
+        attr_vigor = safeInt(sheet.attr_vigor, 1),
+        buff_forca = safeInt(sheet.buff_forca, 0),
+        buff_destreza = safeInt(sheet.buff_destreza, 0),
+        buff_vigor = safeInt(sheet.buff_vigor, 0),
+        ghoulPotence = safeInt(sheet.ghoulPotence, 0),
+        activePotenceAuto = isTrue(sheet.potencia_ativa_turno),
+        activeCelerityActions = safeInt(sheet.rapidez_acoes_ativas, 0),
+        activeBuffs = Bridge.deserializeBuffs(sheet),
+    }
+end
+
+function Bridge.resolvePoolTrait(sheet, traitId, combatMods)
+    if type(traitId) ~= "string" or traitId == "" or traitId == "none" then
+        return { val = 0, label = nil, category = nil, isVirtual = false }
+    end
+
+    -- Referências virtuais exigidas pelo catálogo de Disciplinas / Numina (PF-3)
+    if traitId == "attr_fdv_ref" then
+        return {
+            val = safeInt(sheet.fdv_perm, 1),
+            label = "Força de Vontade",
+            category = nil,
+            isVirtual = true,
+        }
+    elseif traitId == "hab_autocontrole_ref" then
+        return {
+            val = safeInt(sheet.virtude2_val, 1),
+            label = (sheet.virtude2_tipo == "instinto") and "Instinto" or "Autocontrole",
+            category = nil,
+            isVirtual = true,
+        }
+    elseif traitId == "hab_coragem_ref" then
+        return {
+            val = safeInt(sheet.virtude3_val, 1),
+            label = "Coragem",
+            category = nil,
+            isVirtual = true,
+        }
+    elseif traitId == "hab_consciencia_ref" then
+        return {
+            val = safeInt(sheet.virtude1_val, 1),
+            label = (sheet.virtude1_tipo == "conviccao") and "Convicção" or "Consciência",
+            category = nil,
+            isVirtual = true,
+        }
+    end
+
+    local attrMeta = V20.Traits.ATTRIBUTES[traitId]
+    if attrMeta then
+        local defaultBase = (sheet.cla_id == "nosferatu" and traitId == "attr_aparencia") and 0 or 1
+        local val = (sheet[traitId] ~= nil) and safeInt(sheet[traitId], defaultBase) or defaultBase
+        local sceneMods = (combatMods and combatMods.sceneAttrMods) or {}
+        if traitId == "attr_forca" then
+            val = val + safeInt(sheet.buff_forca, 0) + safeInt(sceneMods.forca, 0)
+        elseif traitId == "attr_destreza" then
+            val = val + safeInt(sheet.buff_destreza, 0) + safeInt(sceneMods.destreza, 0)
+        elseif traitId == "attr_vigor" then
+            val = val + safeInt(sheet.buff_vigor, 0) + safeInt(sceneMods.vigor, 0)
+        end
+        if sheet.cla_id == "nosferatu" and traitId == "attr_aparencia" then
+            val = 0
+        end
+        return { val = val, label = attrMeta.name, category = nil, isVirtual = false }
+    end
+
+    local habMeta = V20.Traits.ABILITIES[traitId]
+    if habMeta then
+        return {
+            val = safeInt(sheet[traitId], 0),
+            label = habMeta.name,
+            category = habMeta.category,
+            isVirtual = false,
+        }
+    end
+
+    local bgKey = traitId:match("^bg_(.+)$") or traitId
+    local bgMeta = V20.BackgroundsCatalog.BACKGROUNDS[bgKey]
+    if bgMeta then
+        return {
+            val = safeInt(sheet["bg_" .. bgKey], 0),
+            label = bgMeta.name,
+            category = nil,
+            isVirtual = false,
+        }
+    end
+
+    return {
+        val = safeInt(sheet[traitId], 0),
+        label = traitId,
+        category = nil,
+        isVirtual = false,
+    }
+end
+
+local function updateDisciplineSummaries(sheet)
+    for i = 1, 9 do
+        local did = sheet["disc_slot" .. i .. "_id"]
+        local dots = safeInt(sheet["disc_slot" .. i .. "_nivel"], 0)
+        local pwrLvl = math.max(1, math.min(5, safeInt(sheet["disc_slot" .. i .. "_pwr_lvl"], 1)))
+        local cat = (type(did) == "string") and V20.DisciplinesCatalog.DISCIPLINES[did] or nil
+        if cat and cat.powers and cat.powers[pwrLvl] then
+            local pw = cat.powers[pwrLvl]
+            local lockPrefix = (dots < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
+            sheet["disc_slot" .. i .. "_resumo"] = string.format(
+                "%s%s (Nv %d) — %s | %s",
+                lockPrefix, pw.name, pw.level, pw.diffHint or "Dif 6", pw.summary or ""
+            )
+        else
+            sheet["disc_slot" .. i .. "_resumo"] = "Selecione uma Disciplina V20 para inspecionar e ativar poderes."
+        end
+    end
+
+    local inspectId = sheet.disc_catalogo_id
+    if type(inspectId) == "string" and V20.DisciplinesCatalog.DISCIPLINES[inspectId] then
+        local cat = V20.DisciplinesCatalog.DISCIPLINES[inspectId]
+        local lines = { cat.name .. ":" }
+        for _, pw in ipairs(cat.powers) do
+            table.insert(lines, string.format("Nv %d - %s (%s): %s", pw.level, pw.name, pw.diffHint or "Dif 6", pw.summary or ""))
+        end
+        sheet.disc_catalogo_resumo = table.concat(lines, " || ")
+    end
+end
+
+function Bridge.syncDerivedFields(sheet, ndbApi)
+    if type(sheet) ~= "table" then return end
+    local ndb = ndbApi or _G.NDB
+
+    local bgList = Bridge.collectBackgrounds(sheet, ndb)
+    local mfList = Bridge.collectMeritsFlaws(sheet, ndb)
+    local mfAgg = V20.BackgroundsEngine.aggregateMeritsFlaws(mfList)
+    local fx = V20.BackgroundsEngine.deriveSheetEffects(sheet.geracao_base or 13, bgList)
+
+    local isVamp = Bridge.isVampireSheet(sheet)
+    if isVamp then
+        local gen = tonumber(sheet.geracao_override) or mfAgg.thinBloodGenOverride or fx.effectiveGeneration
+        sheet.geracao = gen
+        local stats = V20.Blood.deriveStats(gen)
+        sheet.sangue_max = stats.bloodMax
+        sheet.sangue_usavel_max = stats.usableBlood
+        sheet.sangue_por_turno = stats.perTurn
+        sheet.atributo_max_geracao = stats.traitMax
+        sheet.disciplina_max_geracao = stats.discMax
+        sheet.isGhoul = false
+        sheet.hasNumina = false
+        sheet.ghoulPotence = 0
+    else
+        local mSt = V20.Creation.applyMortalSupernaturalMode({}, sheet.mortal_sobrenatural_modo or "humano")
+        sheet.mortal_sobrenatural_modo = mSt.mortal_sobrenatural_modo
+        sheet.isGhoul = mSt.isGhoul
+        sheet.hasNumina = mSt.hasNumina
+        sheet.sangue_max = mSt.sangue_max or 0
+        sheet.sangue_usavel_max = mSt.sangue_max or 0
+        sheet.sangue_por_turno = mSt.sangue_por_turno or 0
+        sheet.ghoulPotence = mSt.ghoulPotence or 0
+        sheet.atributo_max_geracao = 5
+        sheet.disciplina_max_geracao = mSt.isGhoul and math.max(1, safeInt(sheet.carnical_disc_max, 1)) or 0
+    end
+
+    sheet.rebanho_recipientes = fx.herdVessels
+    sheet.caca_bonus_dados = fx.huntingBonusDice
+    sheet.caca_mod_dif = fx.huntingDiffMod
+    sheet.recursos_faixa = fx.resourcesLabel
+    sheet.fama_mod_dif = fx.fameSocialDiffMod
+    sheet.status_bonus_dados = fx.statusSocialBonusDice
+    sheet.qualidades_total = mfAgg.totalMeritCost
+    sheet.defeitos_bonus = mfAgg.effectiveFlawBonus
+    sheet.percepcao_mod_qualidades = mfAgg.perceptionDiffMod
+    sheet.tem_disc_adicional = mfAgg.hasAdditionalDisc
+
+    local huge = isTrue(sheet.tem_tamanho_grande) or mfAgg.hugeSize
+    local hStatus = V20.Health.getStatus({
+        isVampire = isVamp,
+        hugeSize = huge,
+        bashing = sheet.dano_contundente,
+        lethal = sheet.dano_letal,
+        aggravated = sheet.dano_aggravado,
+    })
+    sheet.vitalidade_resumo = hStatus.currentLevelName
+    sheet.vitalidade_label = hStatus.currentLevelName
+    sheet.penalidade_ferimento = hStatus.penalty
+    sheet.incapacitado = hStatus.incapacitated
+    sheet.vitalidade_alerta = hStatus.torporOrDeath or ""
+
+    local boxTokens = {}
+    for i = 1, 8 do
+        local sym = hStatus.boxes[i]
+        if sym == nil then
+            sheet["health_box_" .. i] = "-"
+        elseif sym == "" then
+            sheet["health_box_" .. i] = "[ ]"
+            table.insert(boxTokens, "[ ]")
+        else
+            sheet["health_box_" .. i] = "[" .. sym .. "]"
+            table.insert(boxTokens, "[" .. sym .. "]")
+        end
+    end
+    sheet.vitalidade_trilha_visual = table.concat(boxTokens, " ")
+
+    if type(sheet.moralidade_tipo) == "string" then
+        for _, p in ipairs(V20.MoralityCatalog.PATHS) do
+            if p.id == sheet.moralidade_tipo then
+                sheet.moralidade_nome = p.name
+                break
+            end
+        end
+    end
+
+    local aura = V20.WillpowerMorality.getAuraModifier(sheet.moralidade_val or 7)
+    sheet.aura_resumo = aura.label
+    sheet.aura_label = aura.label
+    sheet.aura_mod_dif = aura.diffMod
+
+    sheet.xp_disponivel = safeNum(sheet.xp_total, 0) - safeNum(sheet.xp_gasto, 0)
+
+    local discList = Bridge.collectDisciplines(sheet, ndb)
+    local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), discList)
+    sheet.fortitude_absorcao_dados = cMods.fortitudeSoak
+    sheet.potencia_dados_passivos = cMods.passivePotenceDice
+    sheet.potencia_sucessos_ativos = cMods.activePotenceAuto
+    sheet.rapidez_dados_passivos = cMods.passiveCelerityDice
+    sheet.rapidez_acoes_extras = cMods.activeCelerityActions
+
+    local activeIds = {}
+    for k, _ in pairs(Bridge.deserializeBuffs(sheet)) do
+        table.insert(activeIds, k)
+    end
+    table.sort(activeIds)
+    if isTrue(sheet.potencia_ativa_turno) then
+        table.insert(activeIds, 1, "potence_auto")
+    end
+    if safeInt(sheet.rapidez_acoes_ativas, 0) > 0 then
+        table.insert(activeIds, 1, "celerity_x" .. tostring(safeInt(sheet.rapidez_acoes_ativas, 0)))
+    end
+    sheet.buffs_cena_resumo = (#activeIds > 0) and table.concat(activeIds, ", ") or "Nenhum buff ativo"
+
+    updateDisciplineSummaries(sheet)
+
+    -- Atualiza resumo vivo do montador de rolagem no rodapé
+    local rAttr = Bridge.resolvePoolTrait(sheet, sheet.roll_attr_id or "attr_percepcao", cMods)
+    local rHab = Bridge.resolvePoolTrait(sheet, sheet.roll_hab_id, cMods)
+    local wPen = (isTrue(sheet.roll_ignorar_ferimento) or isTrue(sheet.em_frenesi)) and 0 or math.abs(safeInt(sheet.penalidade_ferimento, 0))
+    local extra = safeInt(sheet.roll_bonus_dice, 0)
+    if (sheet.roll_attr_id == "attr_forca") then extra = extra + cMods.passivePotenceDice end
+    if (sheet.roll_attr_id == "attr_destreza") then extra = extra + cMods.passiveCelerityDice end
+    if isTrue(sheet.roll_usar_status) then extra = extra + safeInt(sheet.status_bonus_dados, 0) end
+    local previewPool = math.max(0, rAttr.val + rHab.val + extra - wPen)
+    local habPart = rHab.label and string.format(" + %s (%d)", rHab.label, rHab.val) or ""
+    sheet.roll_equacao_resumo = string.format(
+        "%s (%d)%s + Bônus (%d) - Ferim. (%d) = %dd10 | Dif %d",
+        rAttr.label or "Atributo",
+        rAttr.val,
+        habPart,
+        extra,
+        wPen,
+        previewPool,
+        safeInt(sheet.roll_diff, 6)
+    )
+end
+
+function Bridge.selectRollTrait(sheet, kind, traitId)
+    if type(sheet) ~= "table" then return end
+    if kind == "attr" then
+        sheet.roll_attr_id = traitId
+    elseif kind == "hab" then
+        sheet.roll_hab_id = traitId
+    end
+    Bridge.syncDerivedFields(sheet)
+end
+
+function Bridge.adjustResource(sheet, field, delta, minVal, maxFieldOrVal)
+    if type(sheet) ~= "table" or type(field) ~= "string" then return end
+    Bridge.syncDerivedFields(sheet)
+    local cur = safeInt(sheet[field], 0)
+    local lo = safeInt(minVal, 0)
+    local hi = 99
+    if type(maxFieldOrVal) == "string" then
+        hi = safeInt(sheet[maxFieldOrVal], 10)
+    elseif type(maxFieldOrVal) == "number" then
+        hi = maxFieldOrVal
+    end
+    local nextVal = math.max(lo, math.min(hi, cur + safeInt(delta, 0)))
+    sheet[field] = nextVal
+    Bridge.syncDerivedFields(sheet)
+end
+
+function Bridge.rollInitialBlood(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local rolObj = (fc and fc.interpretarRolagem) and fc.interpretarRolagem("1d10") or nil
+    local mesa = (fc and fc.getMesaDe) and fc.getMesaDe(sheet) or nil
+
+    local function applyFace(val)
+        local cap = math.max(1, safeInt(sheet.sangue_max, 10))
+        sheet.sangue_atual = math.min(cap, math.max(1, val))
+        Bridge.syncDerivedFields(sheet)
+        return string.format("[%s] Reserva Inicial de Vitae (1d10): %d ponto(s).", sheet.nome or "Personagem", sheet.sangue_atual)
+    end
+
+    if mesa ~= nil and mesa.activeChat ~= nil and rolObj ~= nil then
+        mesa.activeChat:rolarDados(rolObj, "🩸 [" .. (sheet.nome or "Personagem") .. "] Vitae Inicial (1d10)", function(rolado)
+            local faces = Bridge.extractRollFaces(rolado)
+            mesa.activeChat:enviarMensagem(applyFace(faces[1] or 5))
+        end)
+    else
+        local v = 5
+        if rolObj and rolObj.rolarLocalmente then
+            rolObj:rolarLocalmente()
+            local faces = Bridge.extractRollFaces(rolObj)
+            v = faces[1] or 5
+        else
+            v = math.random(1, 10)
+        end
+        dlg.showMessage(applyFace(v))
+    end
+end
+
+function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
+    opts, firecastApi, dialogsApi = normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local discList = Bridge.collectDisciplines(sheet)
+    local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), discList)
+
+    local attrVal = 0
+    local habVal = 0
+    local habCat = nil
+    local label = opts.label
+    local bonusDice = safeInt(opts.bonusDice ~= nil and opts.bonusDice or sheet.roll_bonus_dice, 0)
+    local diffMod = safeInt(opts.difficultyMod, 0)
+    local extraAuto = 0
+    local isVirtualPool = false
+
+    if opts.rawPool ~= nil then
+        attrVal = safeInt(opts.rawPool, 0)
+        habVal = 0
+        bonusDice = safeInt(opts.bonusDice, 0)
+        label = label or "Teste V20"
+    else
+        local attrId = opts.attrId or sheet.roll_attr_id or "attr_percepcao"
+        local habId = (opts.habId ~= nil) and opts.habId or (opts.attrId == nil and sheet.roll_hab_id or nil)
+        if habId == "" or habId == "none" then habId = nil end
+
+        local attrInfo = Bridge.resolvePoolTrait(sheet, attrId, cMods)
+        local habInfo = habId and Bridge.resolvePoolTrait(sheet, habId, cMods) or { val = 0, label = nil, category = nil, isVirtual = false }
+
+        attrVal = attrInfo.val
+        habVal = habInfo.val
+        habCat = habInfo.category
+        isVirtualPool = attrInfo.isVirtual
+
+        if attrId == "attr_forca" and not opts.noPassiveDiscipline then
+            bonusDice = bonusDice + cMods.passivePotenceDice
+            extraAuto = extraAuto + cMods.activePotenceAuto
+        elseif attrId == "attr_destreza" and not opts.noPassiveDiscipline then
+            bonusDice = bonusDice + cMods.passiveCelerityDice
+        elseif attrId == "attr_percepcao" then
+            diffMod = diffMod + cMods.perceptionDiffMod + safeInt(sheet.percepcao_mod_qualidades, 0)
+        end
+
+        if isTrue(opts.useFame) or (opts.attrId == nil and isTrue(sheet.roll_usar_fama)) then
+            diffMod = diffMod + safeInt(sheet.fama_mod_dif, 0)
+        end
+        if isTrue(opts.useStatus) or (opts.attrId == nil and isTrue(sheet.roll_usar_status)) then
+            bonusDice = bonusDice + safeInt(sheet.status_bonus_dados, 0)
+        end
+
+        if not label then
+            label = (attrInfo.label or attrId) .. (habInfo.label and (" + " .. habInfo.label) or "")
+        end
+    end
+
+    local spendWP = false
+    if not isTrue(opts.forbidWillpower) then
+        if opts.spendWillpower ~= nil then
+            spendWP = isTrue(opts.spendWillpower)
+        elseif opts.rawPool == nil and opts.attrId == nil then
+            spendWP = isTrue(sheet.roll_gastar_fdv)
+        end
+    end
+
+    local ignoreWound = isVirtualPool
+        or isTrue(opts.ignoreWoundPenalty)
+        or (opts.rawPool == nil and isTrue(sheet.roll_ignorar_ferimento))
+        or isTrue(sheet.em_frenesi)
+
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+
+    local poolInfo = V20.Dice.buildPool({
+        actorName = sheet.nome,
+        attrVal = attrVal,
+        abilityVal = habVal,
+        abilityCategory = habCat,
+        bonusDice = bonusDice,
+        difficulty = safeInt(opts.difficulty ~= nil and opts.difficulty or sheet.roll_diff, 6),
+        difficultyMod = diffMod,
+        woundPenalty = sheet.penalidade_ferimento or 0,
+        incapacitated = isTrue(sheet.incapacitado),
+        ignoreWoundPenalty = ignoreWound,
+        spendWillpower = spendWP,
+        autoSuccesses = safeInt(opts.autoSuccesses, 0) + extraAuto,
+        storytellerOverride = stOverride,
+    })
+
+    if not poolInfo.canRoll then
+        dlg.showMessage(poolInfo.blockReason or "Rolagem bloqueada pelas regras V20.")
+        return { ok = false, error = poolInfo.blockReason }
+    end
+
+    if spendWP then
+        if safeInt(sheet.fdv_temp, 0) < 1 and not stOverride then
+            dlg.showMessage("Força de Vontade temporária insuficiente para sucesso automático.")
+            return { ok = false, error = "Força de Vontade temporária insuficiente." }
+        end
+        sheet.fdv_temp = math.max(0, safeInt(sheet.fdv_temp, 1) - 1)
+    end
+
+    if type(opts.extraNotes) == "table" then
+        for _, n in ipairs(opts.extraNotes) do
+            table.insert(poolInfo.warnings, n)
+        end
+    end
+
+    local useSpec = false
+    if opts.specialty ~= nil then
+        useSpec = isTrue(opts.specialty)
+    elseif opts.rawPool == nil and opts.attrId == nil then
+        useSpec = isTrue(sheet.roll_usar_espec)
+    end
+
+    -- PF-3: poolInfo.autoSuccesses JÁ inclui +1 de spendWillpower; NÃO passar spendWillpower p/ evaluate!
+    local function finishEvaluation(faces)
+        local evalRes = V20.Dice.evaluate(faces, poolInfo.effectiveDifficulty, {
+            specialty = useSpec,
+            autoSuccesses = poolInfo.autoSuccesses,
+        })
+        if type(opts.onEvaluated) == "function" then
+            local extraNote = opts.onEvaluated(evalRes)
+            if type(extraNote) == "string" and extraNote ~= "" then
+                table.insert(poolInfo.warnings, extraNote)
+            end
+        end
+        local msg = Bridge.formatChatReport(sheet.nome, label, evalRes, faces, poolInfo.warnings)
+        return evalRes, msg
+    end
+
+    local diceToRoll = poolInfo.pool
+    local mesa = (fc and fc.getMesaDe) and fc.getMesaDe(sheet) or nil
+
+    if diceToRoll <= 0 then
+        local evalRes, msg = finishEvaluation({})
+        if mesa ~= nil and mesa.activeChat ~= nil then
+            mesa.activeChat:enviarMensagem(msg)
+        else
+            dlg.showMessage(msg)
+        end
+        return { ok = true, eval = evalRes, message = msg }
+    end
+
+    local expr = tostring(diceToRoll) .. "d10"
+    local rolObj = (fc and fc.interpretarRolagem) and fc.interpretarRolagem(expr) or nil
+
+    if mesa ~= nil and mesa.activeChat ~= nil and rolObj ~= nil then
+        local lastEval = nil
+        mesa.activeChat:rolarDados(rolObj, "🎲 [" .. (sheet.nome or "Personagem") .. "] " .. label, function(rolado)
+            local faces = Bridge.extractRollFaces(rolado)
+            local evalRes, msg = finishEvaluation(faces)
+            lastEval = evalRes
+            mesa.activeChat:enviarMensagem(msg)
+        end)
+        return { ok = true, eval = lastEval }
+    else
+        local faces = {}
+        if rolObj and rolObj.rolarLocalmente then
+            rolObj:rolarLocalmente()
+            faces = Bridge.extractRollFaces(rolObj)
+        else
+            for i = 1, diceToRoll do
+                faces[i] = math.random(1, 10)
+            end
+        end
+        local evalRes, msg = finishEvaluation(faces)
+        dlg.showMessage(msg)
+        return { ok = true, eval = evalRes, message = msg }
+    end
+end
+
+local function applyEngineStateToSheet(sheet, st)
+    sheet.sangue_atual = st.currentBlood
+    sheet.sangue_gasto_turno = st.spentThisTurn
+    sheet.sangue_fraco_usado = st.thinBloodUsed
+    sheet.fdv_temp = st.fdv_temp
+    sheet.potencia_ativa_turno = (st.activePotenceAuto == true)
+    sheet.rapidez_acoes_ativas = st.activeCelerityActions or 0
+    sheet.buff_forca = safeInt(st.buff_forca, safeInt(sheet.buff_forca, 0))
+    sheet.buff_destreza = safeInt(st.buff_destreza, safeInt(sheet.buff_destreza, 0))
+    sheet.buff_vigor = safeInt(st.buff_vigor, safeInt(sheet.buff_vigor, 0))
+    Bridge.serializeBuffs(sheet, st.activeBuffs)
+    Bridge.syncDerivedFields(sheet)
+end
+
+function Bridge.activateDisciplinePower(sheet, discNode, powerId, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local resolvedEntry = nil
+    if type(discNode) == "number" then
+        local sid = sheet["disc_slot" .. discNode .. "_id"]
+        local slvl = safeInt(sheet["disc_slot" .. discNode .. "_nivel"], 0)
+        resolvedEntry = { disc_id = sid, nivel = slvl }
+    elseif type(discNode) == "string" then
+        for _, d in ipairs(Bridge.collectDisciplines(sheet)) do
+            if d.disc_id == discNode then
+                resolvedEntry = d
+                break
+            end
+        end
+        resolvedEntry = resolvedEntry or { disc_id = discNode, nivel = safeInt(sheet["disc_" .. discNode], 0) }
+    elseif type(discNode) == "table" then
+        resolvedEntry = discNode
+    end
+
+    local resolvedPower = powerId
+    if type(powerId) == "number" and resolvedEntry and resolvedEntry.disc_id then
+        local cat = V20.DisciplinesCatalog.DISCIPLINES[resolvedEntry.disc_id]
+        if cat and cat.powers and cat.powers[powerId] then
+            resolvedPower = cat.powers[powerId].id
+        end
+    end
+
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local engState = Bridge.sheetToEngineState(sheet)
+    local res = V20.DisciplinesEngine.activatePower(engState, resolvedEntry, resolvedPower, {
+        storytellerOverride = stOverride,
+    })
+
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível ativar o poder.")
+        return res
+    end
+
+    applyEngineStateToSheet(sheet, res.newState)
+
+    if res.rollSpec then
+        Bridge.rollFromSheet(sheet, {
+            attrId = res.rollSpec.attr,
+            habId = res.rollSpec.hab,
+            difficulty = res.rollSpec.defaultDiff,
+            label = res.rollSpec.powerName,
+            spendWillpower = false,
+            extraNotes = (res.rollSpec.diffHint and res.rollSpec.diffHint ~= "") and { res.rollSpec.diffHint } or nil,
+        }, fc, dlg)
+    else
+        local statusTxt = "ativado"
+        if res.buffToggled and res.buffToggled.active == false then
+            statusTxt = "desativado"
+        end
+        local discMeta = resolvedEntry and V20.DisciplinesCatalog.DISCIPLINES[resolvedEntry.disc_id]
+        local title = (discMeta and discMeta.name) or tostring(powerId)
+        Bridge.notify(
+            sheet,
+            string.format("🦇 [%s] %s %s (Sangue: %d/%d | Turno: %d/%d).",
+                sheet.nome or "Personagem",
+                title,
+                statusTxt,
+                safeInt(sheet.sangue_atual, 0),
+                safeInt(sheet.sangue_max, 10),
+                safeInt(sheet.sangue_gasto_turno, 0),
+                safeInt(sheet.sangue_por_turno, 1)
+            ),
+            fc,
+            dlg
+        )
+    end
+
+    return res
+end
+
+function Bridge.activateDisciplineSlot(sheet, slotIndex, firecastApi, dialogsApi)
+    local pwrLvl = math.max(1, math.min(5, safeInt(sheet and sheet["disc_slot" .. slotIndex .. "_pwr_lvl"], 1)))
+    return Bridge.activateDisciplinePower(sheet, slotIndex, pwrLvl, firecastApi, dialogsApi)
+end
+
+function Bridge.activateCustomPower(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local customPower = {
+        id = "custom_power",
+        level = math.max(1, safeInt(sheet.custom_pwr_nivel, 1)),
+        name = (type(sheet.custom_pwr_nome) == "string" and sheet.custom_pwr_nome ~= "") and sheet.custom_pwr_nome or "Poder Customizado",
+        cost = {
+            blood = math.max(0, safeInt(sheet.custom_pwr_sangue, 0)),
+            willpower = math.max(0, safeInt(sheet.custom_pwr_fdv, 0)),
+        },
+        pool = (type(sheet.custom_pwr_attr) == "string" and sheet.custom_pwr_attr ~= "" and sheet.custom_pwr_attr ~= "none")
+            and { attr = sheet.custom_pwr_attr, hab = (sheet.custom_pwr_hab ~= "none" and sheet.custom_pwr_hab or nil) }
+            or nil,
+        defaultDiff = safeInt(sheet.custom_pwr_dif, 6),
+        diffHint = "Poder Customizado / Linha Secundária",
+    }
+    local maxLvl = math.max(customPower.level, safeInt(sheet.disciplina_max_geracao, 5))
+    return Bridge.activateDisciplinePower(sheet, { disc_id = "custom", nivel = maxLvl }, customPower, firecastApi, dialogsApi)
+end
+
+function Bridge.awakenNightly(sheet, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local res = V20.WillpowerMorality.awakenNightly({
+        isVampire = Bridge.isVampireSheet(sheet),
+        currentBlood = sheet.sangue_atual,
+        spentThisTurn = sheet.sangue_gasto_turno,
+        virtude2_val = sheet.virtude2_val,
+    })
+    sheet.sangue_atual = res.newState.currentBlood
+    sheet.sangue_gasto_turno = 0
+    Bridge.syncDerivedFields(sheet)
+    local warn = res.warning and (" ⚠️ " .. res.warning) or ""
+    Bridge.notify(
+        sheet,
+        string.format("🌙 [%s] Despertar Noturno — Vitae: %d/%d.%s",
+            sheet.nome or "Personagem",
+            safeInt(sheet.sangue_atual, 0),
+            safeInt(sheet.sangue_max, 10),
+            warn
+        ),
+        fc,
+        dlg
+    )
+    return res
+end
+
+function Bridge.healDamage(sheet, damageType, opts, firecastApi, dialogsApi)
+    opts, firecastApi, dialogsApi = normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local dtype = damageType or sheet.cura_tipo or "bashing"
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local st = Bridge.sheetToEngineState(sheet)
+    st.bashing = safeInt(sheet.dano_contundente, 0)
+    st.lethal = safeInt(sheet.dano_letal, 0)
+    st.aggravated = safeInt(sheet.dano_aggravado, 0)
+
+    local res = V20.Health.healWithBlood(st, dtype, {
+        useWillpowerForExtra = isTrue(opts.useWillpowerForExtra) or isTrue(sheet.cura_agravado_extra_fdv),
+        bypassTurnLimit = isTrue(opts.bypassTurnLimit),
+        storytellerOverride = stOverride,
+    })
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível curar ferimento.")
+        return res
+    end
+
+    sheet.sangue_atual = res.newState.currentBlood
+    sheet.sangue_gasto_turno = res.newState.spentThisTurn
+    sheet.sangue_fraco_usado = res.newState.thinBloodUsed
+    sheet.fdv_temp = res.newState.fdv_temp
+    sheet.dano_contundente = res.newState.bashing
+    sheet.dano_letal = res.newState.lethal
+    sheet.dano_aggravado = res.newState.aggravated
+    Bridge.syncDerivedFields(sheet)
+
+    Bridge.notify(
+        sheet,
+        string.format("🩸 [%s] Curou 1 nível (%s) | Vitalidade: %s | Sangue: %d/%d",
+            sheet.nome or "Personagem",
+            dtype,
+            sheet.vitalidade_resumo or "Saudável",
+            safeInt(sheet.sangue_atual, 0),
+            safeInt(sheet.sangue_max, 10)
+        ),
+        fc,
+        dlg
+    )
+    return res
+end
+
+function Bridge.applyDamage(sheet, amount, damageType, opts, firecastApi, dialogsApi)
+    opts, firecastApi, dialogsApi = normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local qty = math.max(0, safeInt(amount ~= nil and amount or sheet.dano_aplicar_qtd, 1))
+    local dtype = damageType or sheet.dano_aplicar_tipo or "bashing"
+    local isVamp = Bridge.isVampireSheet(sheet)
+    local huge = isTrue(sheet.tem_tamanho_grande) or V20.BackgroundsEngine.aggregateMeritsFlaws(Bridge.collectMeritsFlaws(sheet)).hugeSize
+
+    local nextH = V20.Health.applyDamage({
+        isVampire = isVamp,
+        hugeSize = huge,
+        bashing = safeInt(sheet.dano_contundente, 0),
+        lethal = safeInt(sheet.dano_letal, 0),
+        aggravated = safeInt(sheet.dano_aggravado, 0),
+    }, qty, dtype, {
+        isVampire = isVamp,
+        isFirearm = (opts.isFirearm ~= nil) and isTrue(opts.isFirearm) or isTrue(sheet.dano_arma_fogo),
+        headshot = (opts.headshot ~= nil) and isTrue(opts.headshot) or isTrue(sheet.dano_tiro_cabeca),
+        halveBashing = (opts.halveBashing ~= nil) and isTrue(opts.halveBashing) or isTrue(sheet.dano_dividir_contundente),
+    })
+
+    sheet.dano_contundente = nextH.bashing
+    sheet.dano_letal = nextH.lethal
+    sheet.dano_aggravado = nextH.aggravated
+    Bridge.syncDerivedFields(sheet)
+
+    local alert = (sheet.vitalidade_alerta and sheet.vitalidade_alerta ~= "") and (" ⚠️ " .. sheet.vitalidade_alerta) or ""
+    Bridge.notify(
+        sheet,
+        string.format("⚔️ [%s] Dano aplicado (%d %s) -> %s (%s)%s",
+            sheet.nome or "Personagem",
+            qty,
+            dtype,
+            sheet.vitalidade_resumo or "Saudável",
+            sheet.vitalidade_trilha_visual or "",
+            alert
+        ),
+        fc,
+        dlg
+    )
+    return nextH
+end
+
+function Bridge.newTurn(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return end
+    local st = V20.DisciplinesEngine.clearTurnEffects(Bridge.sheetToEngineState(sheet))
+    st = V20.Blood.newTurn(st)
+    applyEngineStateToSheet(sheet, st)
+    return st
+end
+
+function Bridge.applyBloodBuff(sheet, attrKey, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    if not Bridge.isVampireSheet(sheet) and not isTrue(sheet.isGhoul) then
+        dlg.showMessage("Apenas vampiros e carniçais podem realizar Blood Buff físico.")
+        return { ok = false, error = "Mortal humano não possui vitae para Blood Buff." }
+    end
+
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local res = V20.Blood.applyPhysicalBuff(Bridge.sheetToEngineState(sheet), attrKey, {
+        storytellerOverride = stOverride,
+    })
+    if not res.ok then
+        dlg.showMessage(res.error or "Falha no Blood Buff.")
+        return res
+    end
+
+    applyEngineStateToSheet(sheet, res.newState)
+    local durNote = res.temporaryAboveMax and " (Acima do teto da geração: dura 3 turnos)" or " (Dura toda a cena)"
+    Bridge.notify(
+        sheet,
+        string.format("🩸 [%s] Blood Buff em %s -> Efetivo %d%s | Sangue: %d/%d",
+            sheet.nome or "Personagem",
+            attrKey,
+            res.effectiveAttr,
+            durNote,
+            safeInt(sheet.sangue_atual, 0),
+            safeInt(sheet.sangue_max, 10)
+        ),
+        fc,
+        dlg
+    )
+    return res
+end
+
+function Bridge.clearSceneBuffs(sheet, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    local st = V20.Blood.clearSceneBuffs(Bridge.sheetToEngineState(sheet))
+    st = V20.DisciplinesEngine.clearSceneBuffs(st)
+    applyEngineStateToSheet(sheet, st)
+    Bridge.notify(sheet, string.format("🧹 [%s] Buffs de cena encerrados.", sheet.nome or "Personagem"), fc, dlg)
+    return st
+end
+
+function Bridge.rollFrenzy(sheet, stimulusDiff, firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local diff = safeInt(stimulusDiff ~= nil and stimulusDiff or sheet.frenesi_dif, 6)
+    local check = V20.WillpowerMorality.prepareFrenzyCheck(sheet, diff)
+    local vLabel = (sheet.virtude2_tipo == "instinto") and "Instinto" or "Autocontrole"
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = check.pool,
+        difficulty = check.difficulty,
+        ignoreWoundPenalty = true,
+        forbidWillpower = (not check.canAvoidWithWillpower),
+        extraNotes = check.notes,
+        label = "Frenesi (" .. vLabel .. ")",
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.rollRotschreck(sheet, stimulusDiff, firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local diff = safeInt(stimulusDiff ~= nil and stimulusDiff or sheet.rotschreck_dif, 6)
+    local check = V20.WillpowerMorality.prepareRotschreckCheck(sheet, diff)
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = check.pool,
+        difficulty = check.difficulty,
+        ignoreWoundPenalty = true,
+        label = "Rötschreck (Coragem)",
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.rollDegeneration(sheet, firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local check = V20.WillpowerMorality.prepareDegenerationCheck(sheet)
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = check.pool,
+        difficulty = check.difficulty,
+        ignoreWoundPenalty = true,
+        forbidWillpower = true,
+        label = "Degeneração (" .. check.virtueUsed .. ")",
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.rollSoak(sheet, damageType, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local dtype = damageType or sheet.absorcao_tipo or "bashing"
+    local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), Bridge.collectDisciplines(sheet))
+    local soak = V20.Health.buildSoakPool({
+        isVampire = Bridge.isVampireSheet(sheet),
+        isGhoul = isTrue(sheet.isGhoul),
+        attr_vigor = safeInt(sheet.attr_vigor, 1),
+        buff_vigor = safeInt(sheet.buff_vigor, 0) + safeInt(cMods.sceneAttrMods.vigor, 0),
+        fortitude = cMods.fortitudeSoak,
+        armor = safeInt(sheet.armadura_absorcao, 0),
+        soakDifficulty = cMods.soakDiffOverride or 6,
+    }, dtype)
+
+    if not soak.canSoak then
+        dlg.showMessage(soak.reason or "Não é possível absorver este tipo de dano.")
+        return { ok = false, error = soak.reason }
+    end
+
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = soak.pool,
+        difficulty = soak.difficulty,
+        ignoreWoundPenalty = true,
+        forbidWillpower = true,
+        label = "Absorção (" .. dtype .. ")",
+    }, fc, dlg)
+end
+
+function Bridge.rollInitiative(sheet, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), Bridge.collectDisciplines(sheet))
+    local dex = Bridge.resolvePoolTrait(sheet, "attr_destreza", cMods).val + cMods.passiveCelerityDice
+    local wits = Bridge.resolvePoolTrait(sheet, "attr_raciocinio", cMods).val
+    local wPen = (isTrue(sheet.em_frenesi) or isTrue(sheet.roll_ignorar_ferimento)) and 0 or math.abs(safeInt(sheet.penalidade_ferimento, 0))
+    local armorPen = math.abs(safeInt(sheet.armadura_penalidade, 0))
+    local mod = dex + wits - wPen - armorPen
+
+    local rolObj = (fc and fc.interpretarRolagem) and fc.interpretarRolagem("1d10") or nil
+    local mesa = (fc and fc.getMesaDe) and fc.getMesaDe(sheet) or nil
+
+    local function formatInit(d10Val)
+        local total = d10Val + mod
+        return string.format("⚡ [%s] Iniciativa V20: 1d10 (%d) + Mod (%d) = %d", sheet.nome or "Personagem", d10Val, mod, total)
+    end
+
+    if mesa ~= nil and mesa.activeChat ~= nil and rolObj ~= nil then
+        mesa.activeChat:rolarDados(rolObj, "⚡ [" .. (sheet.nome or "Personagem") .. "] Iniciativa", function(rolado)
+            local faces = Bridge.extractRollFaces(rolado)
+            mesa.activeChat:enviarMensagem(formatInit(faces[1] or 1))
+        end)
+    else
+        local d10Val = 5
+        if rolObj and rolObj.rolarLocalmente then
+            rolObj:rolarLocalmente()
+            local faces = Bridge.extractRollFaces(rolObj)
+            d10Val = faces[1] or 5
+        else
+            d10Val = math.random(1, 10)
+        end
+        dlg.showMessage(formatInit(d10Val))
+    end
+end
+
+function Bridge.huntWithHerdDomain(sheet, opts, firecastApi, dialogsApi)
+    opts, firecastApi, dialogsApi = normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local attrId = opts.attrId or sheet.caca_attr_id or "attr_percepcao"
+    local habId = opts.habId or sheet.caca_hab_id or "hab_manha"
+    local baseDiff = safeInt(opts.difficulty ~= nil and opts.difficulty or sheet.caca_dif_base, 6)
+    local gainBlood = not isFalse(opts.gainBloodOnSuccess)
+
+    return Bridge.rollFromSheet(sheet, {
+        attrId = attrId,
+        habId = habId,
+        bonusDice = safeInt(sheet.caca_bonus_dados, 0),
+        difficulty = baseDiff,
+        difficultyMod = safeInt(sheet.caca_mod_dif, 0),
+        label = "Caça / Alimentação",
+        onEvaluated = function(evalRes)
+            if gainBlood and evalRes.totalSuccesses > 0 and Bridge.isVampireSheet(sheet) then
+                local g = V20.Blood.gain(Bridge.sheetToEngineState(sheet), evalRes.totalSuccesses)
+                sheet.sangue_atual = g.newState.currentBlood
+                sheet.sangue_fraco_usado = g.newState.thinBloodUsed
+                Bridge.syncDerivedFields(sheet)
+                return string.format("+%d Vitae absorvida -> %d/%d", g.added, sheet.sangue_atual, sheet.sangue_max)
+            end
+            return nil
+        end,
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.rollBackgroundAction(sheet, bgId, attrId, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    if bgId == "herd" or bgId == "domain" then
+        return Bridge.huntWithHerdDomain(sheet, {}, fc, dlg)
+    end
+    local useAttr = attrId or sheet.bg_acao_attr_id or "attr_carisma"
+    local attrInfo = Bridge.resolvePoolTrait(sheet, useAttr)
+    local dots = safeInt(sheet["bg_" .. tostring(bgId)], 0)
+    local act = V20.BackgroundsEngine.buildActionRoll(bgId, dots, attrInfo.val)
+    if not act.canRoll then
+        dlg.showMessage(act.title or "Antecedente sem pontos ou sem ação rolável.")
+        return { ok = false, error = act.title }
+    end
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = act.pool,
+        difficulty = act.defaultDiff,
+        label = act.title .. " (" .. (attrInfo.label or useAttr) .. ")",
+    }, fc, dlg)
+end
+
+function Bridge.rollNuminaAction(sheet, numinaId, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local nid = numinaId or sheet.numina_id or "true_faith"
+    local dots = safeInt(sheet["numina_" .. nid] or sheet.numina_nivel, 0)
+    local entry = V20.MeritsFlawsCatalog.NUMINA[nid]
+    local attrInfo = Bridge.resolvePoolTrait(sheet, entry and entry.poolAttr or "attr_fdv_ref")
+    local act = V20.BackgroundsEngine.buildNuminaRoll(nid, dots, attrInfo.val)
+    if not act.canRoll then
+        dlg.showMessage(act.title or "Numina sem pontos para rolar.")
+        return { ok = false, error = act.title }
+    end
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = act.pool,
+        difficulty = act.defaultDiff,
+        ignoreWoundPenalty = (nid == "true_faith"),
+        label = "Numina: " .. act.title,
+    }, fc, dlg)
+end
+
+function Bridge.rollAllyOrRetainer(sheet, slotIdx, firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local name = sheet["lacaio" .. slotIdx .. "_nome"] or ("Aliado/Lacaio #" .. tostring(slotIdx))
+    local pool = math.max(1, safeInt(sheet["lacaio" .. slotIdx .. "_parada"], 3))
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = pool,
+        difficulty = 6,
+        ignoreWoundPenalty = true,
+        label = "Ação de " .. name,
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.rollWeaponAttack(sheet, slotIdx, firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local wName = sheet["arma" .. slotIdx .. "_nome"]
+    if type(wName) ~= "string" or wName == "" then wName = "Ataque #" .. tostring(slotIdx) end
+    local attrId = sheet["arma" .. slotIdx .. "_attr"] or "attr_destreza"
+    local habId = sheet["arma" .. slotIdx .. "_hab"] or "hab_briga"
+    local diff = safeInt(sheet["arma" .. slotIdx .. "_dif"], 6)
+    local dmg = safeInt(sheet["arma" .. slotIdx .. "_dano"], 2)
+    local dtype = sheet["arma" .. slotIdx .. "_tipo"] or "bashing"
+    return Bridge.rollFromSheet(sheet, {
+        attrId = attrId,
+        habId = habId,
+        difficulty = diff,
+        label = string.format("Ataque: %s (Dano base %d %s)", wName, dmg, dtype),
+    }, firecastApi, dialogsApi)
+end
+
+local AUDIT_CACHE = setmetatable({}, { __mode = "k" })
+
+function Bridge.logAudit(sheet, ndbApi, firecastApi, eventType, description, costXp, status, targetField, newVal)
+    if type(sheet) ~= "table" then return nil end
+    local ndb = ndbApi or _G.NDB
+    local stamp = os.date("%Y-%m-%d %H:%M:%S")
+    local author = Bridge.getCurrentLogin(sheet, firecastApi)
+    local st = status or "aprovado"
+    local cost = safeInt(costXp, 0)
+
+    local entry = {
+        data_hora = stamp,
+        autor_login = author,
+        tipo_evento = eventType or "registro",
+        descricao = description or "",
+        custo_xp = cost,
+        status = st,
+        campo_alvo = targetField,
+        novo_valor = newVal,
+    }
+
+    if type(AUDIT_CACHE[sheet]) ~= "table" then
+        AUDIT_CACHE[sheet] = {}
+    end
+    table.insert(AUDIT_CACHE[sheet], entry)
+    if not rawget(sheet, "__nodeFacadeFlag") then
+        rawset(sheet, "_audit_entries", AUDIT_CACHE[sheet])
+    end
+
+    if ndb and ndb.createChildNode and sheet.rclAuditoriaXP_node then
+        local ch = ndb.createChildNode(sheet.rclAuditoriaXP_node)
+        if type(ch) == "table" then
+            for k, v in pairs(entry) do ch[k] = v end
+        end
+    end
+
+    local line = string.format(
+        "[%s] (%s) %s — %s | XP: %d | Status: %s",
+        stamp, author, entry.tipo_evento, entry.descricao, cost, string.upper(st)
+    )
+    local prev = (type(sheet.auditoria_xp_log) == "string" and sheet.auditoria_xp_log ~= "") and (sheet.auditoria_xp_log .. "\n") or ""
+    sheet.auditoria_xp_log = prev .. line
+    return entry
+end
+
+function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, lockIfValid)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet, ndbApi)
+
+    local isVamp = Bridge.isVampireSheet(sheet)
+    local profile = "vampire_neonate"
+    if not isVamp then
+        profile = (sheet.mortal_perfil == "heroico_753") and "mortal_heroic_753" or "mortal_standard_643"
+    end
+
+    local phys = math.max(0, safeInt(sheet.attr_forca, 1) - 1)
+        + math.max(0, safeInt(sheet.attr_destreza, 1) - 1)
+        + math.max(0, safeInt(sheet.attr_vigor, 1) - 1)
+
+    local appDots = (sheet.cla_id == "nosferatu") and safeInt(sheet.attr_aparencia, 0) or math.max(0, safeInt(sheet.attr_aparencia, 1) - 1)
+    local soc = math.max(0, safeInt(sheet.attr_carisma, 1) - 1)
+        + math.max(0, safeInt(sheet.attr_manipulacao, 1) - 1)
+        + appDots
+
+    local ment = math.max(0, safeInt(sheet.attr_percepcao, 1) - 1)
+        + math.max(0, safeInt(sheet.attr_inteligencia, 1) - 1)
+        + math.max(0, safeInt(sheet.attr_raciocinio, 1) - 1)
+
+    local talents, skills, knowledges, maxHab = 0, 0, 0, 0
+    for _, hid in ipairs(V20.Traits.ABILITY_ORDER) do
+        local meta = V20.Traits.ABILITIES[hid]
+        local v = math.max(0, safeInt(sheet[hid], 0))
+        if v > maxHab then maxHab = v end
+        if meta.category == "talents" then
+            talents = talents + v
+        elseif meta.category == "skills" then
+            skills = skills + v
+        else
+            knowledges = knowledges + v
+        end
+    end
+
+    local discDots = 0
+    for _, d in ipairs(Bridge.collectDisciplines(sheet, ndbApi)) do
+        discDots = discDots + math.max(0, safeInt(d.nivel, 0))
+    end
+
+    local bgDots = 0
+    for _, b in ipairs(Bridge.collectBackgrounds(sheet, ndbApi)) do
+        bgDots = bgDots + math.max(0, safeInt(b.nivel, 0))
+    end
+
+    local virtDots = math.max(0, safeInt(sheet.virtude1_val, 1) - 1)
+        + math.max(0, safeInt(sheet.virtude2_val, 1) - 1)
+        + math.max(0, safeInt(sheet.virtude3_val, 1) - 1)
+
+    local mfAgg = V20.BackgroundsEngine.aggregateMeritsFlaws(Bridge.collectMeritsFlaws(sheet, ndbApi))
+
+    local res = V20.Creation.validate({
+        profile = profile,
+        cla_id = sheet.cla_id,
+        attr_aparencia = (sheet.cla_id == "nosferatu") and safeInt(sheet.attr_aparencia, 0) or safeInt(sheet.attr_aparencia, 1),
+        attrGroups = { phys, soc, ment },
+        abilityGroups = { talents, skills, knowledges },
+        maxBaseAbility = maxHab,
+        baseDisciplines = discDots - safeInt(sheet.freebie_disciplines, 0),
+        baseBackgrounds = bgDots - safeInt(sheet.freebie_backgrounds, 0),
+        baseVirtues = virtDots - safeInt(sheet.freebie_virtues, 0),
+        flawsBonus = mfAgg.effectiveFlawBonus,
+        freebiePurchases = {
+            attributes = safeInt(sheet.freebie_attributes, 0),
+            abilities = safeInt(sheet.freebie_abilities, 0),
+            disciplines = safeInt(sheet.freebie_disciplines, 0),
+            backgrounds = safeInt(sheet.freebie_backgrounds, 0),
+            virtues = safeInt(sheet.freebie_virtues, 0),
+            morality = safeInt(sheet.freebie_morality, 0),
+            willpower = safeInt(sheet.freebie_willpower, 0),
+            merits = mfAgg.totalMeritCost,
+        },
+    })
+
+    if res.valid then
+        sheet.criacao_resumo_status = string.format(
+            "✅ Criação V20 válida! Bônus gastos: %d/%d (Restante: %d).",
+            res.freebiesSpent, res.freebiesAvailable, res.freebiesRemaining
+        )
+        if isTrue(lockIfValid) then
+            sheet.modo_ficha = "jogo"
+            Bridge.logAudit(sheet, ndbApi, fc, "modo_jogo", "Criação validada e concluída -> Modo Jogo", 0, "aprovado", "modo_ficha", "jogo")
+        end
+    else
+        sheet.criacao_resumo_status = "⚠️ Pendências V20: " .. table.concat(res.errors, " | ")
+        if isTrue(lockIfValid) then
+            if isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc) then
+                sheet.modo_ficha = "jogo"
+                Bridge.logAudit(sheet, ndbApi, fc, "override_narrador", "Transição p/ Modo Jogo com Exceção do Narrador", 0, "aprovado", "modo_ficha", "jogo")
+            else
+                dlg.showMessage(sheet.criacao_resumo_status)
+            end
+        end
+    end
+
+    return res
+end
+
+function Bridge.submitOrApproveXP(sheet, action, payload, ndbApi, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet, ndbApi)
+
+    local act = action or "submit"
+    local isMaster = Bridge.isStoryteller(sheet, fc)
+    local login = Bridge.getCurrentLogin(sheet, fc)
+
+    local function makeXpSnapshot(targetField)
+        local snap = {
+            cla_id = sheet.cla_id,
+            xp_total = safeNum(sheet.xp_total, 0),
+            xp_gasto = safeNum(sheet.xp_gasto, 0),
+            xp_exige_aprovacao = sheet.xp_exige_aprovacao,
+        }
+        if type(targetField) == "string" and targetField ~= "" then
+            snap[targetField] = sheet[targetField]
+        end
+        return snap
+    end
+
+    if act == "submit" then
+        local req = type(payload) == "table" and payload or {
+            traitKind = sheet.xp_loja_tipo or "ability",
+            field = sheet.xp_loja_campo or "hab_prontidao",
+            costCategory = sheet.xp_loja_cat_custo or "fora_cla",
+            label = (type(sheet.xp_loja_descricao) == "string" and sheet.xp_loja_descricao ~= "") and sheet.xp_loja_descricao or sheet.xp_loja_campo,
+            author = login,
+        }
+        req.author = req.author or login
+
+        if req.traitKind == "discipline" and not req.costCategory then
+            local slotIdx = tostring(req.field or ""):match("^disc_slot(%d+)_nivel$")
+            local discId = slotIdx and sheet["disc_slot" .. slotIdx .. "_id"] or tostring(req.field or ""):match("^disc_(.+)$")
+            req.costCategory = V20.DisciplinesEngine.classifyCostCategory(sheet.cla_id, discId, isTrue(sheet.tem_disc_adicional))
+        end
+
+        local res = V20.Experience.submitUpgrade(makeXpSnapshot(req.field), req, {
+            isMestre = isMaster,
+            storytellerOverride = isTrue(sheet.narrador_override) and isMaster,
+        })
+        if not res.ok then
+            dlg.showMessage(res.error or "Falha na compra de XP.")
+            return res
+        end
+
+        sheet.xp_gasto = res.newState.xp_gasto
+        if req.field and res.newState[req.field] ~= nil then
+            sheet[req.field] = res.newState[req.field]
+        end
+
+        local e = res.auditEntry
+        if e.status == "pendente" then
+            sheet.xp_pendente_campo = e.campo_alvo
+            sheet.xp_pendente_novo_val = e.novo_valor
+            sheet.xp_pendente_custo = e.custo_xp
+            sheet.xp_pendente_desc = e.descricao
+            sheet.xp_pendente_autor = e.autor_login
+            sheet.xp_pendente_status = "pendente"
+        else
+            sheet.xp_pendente_status = "nenhum"
+        end
+
+        Bridge.syncDerivedFields(sheet, ndbApi)
+        Bridge.logAudit(sheet, ndbApi, fc, e.tipo_evento, tostring(e.descricao) .. " -> " .. tostring(e.novo_valor), e.custo_xp, e.status, e.campo_alvo, e.novo_valor)
+        return res
+    elseif act == "approve" or act == "reject" then
+        if not isMaster then
+            local err = "Apenas o Narrador pode aprovar ou recusar evoluções de XP pendentes."
+            dlg.showMessage(err)
+            return { ok = false, error = err }
+        end
+
+        local pendingEntry = type(payload) == "table" and payload or {
+            autor_login = sheet.xp_pendente_autor or "Jogador",
+            tipo_evento = "evolucao_xp",
+            descricao = sheet.xp_pendente_desc or sheet.xp_pendente_campo or "Evolução",
+            custo_xp = safeInt(sheet.xp_pendente_custo, 0),
+            campo_alvo = sheet.xp_pendente_campo,
+            novo_valor = safeInt(sheet.xp_pendente_novo_val, 1),
+            status = sheet.xp_pendente_status or "nenhum",
+        }
+
+        local res = V20.Experience.resolvePending(makeXpSnapshot(pendingEntry.campo_alvo), pendingEntry, act == "approve", login)
+        if not res.ok then
+            dlg.showMessage(res.error or "Não há evolução pendente válida.")
+            return res
+        end
+
+        sheet.xp_gasto = res.newState.xp_gasto
+        if pendingEntry.campo_alvo and res.newState[pendingEntry.campo_alvo] ~= nil then
+            sheet[pendingEntry.campo_alvo] = res.newState[pendingEntry.campo_alvo]
+        end
+        sheet.xp_pendente_status = res.updatedEntry.status
+        Bridge.syncDerivedFields(sheet, ndbApi)
+        Bridge.logAudit(
+            sheet,
+            ndbApi,
+            fc,
+            "resolucao_xp",
+            tostring(res.updatedEntry.descricao) .. " (" .. tostring(res.updatedEntry.status) .. ")",
+            res.updatedEntry.custo_xp,
+            res.updatedEntry.status,
+            res.updatedEntry.campo_alvo,
+            res.updatedEntry.novo_valor
+        )
+        return res
+    end
+
+    return { ok = false, error = "Ação de XP desconhecida." }
+end
+
+_G.V20Bridge = Bridge
+return Bridge
