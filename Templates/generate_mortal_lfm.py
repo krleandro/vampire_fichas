@@ -31,6 +31,7 @@ from Templates.theme_gothic import (  # noqa: E402
     TEXT_MAIN,
     TEXT_MUTED,
     assert_align,
+    build_mode_permissions_lua,
     dice_roller_footer_xml,
     header_bar_xml,
     lua_str_list,
@@ -69,9 +70,9 @@ def build_mortal_tab1() -> str:
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
                                 <label align="left" width="85" text="Perfil V20:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox align="left" width="320" field="mortal_perfil" items="{perfil_items}" values="{perfil_vals}" fontColor="{TEXT_GOLD}" fontSize="11" margins="{{right=14}}"/>
+                                <comboBox name="cmbMortalPerfil" align="left" width="320" field="mortal_perfil" items="{perfil_items}" values="{perfil_vals}" fontColor="{TEXT_GOLD}" fontSize="11" margins="{{right=14}}"/>
                                 <label align="left" width="85" text="Modo Ficha:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox align="client" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <comboBox name="cmbModoFicha" align="client" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
                             </layout>
                         </rectangle>
 
@@ -79,25 +80,25 @@ def build_mortal_tab1() -> str:
                             <label align="top" height="22" text="ASSISTENTE DE CRIAÇÃO MORTAL V20 (6/4/3 PADRÃO OU 7/5/3 HEROICO)" fontColor="{ACCENT_MORTAL}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
                                 <label align="left" width="85" text="Bônus Atrib:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_attributes" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieAttributes" align="left" width="40" field="freebie_attributes" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus Hab:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_abilities" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieAbilities" align="left" width="40" field="freebie_abilities" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="85" text="Bônus Antec:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_backgrounds" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieBackgrounds" align="left" width="40" field="freebie_backgrounds" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus Virt:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_virtues" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <edit name="edtFreebieVirtues" align="left" width="40" field="freebie_virtues" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=4}}">
                                 <label align="left" width="85" text="Bônus Moral:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_morality" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieMorality" align="left" width="40" field="freebie_morality" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus FdV:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_willpower" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <edit name="edtFreebieWillpower" align="left" width="40" field="freebie_willpower" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                             <layout align="top" height="32" margins="{{top=8}}">
-                                <button align="left" width="160" text="Validar Criação Mortal" fontSize="11" margins="{{right=8}}">
+                                <button name="btnValidarCriacao" align="left" width="160" text="Validar Criação Mortal" fontSize="11" margins="{{right=8}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.validateCreationOnSheet(sheet, nil, nil, nil, false) end</event>
                                 </button>
-                                <button align="left" width="245" text="Concluir Criação -&gt; Modo Jogo" fontSize="11" fontStyle="bold">
+                                <button name="btnConcluirCriacao" align="left" width="245" text="Concluir Criação -&gt; Modo Jogo" fontSize="11" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.validateCreationOnSheet(sheet, nil, nil, nil, true) end</event>
                                 </button>
                             </layout>
@@ -118,11 +119,11 @@ def build_mortal_tab3() -> str:
     for i in range(1, 5):
         ghoul_slots.append(
             f"""                            <layout align="top" height="28" margins="{{bottom=3}}">
-                                <comboBox align="left" width="195" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit align="left" width="36" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <comboBox align="left" width="105" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotId{i}" align="left" width="195" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit name="edtDiscSlotNivel{i}" align="left" width="36" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl{i}" align="left" width="105" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
                                 <label align="client" field="disc_slot{i}_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{right=6}}"/>
-                                <button align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
+                                <button name="btnDiscSlotAtivar{i}" align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, {i}) end</event>
                                 </button>
                             </layout>"""
@@ -133,7 +134,7 @@ def build_mortal_tab3() -> str:
         numina_rows.append(
             f"""                            <layout align="top" height="28" margins="{{bottom=3}}">
                                 <label align="left" width="280" text="{xml_esc(nlabel)}" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="42" field="numina_{nid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtNumina_{nid}" align="left" width="42" field="numina_{nid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <button align="left" width="135" text="Rolar Numina" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollNuminaAction(sheet, '{nid}') end</event>
                                 </button>
@@ -189,17 +190,17 @@ def build_mortal_tab6() -> str:
                             <label align="top" height="22" text="VIRTUDES HUMANAS, HUMANIDADE &amp; FORÇA DE VONTADE" fontColor="{ACCENT_MORTAL}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
                                 <label align="left" width="95" text="Consciência:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=16}}"/>
+                                <edit name="edtVirtude1Val" align="left" width="40" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=16}}"/>
                                 <label align="left" width="95" text="Autocontrole:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=16}}"/>
+                                <edit name="edtVirtude2Val" align="left" width="40" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=16}}"/>
                                 <label align="left" width="75" text="Coragem:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                <edit name="edtVirtude3Val" align="left" width="40" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=8}}">
                                 <label align="left" width="95" text="Humanidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="42" field="moralidade_val" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
+                                <edit name="edtMoralidadeVal" align="left" width="42" field="moralidade_val" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
                                 <label align="left" width="95" text="FdV Perm.:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="42" field="fdv_perm" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
+                                <edit name="edtFdvPerm" align="left" width="42" field="fdv_perm" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
                                 <label align="left" width="44" text="Aura:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="client" field="aura_resumo" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             </layout>
@@ -210,7 +211,7 @@ def build_mortal_tab6() -> str:
                                 <button align="left" width="185" text="Testar Coragem / Pânico" fontSize="11" margins="{{right=10}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollRotschreck(sheet, 6) end</event>
                                 </button>
-                                <button align="left" width="185" text="Frenesi Carniçal" fontSize="11">
+                                <button name="btnFrenesiCarnical" visible="false" align="left" width="185" text="Frenesi Carniçal" fontSize="11">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFrenzy(sheet, 6) end</event>
                                 </button>
                             </layout>
@@ -232,9 +233,9 @@ def generate_mortal_lfm() -> str:
                             <label align="top" height="22" text="CHAVE DO NARRADOR — TRANSIÇÃO SOBRENATURAL EM JOGO (HUMANO | CARNIÇAL | NUMINA)" fontColor="{ACCENT_MORTAL}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="30" margins="{{top=4}}">
                                 <label align="left" width="140" text="Condição Sobrenatural:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox align="left" width="390" field="mortal_sobrenatural_modo" items="{modo_sob_items}" values="{modo_sob_vals}" fontColor="{TEXT_GOLD}" fontSize="11" margins="{{right=12}}"/>
+                                <comboBox name="cmbMortalSobrenaturalModo" align="left" width="390" field="mortal_sobrenatural_modo" items="{modo_sob_items}" values="{modo_sob_vals}" fontColor="{TEXT_GOLD}" fontSize="11" margins="{{right=12}}"/>
                                 <label align="left" width="110" text="Teto Disc. Ghoul:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="38" field="carnical_disc_max" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <edit name="edtCarnicalDiscMax" align="left" width="38" field="carnical_disc_max" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                         </rectangle>"""
 
@@ -268,6 +269,7 @@ def generate_mortal_lfm() -> str:
         ("dano_aplicar_tipo", "bashing"),
         ("cura_tipo", "bashing"),
         ("armadura_absorcao", "0"),
+        ("tem_tamanho_grande", "false"),
         ("roll_attr_id", "attr_percepcao"),
         ("roll_hab_id", "hab_investigacao"),
         ("roll_bonus_dice", "0"),
@@ -281,9 +283,9 @@ def generate_mortal_lfm() -> str:
         ("xp_gasto", "0"),
         ("xp_exige_aprovacao", "true"),
         ("narrador_override", "false"),
-        ("xp_loja_tipo", "ability"),
+        ("xp_loja_tipo", "auto"),
         ("xp_loja_campo", "hab_investigacao"),
-        ("xp_loja_cat_custo", "fora_cla"),
+        ("xp_loja_cat_custo", "auto"),
         ("xp_pendente_status", "nenhum"),
         ("disc_slot1_id", "potence"),
         ("disc_slot1_nivel", "0"),
@@ -318,15 +320,18 @@ def generate_mortal_lfm() -> str:
         defaults.extend([
             (f"mf_slot{i}_ativo", "true"),
             (f"mf_slot{i}_id", ""),
+            (f"mf_slot{i}_nome", ""),
             (f"mf_slot{i}_tipo", "qualidade"),
             (f"mf_slot{i}_pontos", "0"),
         ])
 
     datalinks = root_datalinks_xml(
         defaults,
-        on_change_lua="if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self) end",
+        on_change_lua="if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self); atualizarPermissoesModo(self); end",
         chunk_size=32,
     )
+
+    perms_lua = build_mode_permissions_lua(is_vampire=False)
 
     xml_out = f"""<?xml version="1.0" encoding="UTF-8"?>
 <form name="frmMortal" formType="sheetTemplate" dataType="br.com.v20.Mortal" title="Vampiro V20 - Mortal" align="client" theme="dark">
@@ -343,7 +348,10 @@ def generate_mortal_lfm() -> str:
             if formObj.pnlHeaderBlood ~= nil then formObj.pnlHeaderBlood:setVisible(isCarnical) end
             if formObj.pnlCarnical ~= nil then formObj.pnlCarnical:setVisible(isCarnical) end
             if formObj.pnlNumina ~= nil then formObj.pnlNumina:setVisible(isNumina) end
+            if formObj.btnFrenesiCarnical ~= nil then formObj.btnFrenesiCarnical:setVisible(isCarnical) end
         end
+
+{perms_lua}
         ]]>
     </script>
 

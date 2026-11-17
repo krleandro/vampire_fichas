@@ -16,7 +16,11 @@ Generations.TABLE = {
 }
 
 function Generations.get(genNumber)
-    local g = math.floor(tonumber(genNumber) or 13)
+    local g = tonumber(genNumber)
+    if g == nil or g ~= g or g == math.huge or g == -math.huge then
+        g = 13
+    end
+    g = math.floor(g)
     if g < 4 then g = 4 end
     if g > 15 then g = 15 end
     return Generations.TABLE[g]

@@ -209,3 +209,54 @@ assert(backHuman.mortal_sobrenatural_modo == "humano" and backHuman.isGhoul == f
 local fallbackHuman = V20.Creation.applyMortalSupernaturalMode(ghoul, "modo_desconhecido")
 assert(fallbackHuman.mortal_sobrenatural_modo == "humano" and fallbackHuman.isGhoul == false and fallbackHuman.sangue_max == 0)
 
+-- 5. Regressão Finding #1 (Lua 5.4 %d float crash & NaN/±huge em Generations.get) e Finding #4 (guarda anti-aprovação duplicada de nível)
+assert(V20.Generations.get(0 / 0).generation == 13, "NaN em Generations.get deve cair para 13ª geração")
+assert(V20.Generations.get(math.huge).generation == 13, "+math.huge em Generations.get deve cair para 13ª geração")
+assert(V20.Generations.get(-math.huge).generation == 13, "-math.huge em Generations.get deve cair para 13ª geração")
+
+local floatXpLow = { nome = "[TESTE_E2E] Float XP", xp_total = "2.5", xp_gasto = "0.5", xp_exige_aprovacao = true, attr_forca = 3 }
+local floatSubFail = V20.Experience.submitUpgrade(floatXpLow, {
+    traitKind = "attribute", field = "attr_forca", label = "Força 3 -> 4", author = "tester_e2e"
+}, { isMestre = false })
+assert(floatSubFail.ok == false and floatSubFail.error:find("disponível 2") ~= nil, "xp_total='2.5' não pode quebrar string.format('%d') no Lua 5.4")
+
+local floatXpEnough = { nome = "[TESTE_E2E] Float XP Ok", xp_total = "14.9", xp_gasto = "2.4", xp_exige_aprovacao = false, attr_forca = 3 }
+local floatSubOk = V20.Experience.submitUpgrade(floatXpEnough, {
+    traitKind = "attribute", field = "attr_forca", label = "Força 3 -> 4", author = "tester_e2e"
+}, { isMestre = false })
+assert(floatSubOk.ok == true and floatSubOk.newState.xp_gasto == 14 and math.type(floatSubOk.newState.xp_gasto) == "integer")
+
+local floatPendState = { nome = "[TESTE_E2E] Float Pending", xp_total = "2.5", xp_gasto = "0", attr_forca = 1 }
+local floatPendEntry = { status = "pendente", custo_xp = "4.7", campo_alvo = "attr_forca", novo_valor = "2.0" }
+local floatResFail = V20.Experience.resolvePending(floatPendState, floatPendEntry, true, "NarradorMestre")
+assert(floatResFail.ok == false, "resolvePending com xp_total='2.5' e custo 4 deve recusar sem crash")
+
+floatPendState.xp_total = "6.8"
+local floatResOk = V20.Experience.resolvePending(floatPendState, floatPendEntry, true, "NarradorMestre")
+assert(floatResOk.ok == true and floatResOk.newState.xp_gasto == 4 and floatResOk.newState.attr_forca == 2 and math.type(floatResOk.newState.xp_gasto) == "integer")
+
+-- Guarda em resolvePending quando campo_alvo já atingiu ou superou novo_valor
+local alreadyUpgradedState = { nome = "[TESTE_E2E] Duplicado", xp_total = 30, xp_gasto = 0, attr_forca = 4 }
+local stalePending = { status = "pendente", custo_xp = 12, campo_alvo = "attr_forca", novo_valor = 4 }
+local dupLevelRes = V20.Experience.resolvePending(alreadyUpgradedState, stalePending, true, "NarradorMestre")
+assert(
+    dupLevelRes.ok == false
+    and dupLevelRes.error == "Característica já atingiu ou superou o nível solicitado."
+    and dupLevelRes.newState.xp_gasto == 0,
+    "resolvePending deve rejeitar evolução se o campo já atingiu novo_valor"
+)
+
+-- Creation.validate com decimais em attrGroups / freebiePurchases não deve quebrar %d no Lua 5.4
+local floatCreation = V20.Creation.validate({
+    nome = "[TESTE_E2E] Float Creation",
+    profile = "vampire_neonate",
+    attrGroups = { "8.5", 5, 3 },
+    abilityGroups = { 13, 9, 5 },
+    baseDisciplines = "3.5",
+    baseBackgrounds = 5,
+    baseVirtues = 7,
+    freebiePurchases = { attributes = "4.5" },
+})
+assert(floatCreation.valid == false and math.type(floatCreation.freebiesSpent) == "integer")
+
+

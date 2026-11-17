@@ -8,8 +8,12 @@ local function safeNum(val, default)
     return n
 end
 
+local function safeInt(val, default)
+    return math.floor(safeNum(val, default or 0))
+end
+
 local function safeNonNegInt(val, default)
-    return math.max(0, math.floor(safeNum(val, default or 0)))
+    return math.max(0, safeInt(val, default or 0))
 end
 
 local VALID_TRAIT_KINDS = {
@@ -84,8 +88,10 @@ function Experience.submitUpgrade(state, request, opts)
         cur = 0
     end
 
-    local cost = Experience.calculateUpgradeCost(request.traitKind, cur, { costCategory = request.costCategory })
-    local avail = safeNum(nextSt.xp_total, 0) - safeNum(nextSt.xp_gasto, 0)
+    local cost = safeNonNegInt(Experience.calculateUpgradeCost(request.traitKind, cur, { costCategory = request.costCategory }), 0)
+    local xpTotal = safeNonNegInt(nextSt.xp_total, 0)
+    local xpSpent = safeNonNegInt(nextSt.xp_gasto, 0)
+    local avail = xpTotal - xpSpent
     local hasOverride = (opts.storytellerOverride == true or opts.storytellerOverride == "true")
 
     if cost > avail and not hasOverride then
@@ -112,7 +118,7 @@ function Experience.submitUpgrade(state, request, opts)
     }
 
     if not requiresApproval then
-        nextSt.xp_gasto = safeNum(nextSt.xp_gasto, 0) + cost
+        nextSt.xp_gasto = xpSpent + cost
         if request.field then
             nextSt[request.field] = cur + 1
         end
@@ -152,7 +158,20 @@ function Experience.resolvePending(state, auditEntry, approve, masterLogin)
         return { ok = true, newState = nextSt, updatedEntry = updated, error = nil }
     end
 
-    local avail = safeNum(nextSt.xp_total, 0) - safeNum(nextSt.xp_gasto, 0)
+    if updated.campo_alvo ~= nil and updated.campo_alvo ~= "" then
+        if safeNonNegInt(nextSt[updated.campo_alvo], 0) >= safeNonNegInt(updated.novo_valor, 1) then
+            return {
+                ok = false,
+                newState = nextSt,
+                updatedEntry = updated,
+                error = "Característica já atingiu ou superou o nível solicitado.",
+            }
+        end
+    end
+
+    local xpTotal = safeNonNegInt(nextSt.xp_total, 0)
+    local xpSpent = safeNonNegInt(nextSt.xp_gasto, 0)
+    local avail = xpTotal - xpSpent
     local cost = safeNonNegInt(updated.custo_xp, 0)
     if cost > avail then
         return {
@@ -165,9 +184,9 @@ function Experience.resolvePending(state, auditEntry, approve, masterLogin)
 
     updated.aprovador_login = masterLogin or "Narrador"
     updated.status = "aprovado"
-    nextSt.xp_gasto = safeNum(nextSt.xp_gasto, 0) + cost
+    nextSt.xp_gasto = xpSpent + cost
     if updated.campo_alvo then
-        nextSt[updated.campo_alvo] = safeNum(updated.novo_valor, 1)
+        nextSt[updated.campo_alvo] = safeNonNegInt(updated.novo_valor, 1)
     end
     return { ok = true, newState = nextSt, updatedEntry = updated, error = nil }
 end

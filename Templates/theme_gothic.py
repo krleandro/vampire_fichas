@@ -375,6 +375,153 @@ def all_hab_options(include_none: bool = True, include_backgrounds: bool = True)
     return lua_str_list(items), lua_str_list(values)
 
 
+def all_xp_upgradable_field_options() -> tuple[str, str]:
+    items: list[str] = []
+    values: list[str] = []
+    for _, rows in ATTRIBUTES_BY_COL:
+        for aid, aname, _ in rows:
+            items.append(f"Atributo: {aname}")
+            values.append(aid)
+    for _, rows in ABILITIES_BY_COL:
+        for hid, hname in rows:
+            items.append(f"Habilidade: {hname}")
+            values.append(hid)
+    for i in range(1, 5):
+        items.append(f"Hab. Secundária #{i}")
+        values.append(f"hab_extra{i}_val")
+    for i in range(1, 10):
+        items.append(f"Disciplina Slot #{i}")
+        values.append(f"disc_slot{i}_nivel")
+    items.extend([
+        "Virtude 1 (Consciência/Convicção)",
+        "Virtude 2 (Autocontrole/Instinto)",
+        "Virtude 3 (Coragem)",
+        "Moralidade / Humanidade / Trilha",
+        "Força de Vontade Permanente",
+    ])
+    values.extend([
+        "virtude1_val",
+        "virtude2_val",
+        "virtude3_val",
+        "moralidade_val",
+        "fdv_perm",
+    ])
+    return lua_str_list(items), lua_str_list(values)
+
+
+def build_mode_permissions_lua(is_vampire: bool = True) -> str:
+    perm_edits: list[str] = []
+    perm_ctrls: list[str] = []
+
+    if is_vampire:
+        perm_edits.extend([
+            "edtGeracaoBase",
+            "edtFreebieAttributes",
+            "edtFreebieAbilities",
+            "edtFreebieDisciplines",
+            "edtFreebieBackgrounds",
+            "edtFreebieVirtues",
+            "edtFreebieMorality",
+            "edtFreebieWillpower",
+        ])
+        perm_ctrls.extend(["btnRolarVitaeInicial", "btnConcluirCriacao"])
+    else:
+        perm_edits.extend([
+            "edtFreebieAttributes",
+            "edtFreebieAbilities",
+            "edtFreebieBackgrounds",
+            "edtFreebieVirtues",
+            "edtFreebieMorality",
+            "edtFreebieWillpower",
+        ])
+        perm_ctrls.extend(["cmbMortalPerfil", "btnConcluirCriacao"])
+
+    for _, rows in ATTRIBUTES_BY_COL:
+        for aid, _, _ in rows:
+            perm_edits.extend([f"edt_{aid}", f"edt_spec_{aid}"])
+            perm_ctrls.extend([f"btnMinus_{aid}", f"btnPlus_{aid}"])
+
+    for _, rows in ABILITIES_BY_COL:
+        for hid, _ in rows:
+            perm_edits.extend([f"edt_{hid}", f"edt_spec_{hid}"])
+            perm_ctrls.extend([f"btnMinus_{hid}", f"btnPlus_{hid}"])
+
+    for i in range(1, 5):
+        perm_edits.extend([f"edtHabExtraNome{i}", f"edtHabExtraVal{i}", f"edtHabExtraEspec{i}"])
+
+    if is_vampire:
+        for i in range(1, 10):
+            perm_edits.append(f"edtDiscSlotNivel{i}")
+            perm_ctrls.extend([f"cmbDiscSlotId{i}", f"cmbDiscSlotCat{i}"])
+    else:
+        for i in range(1, 5):
+            perm_edits.append(f"edtDiscSlotNivel{i}")
+            perm_ctrls.append(f"cmbDiscSlotId{i}")
+        for nid, _ in NUMINA_LIST:
+            perm_edits.append(f"edtNumina_{nid}")
+
+    for bid, _, vamp_only, _ in BACKGROUNDS_LIST:
+        if (not is_vampire) and vamp_only and bid in ("generation", "rituals"):
+            continue
+        perm_edits.append(f"edtBg_{bid}")
+
+    for i in range(1, 7):
+        perm_edits.extend([f"edtMfNome{i}", f"edtMfPontos{i}"])
+        perm_ctrls.extend([f"chkMfAtivo{i}", f"cmbMfId{i}", f"cmbMfTipo{i}"])
+
+    perm_ctrls.append("chkTamanhoGrande")
+
+    perm_edits.extend(["edtVirtude1Val", "edtVirtude2Val", "edtVirtude3Val", "edtMoralidadeVal", "edtFdvPerm"])
+    if is_vampire:
+        perm_ctrls.extend(["cmbVirtude1Tipo", "cmbVirtude2Tipo", "cmbMoralidadeTipo"])
+
+    mestre_edits = ["edtXpTotal", "edtXpGasto"]
+    mestre_ctrls = ["cmbModoFicha", "chkXpExigeAprovacao", "chkNarradorOverride", "btnAprovarXP", "btnRecusarXP"]
+    if not is_vampire:
+        mestre_edits.append("edtCarnicalDiscMax")
+        mestre_ctrls.append("cmbMortalSobrenaturalModo")
+
+    def _lua_arr(names: list[str]) -> str:
+        return "{ " + ", ".join(f'"{n}"' for n in names) + " }"
+
+    mortal_tail = (
+        '\n            local modoSob = sheet.mortal_sobrenatural_modo or "humano"\n'
+        '            if self.btnFrenesiCarnical ~= nil then self.btnFrenesiCarnical:setVisible(modoSob == "carnical") end'
+        if not is_vampire
+        else ""
+    )
+
+    return f"""        local PERM_EDITS = {_lua_arr(perm_edits)}
+        local PERM_CTRLS = {_lua_arr(perm_ctrls)}
+        local MESTRE_EDITS = {_lua_arr(mestre_edits)}
+        local MESTRE_CTRLS = {_lua_arr(mestre_ctrls)}
+
+        local function atualizarPermissoesModo(self)
+            if self == nil or sheet == nil or V20Bridge == nil then return end
+            local isMestre = V20Bridge.isStoryteller(sheet)
+            local modo = sheet.modo_ficha or "criacao"
+            local stOverride = (sheet.narrador_override == true or sheet.narrador_override == "true") and isMestre
+            local lockPerm = ((modo == "jogo") and (not stOverride)) or ((modo == "narrador_livre") and (not isMestre))
+            for _, nm in ipairs(PERM_EDITS) do
+                if self[nm] ~= nil then self[nm]:setReadOnly(lockPerm) end
+            end
+            for _, nm in ipairs(PERM_CTRLS) do
+                if self[nm] ~= nil then self[nm]:setEnabled(not lockPerm) end
+            end
+            if sheet.cla_id == "nosferatu" and not stOverride then
+                if self.edt_attr_aparencia ~= nil then self.edt_attr_aparencia:setReadOnly(true) end
+                if self.btnMinus_attr_aparencia ~= nil then self.btnMinus_attr_aparencia:setEnabled(false) end
+                if self.btnPlus_attr_aparencia ~= nil then self.btnPlus_attr_aparencia:setEnabled(false) end
+            end
+            for _, nm in ipairs(MESTRE_EDITS) do
+                if self[nm] ~= nil then self[nm]:setReadOnly(not isMestre) end
+            end
+            for _, nm in ipairs(MESTRE_CTRLS) do
+                if self[nm] ~= nil then self[nm]:setEnabled(isMestre) end
+            end{mortal_tail}
+        end"""
+
+
 def make_root_datalink(fields: list[str], defaults: list[str], on_change_lua: str = "") -> str:
     if len(fields) != len(defaults):
         raise ValueError("fields e defaults devem possuir o mesmo tamanho em make_root_datalink")
@@ -509,7 +656,7 @@ def trait_row_xml(
             f'<label align="right" width="22" field="buff_{blood_buff_key}" fontColor="{TEXT_ALERT}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>'
         )
     spec_xml = (
-        f'<edit align="client" field="{spec_field}" textPrompt="Especialidade" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{left=4}}"/>'
+        f'<edit name="edt_{spec_field}" align="client" field="{spec_field}" textPrompt="Especialidade" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{left=4}}"/>'
         if with_specialty
         else ""
     )
@@ -517,11 +664,11 @@ def trait_row_xml(
                             <button align="left" width="118" text="{xml_esc(label_text)}" fontSize="10" horzTextAlign="{assert_align("leading")}" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, '{kind}', '{field_id}') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_{field_id}" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, '{field_id}', -1, {min_val}, '{max_cap_field}') end</event>
                             </button>
-                            <edit align="left" width="34" field="{field_id}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_{field_id}" align="left" width="34" field="{field_id}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                            <button name="btnPlus_{field_id}" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, '{field_id}', 1, {min_val}, '{max_cap_field}') end</event>
                             </button>
                             {buff_xml}
@@ -567,7 +714,7 @@ def health_track_xml(accent_color: str, border_color: str, is_vampire: bool = Tr
                         <edit align="left" width="38" field="dano_aggravado" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=12}}"/>
                         <label align="left" width="66" text="Armadura:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
                         <edit align="left" width="38" field="armadura_absorcao" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                        <checkBox align="left" width="130" field="tem_tamanho_grande" text="Tamanho Grande (+1)" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                        <checkBox name="chkTamanhoGrande" align="left" width="130" field="tem_tamanho_grande" text="Tamanho Grande (+1)" fontColor="{TEXT_MAIN}" fontSize="10"/>
                     </layout>
                     <layout align="top" height="28" margins="{{top=4}}">
                         <label align="left" width="36" text="Qtd:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
@@ -593,9 +740,15 @@ def health_track_xml(accent_color: str, border_color: str, is_vampire: bool = Tr
 
 def validate_generated_lfm_xml(xml_text: str) -> None:
     root = ET.fromstring(xml_text)
+    seen_names: set[str] = set()
     for el in root.iter():
         if el.tag not in ALLOWED_TAGS:
             raise ValueError(f"Tag não permitida gerada no LFM: <{el.tag}>")
+        if el.tag != "event" and el is not root and "name" in el.attrib:
+            nm = el.attrib["name"]
+            if nm in seen_names:
+                raise ValueError(f"Atributo name duplicado no LFM: '{nm}'")
+            seen_names.add(nm)
         for attr in ("horzTextAlign", "vertTextAlign"):
             if attr in el.attrib and el.attrib[attr] not in VALID_ALIGNS:
                 raise ValueError(f"{attr} inválido: {el.attrib[attr]}")

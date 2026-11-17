@@ -427,6 +427,16 @@ frmB:setNodeObject(brujahSheet)
 assert(frmB.sheet == brujahSheet)
 assert(brujahSheet.geracao == 9 and brujahSheet.sangue_max == 14 and brujahSheet.sangue_por_turno == 2)
 assert(brujahSheet.vitalidade_resumo == "Saudável")
+assert(frmB.cmbModoFicha._props.setEnabled == false, "Controles do Narrador devem ficar desabilitados para não-Mestre")
+assert(frmB.edtXpTotal._props.setReadOnly == true, "xp_total deve ficar readOnly para não-Mestre")
+assert(frmB.edt_attr_forca._props.setReadOnly == false, "Em modo criacao, atributos ficam editáveis")
+
+brujahSheet.modo_ficha = "jogo"
+frmB:setNodeObject(brujahSheet)
+assert(frmB.edt_attr_forca._props.setReadOnly == true, "Em modo jogo, edt_attr_forca deve ficar readOnly")
+assert(frmB.btnPlus_attr_forca._props.setEnabled == false, "Em modo jogo, btnPlus_attr_forca deve ficar desabilitado")
+brujahSheet.modo_ficha = "criacao"
+frmB:setNodeObject(brujahSheet)
 
 -- Acionar TODOS os listeners onClick e onChange compilados em frmBrujah para provar 0 erros de runtime em toda a UI
 local brujahEventsFired = 0
@@ -467,6 +477,11 @@ assert(mortalSheet.isGhoul == true and mortalSheet.sangue_max == 2 and mortalShe
 assert(frmM.pnlHeaderBlood._props.setVisible == true, "Modo carniçal deve exibir pnlHeaderBlood")
 assert(frmM.pnlCarnical._props.setVisible == true, "Modo carniçal deve exibir pnlCarnical")
 assert(frmM.pnlNumina._props.setVisible == false, "Modo carniçal deve ocultar pnlNumina")
+assert(frmM.btnFrenesiCarnical._props.setVisible == true, "Modo carniçal deve exibir btnFrenesiCarnical")
+
+mortalSheet.mortal_sobrenatural_modo = "humano"
+frmM:setNodeObject(mortalSheet)
+assert(frmM.btnFrenesiCarnical._props.setVisible == false, "Modo humano deve ocultar btnFrenesiCarnical")
 
 mortalSheet.mortal_sobrenatural_modo = "numina"
 frmM:setNodeObject(mortalSheet)
@@ -474,6 +489,7 @@ assert(mortalSheet.hasNumina == true and mortalSheet.isGhoul == false)
 assert(frmM.pnlHeaderBlood._props.setVisible == false)
 assert(frmM.pnlCarnical._props.setVisible == false)
 assert(frmM.pnlNumina._props.setVisible == true, "Modo numina deve exibir pnlNumina")
+assert(frmM.btnFrenesiCarnical._props.setVisible == false, "Modo numina deve ocultar btnFrenesiCarnical")
 
 -- Acionar TODOS os listeners onClick e onChange compilados em frmMortal para provar 0 erros de runtime em toda a UI
 local mortalEventsFired = 0

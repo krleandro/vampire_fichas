@@ -13,6 +13,39 @@
             if formObj.pnlHeaderBlood ~= nil then formObj.pnlHeaderBlood:setVisible(isCarnical) end
             if formObj.pnlCarnical ~= nil then formObj.pnlCarnical:setVisible(isCarnical) end
             if formObj.pnlNumina ~= nil then formObj.pnlNumina:setVisible(isNumina) end
+            if formObj.btnFrenesiCarnical ~= nil then formObj.btnFrenesiCarnical:setVisible(isCarnical) end
+        end
+
+        local PERM_EDITS = { "edtFreebieAttributes", "edtFreebieAbilities", "edtFreebieBackgrounds", "edtFreebieVirtues", "edtFreebieMorality", "edtFreebieWillpower", "edt_attr_forca", "edt_spec_attr_forca", "edt_attr_destreza", "edt_spec_attr_destreza", "edt_attr_vigor", "edt_spec_attr_vigor", "edt_attr_carisma", "edt_spec_attr_carisma", "edt_attr_manipulacao", "edt_spec_attr_manipulacao", "edt_attr_aparencia", "edt_spec_attr_aparencia", "edt_attr_percepcao", "edt_spec_attr_percepcao", "edt_attr_inteligencia", "edt_spec_attr_inteligencia", "edt_attr_raciocinio", "edt_spec_attr_raciocinio", "edt_hab_prontidao", "edt_spec_hab_prontidao", "edt_hab_esportes", "edt_spec_hab_esportes", "edt_hab_consciencia", "edt_spec_hab_consciencia", "edt_hab_briga", "edt_spec_hab_briga", "edt_hab_empatia", "edt_spec_hab_empatia", "edt_hab_expressao", "edt_spec_hab_expressao", "edt_hab_intimidacao", "edt_spec_hab_intimidacao", "edt_hab_lideranca", "edt_spec_hab_lideranca", "edt_hab_manha", "edt_spec_hab_manha", "edt_hab_labia", "edt_spec_hab_labia", "edt_hab_empatia_animais", "edt_spec_hab_empatia_animais", "edt_hab_oficios", "edt_spec_hab_oficios", "edt_hab_conducao", "edt_spec_hab_conducao", "edt_hab_etiqueta", "edt_spec_hab_etiqueta", "edt_hab_armas_fogo", "edt_spec_hab_armas_fogo", "edt_hab_arrombamento", "edt_spec_hab_arrombamento", "edt_hab_armas_brancas", "edt_spec_hab_armas_brancas", "edt_hab_performance", "edt_spec_hab_performance", "edt_hab_furtividade", "edt_spec_hab_furtividade", "edt_hab_sobrevivencia", "edt_spec_hab_sobrevivencia", "edt_hab_academicos", "edt_spec_hab_academicos", "edt_hab_computador", "edt_spec_hab_computador", "edt_hab_financas", "edt_spec_hab_financas", "edt_hab_investigacao", "edt_spec_hab_investigacao", "edt_hab_direito", "edt_spec_hab_direito", "edt_hab_medicina", "edt_spec_hab_medicina", "edt_hab_ocultismo", "edt_spec_hab_ocultismo", "edt_hab_politica", "edt_spec_hab_politica", "edt_hab_ciencias", "edt_spec_hab_ciencias", "edt_hab_tecnologia", "edt_spec_hab_tecnologia", "edtHabExtraNome1", "edtHabExtraVal1", "edtHabExtraEspec1", "edtHabExtraNome2", "edtHabExtraVal2", "edtHabExtraEspec2", "edtHabExtraNome3", "edtHabExtraVal3", "edtHabExtraEspec3", "edtHabExtraNome4", "edtHabExtraVal4", "edtHabExtraEspec4", "edtDiscSlotNivel1", "edtDiscSlotNivel2", "edtDiscSlotNivel3", "edtDiscSlotNivel4", "edtNumina_true_faith", "edtNumina_hedge_magic", "edtNumina_psychic", "edtBg_allies", "edtBg_alternate_identity", "edtBg_contacts", "edtBg_domain", "edtBg_fame", "edtBg_herd", "edtBg_influence", "edtBg_mentor", "edtBg_resources", "edtBg_retainers", "edtBg_status", "edtMfNome1", "edtMfPontos1", "edtMfNome2", "edtMfPontos2", "edtMfNome3", "edtMfPontos3", "edtMfNome4", "edtMfPontos4", "edtMfNome5", "edtMfPontos5", "edtMfNome6", "edtMfPontos6", "edtVirtude1Val", "edtVirtude2Val", "edtVirtude3Val", "edtMoralidadeVal", "edtFdvPerm" }
+        local PERM_CTRLS = { "cmbMortalPerfil", "btnConcluirCriacao", "btnMinus_attr_forca", "btnPlus_attr_forca", "btnMinus_attr_destreza", "btnPlus_attr_destreza", "btnMinus_attr_vigor", "btnPlus_attr_vigor", "btnMinus_attr_carisma", "btnPlus_attr_carisma", "btnMinus_attr_manipulacao", "btnPlus_attr_manipulacao", "btnMinus_attr_aparencia", "btnPlus_attr_aparencia", "btnMinus_attr_percepcao", "btnPlus_attr_percepcao", "btnMinus_attr_inteligencia", "btnPlus_attr_inteligencia", "btnMinus_attr_raciocinio", "btnPlus_attr_raciocinio", "btnMinus_hab_prontidao", "btnPlus_hab_prontidao", "btnMinus_hab_esportes", "btnPlus_hab_esportes", "btnMinus_hab_consciencia", "btnPlus_hab_consciencia", "btnMinus_hab_briga", "btnPlus_hab_briga", "btnMinus_hab_empatia", "btnPlus_hab_empatia", "btnMinus_hab_expressao", "btnPlus_hab_expressao", "btnMinus_hab_intimidacao", "btnPlus_hab_intimidacao", "btnMinus_hab_lideranca", "btnPlus_hab_lideranca", "btnMinus_hab_manha", "btnPlus_hab_manha", "btnMinus_hab_labia", "btnPlus_hab_labia", "btnMinus_hab_empatia_animais", "btnPlus_hab_empatia_animais", "btnMinus_hab_oficios", "btnPlus_hab_oficios", "btnMinus_hab_conducao", "btnPlus_hab_conducao", "btnMinus_hab_etiqueta", "btnPlus_hab_etiqueta", "btnMinus_hab_armas_fogo", "btnPlus_hab_armas_fogo", "btnMinus_hab_arrombamento", "btnPlus_hab_arrombamento", "btnMinus_hab_armas_brancas", "btnPlus_hab_armas_brancas", "btnMinus_hab_performance", "btnPlus_hab_performance", "btnMinus_hab_furtividade", "btnPlus_hab_furtividade", "btnMinus_hab_sobrevivencia", "btnPlus_hab_sobrevivencia", "btnMinus_hab_academicos", "btnPlus_hab_academicos", "btnMinus_hab_computador", "btnPlus_hab_computador", "btnMinus_hab_financas", "btnPlus_hab_financas", "btnMinus_hab_investigacao", "btnPlus_hab_investigacao", "btnMinus_hab_direito", "btnPlus_hab_direito", "btnMinus_hab_medicina", "btnPlus_hab_medicina", "btnMinus_hab_ocultismo", "btnPlus_hab_ocultismo", "btnMinus_hab_politica", "btnPlus_hab_politica", "btnMinus_hab_ciencias", "btnPlus_hab_ciencias", "btnMinus_hab_tecnologia", "btnPlus_hab_tecnologia", "cmbDiscSlotId1", "cmbDiscSlotId2", "cmbDiscSlotId3", "cmbDiscSlotId4", "chkMfAtivo1", "cmbMfId1", "cmbMfTipo1", "chkMfAtivo2", "cmbMfId2", "cmbMfTipo2", "chkMfAtivo3", "cmbMfId3", "cmbMfTipo3", "chkMfAtivo4", "cmbMfId4", "cmbMfTipo4", "chkMfAtivo5", "cmbMfId5", "cmbMfTipo5", "chkMfAtivo6", "cmbMfId6", "cmbMfTipo6", "chkTamanhoGrande" }
+        local MESTRE_EDITS = { "edtXpTotal", "edtXpGasto", "edtCarnicalDiscMax" }
+        local MESTRE_CTRLS = { "cmbModoFicha", "chkXpExigeAprovacao", "chkNarradorOverride", "btnAprovarXP", "btnRecusarXP", "cmbMortalSobrenaturalModo" }
+
+        local function atualizarPermissoesModo(self)
+            if self == nil or sheet == nil or V20Bridge == nil then return end
+            local isMestre = V20Bridge.isStoryteller(sheet)
+            local modo = sheet.modo_ficha or "criacao"
+            local stOverride = (sheet.narrador_override == true or sheet.narrador_override == "true") and isMestre
+            local lockPerm = ((modo == "jogo") and (not stOverride)) or ((modo == "narrador_livre") and (not isMestre))
+            for _, nm in ipairs(PERM_EDITS) do
+                if self[nm] ~= nil then self[nm]:setReadOnly(lockPerm) end
+            end
+            for _, nm in ipairs(PERM_CTRLS) do
+                if self[nm] ~= nil then self[nm]:setEnabled(not lockPerm) end
+            end
+            if sheet.cla_id == "nosferatu" and not stOverride then
+                if self.edt_attr_aparencia ~= nil then self.edt_attr_aparencia:setReadOnly(true) end
+                if self.btnMinus_attr_aparencia ~= nil then self.btnMinus_attr_aparencia:setEnabled(false) end
+                if self.btnPlus_attr_aparencia ~= nil then self.btnPlus_attr_aparencia:setEnabled(false) end
+            end
+            for _, nm in ipairs(MESTRE_EDITS) do
+                if self[nm] ~= nil then self[nm]:setReadOnly(not isMestre) end
+            end
+            for _, nm in ipairs(MESTRE_CTRLS) do
+                if self[nm] ~= nil then self[nm]:setEnabled(isMestre) end
+            end
+            local modoSob = sheet.mortal_sobrenatural_modo or "humano"
+            if self.btnFrenesiCarnical ~= nil then self.btnFrenesiCarnical:setVisible(modoSob == "carnical") end
         end
         ]]>
     </script>
@@ -114,9 +147,9 @@
                             </layout>
                             <layout align="top" height="28" margins="{top=6}">
                                 <label align="left" width="85" text="Perfil V20:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <comboBox align="left" width="320" field="mortal_perfil" items="{'Mortal Padrão V20 (6/4/3 • 11/7/4 • 21 Bônus)', 'Mortal Heroico (7/5/3 • 13/9/5 • 15 Bônus)'}" values="{'padrao_643', 'heroico_753'}" fontColor="#D9B45B" fontSize="11" margins="{right=14}"/>
+                                <comboBox name="cmbMortalPerfil" align="left" width="320" field="mortal_perfil" items="{'Mortal Padrão V20 (6/4/3 • 11/7/4 • 21 Bônus)', 'Mortal Heroico (7/5/3 • 13/9/5 • 15 Bônus)'}" values="{'padrao_643', 'heroico_753'}" fontColor="#D9B45B" fontSize="11" margins="{right=14}"/>
                                 <label align="left" width="85" text="Modo Ficha:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <comboBox align="client" field="modo_ficha" items="{'Criação Validada', 'Modo Jogo (XP)', 'Edição Livre (Narrador)'}" values="{'criacao', 'jogo', 'narrador_livre'}" fontColor="#ECE8E1" fontSize="11"/>
+                                <comboBox name="cmbModoFicha" align="client" field="modo_ficha" items="{'Criação Validada', 'Modo Jogo (XP)', 'Edição Livre (Narrador)'}" values="{'criacao', 'jogo', 'narrador_livre'}" fontColor="#ECE8E1" fontSize="11"/>
                             </layout>
                         </rectangle>
 
@@ -124,25 +157,25 @@
                             <label align="top" height="22" text="ASSISTENTE DE CRIAÇÃO MORTAL V20 (6/4/3 PADRÃO OU 7/5/3 HEROICO)" fontColor="#C48F36" fontSize="12" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="28" margins="{top=6}">
                                 <label align="left" width="85" text="Bônus Atrib:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="freebie_attributes" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtFreebieAttributes" align="left" width="40" field="freebie_attributes" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
                                 <label align="left" width="80" text="Bônus Hab:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="freebie_abilities" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtFreebieAbilities" align="left" width="40" field="freebie_abilities" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
                                 <label align="left" width="85" text="Bônus Antec:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="freebie_backgrounds" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtFreebieBackgrounds" align="left" width="40" field="freebie_backgrounds" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
                                 <label align="left" width="80" text="Bônus Virt:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="freebie_virtues" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center"/>
+                                <edit name="edtFreebieVirtues" align="left" width="40" field="freebie_virtues" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="28" margins="{top=4}">
                                 <label align="left" width="85" text="Bônus Moral:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="freebie_morality" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtFreebieMorality" align="left" width="40" field="freebie_morality" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
                                 <label align="left" width="80" text="Bônus FdV:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="freebie_willpower" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center"/>
+                                <edit name="edtFreebieWillpower" align="left" width="40" field="freebie_willpower" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="32" margins="{top=8}">
-                                <button align="left" width="160" text="Validar Criação Mortal" fontSize="11" margins="{right=8}">
+                                <button name="btnValidarCriacao" align="left" width="160" text="Validar Criação Mortal" fontSize="11" margins="{right=8}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.validateCreationOnSheet(sheet, nil, nil, nil, false) end</event>
                                 </button>
-                                <button align="left" width="245" text="Concluir Criação -&gt; Modo Jogo" fontSize="11" fontStyle="bold">
+                                <button name="btnConcluirCriacao" align="left" width="245" text="Concluir Criação -&gt; Modo Jogo" fontSize="11" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.validateCreationOnSheet(sheet, nil, nil, nil, true) end</event>
                                 </button>
                             </layout>
@@ -166,43 +199,43 @@
                             <button align="left" width="118" text="Força" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_forca') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_forca" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_forca', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_forca" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_forca" align="left" width="34" field="attr_forca" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_forca" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_forca', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_forca" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_forca" align="client" field="spec_attr_forca" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Destreza" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_destreza') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_destreza" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_destreza', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_destreza" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_destreza" align="left" width="34" field="attr_destreza" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_destreza" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_destreza', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_destreza" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_destreza" align="client" field="spec_attr_destreza" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Vigor" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_vigor') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_vigor" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_vigor', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_vigor" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_vigor" align="left" width="34" field="attr_vigor" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_vigor" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_vigor', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_vigor" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_vigor" align="client" field="spec_attr_vigor" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                             </layout>
                             <layout align="left" width="305" margins="{right=8}">
@@ -211,43 +244,43 @@
                             <button align="left" width="118" text="Carisma" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_carisma') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_carisma" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_carisma', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_carisma" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_carisma" align="left" width="34" field="attr_carisma" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_carisma" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_carisma', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_carisma" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_carisma" align="client" field="spec_attr_carisma" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Manipulação" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_manipulacao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_manipulacao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_manipulacao', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_manipulacao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_manipulacao" align="left" width="34" field="attr_manipulacao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_manipulacao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_manipulacao', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_manipulacao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_manipulacao" align="client" field="spec_attr_manipulacao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Aparência" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_aparencia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_aparencia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_aparencia', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_aparencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_aparencia" align="left" width="34" field="attr_aparencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_aparencia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_aparencia', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_aparencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_aparencia" align="client" field="spec_attr_aparencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                             </layout>
                             <layout align="client" >
@@ -256,43 +289,43 @@
                             <button align="left" width="118" text="Percepção" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_percepcao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_percepcao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_percepcao', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_percepcao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_percepcao" align="left" width="34" field="attr_percepcao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_percepcao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_percepcao', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_percepcao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_percepcao" align="client" field="spec_attr_percepcao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Inteligência" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_inteligencia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_inteligencia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_inteligencia', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_inteligencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_inteligencia" align="left" width="34" field="attr_inteligencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_inteligencia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_inteligencia', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_inteligencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_inteligencia" align="client" field="spec_attr_inteligencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Raciocínio" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'attr', 'attr_raciocinio') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_attr_raciocinio" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_raciocinio', -1, 1, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="attr_raciocinio" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_attr_raciocinio" align="left" width="34" field="attr_raciocinio" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_attr_raciocinio" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'attr_raciocinio', 1, 1, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_attr_raciocinio" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_attr_raciocinio" align="client" field="spec_attr_raciocinio" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                             </layout>
                             </layout>
@@ -307,141 +340,141 @@
                             <button align="left" width="118" text="Prontidão" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_prontidao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_prontidao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_prontidao', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_prontidao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_prontidao" align="left" width="34" field="hab_prontidao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_prontidao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_prontidao', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_prontidao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_prontidao" align="client" field="spec_hab_prontidao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Esportes" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_esportes') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_esportes" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_esportes', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_esportes" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_esportes" align="left" width="34" field="hab_esportes" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_esportes" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_esportes', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_esportes" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_esportes" align="client" field="spec_hab_esportes" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Consciência" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_consciencia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_consciencia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_consciencia', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_consciencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_consciencia" align="left" width="34" field="hab_consciencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_consciencia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_consciencia', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_consciencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_consciencia" align="client" field="spec_hab_consciencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Briga" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_briga') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_briga" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_briga', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_briga" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_briga" align="left" width="34" field="hab_briga" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_briga" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_briga', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_briga" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_briga" align="client" field="spec_hab_briga" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Empatia" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_empatia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_empatia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_empatia', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_empatia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_empatia" align="left" width="34" field="hab_empatia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_empatia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_empatia', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_empatia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_empatia" align="client" field="spec_hab_empatia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Expressão" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_expressao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_expressao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_expressao', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_expressao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_expressao" align="left" width="34" field="hab_expressao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_expressao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_expressao', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_expressao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_expressao" align="client" field="spec_hab_expressao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Intimidação" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_intimidacao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_intimidacao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_intimidacao', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_intimidacao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_intimidacao" align="left" width="34" field="hab_intimidacao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_intimidacao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_intimidacao', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_intimidacao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_intimidacao" align="client" field="spec_hab_intimidacao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Liderança" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_lideranca') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_lideranca" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_lideranca', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_lideranca" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_lideranca" align="left" width="34" field="hab_lideranca" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_lideranca" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_lideranca', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_lideranca" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_lideranca" align="client" field="spec_hab_lideranca" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Manha" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_manha') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_manha" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_manha', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_manha" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_manha" align="left" width="34" field="hab_manha" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_manha" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_manha', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_manha" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_manha" align="client" field="spec_hab_manha" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Lábia" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_labia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_labia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_labia', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_labia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_labia" align="left" width="34" field="hab_labia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_labia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_labia', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_labia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_labia" align="client" field="spec_hab_labia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                             </layout>
                             <layout align="left" width="305" margins="{right=8}">
@@ -450,141 +483,141 @@
                             <button align="left" width="118" text="Empatia c/ Animais" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_empatia_animais') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_empatia_animais" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_empatia_animais', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_empatia_animais" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_empatia_animais" align="left" width="34" field="hab_empatia_animais" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_empatia_animais" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_empatia_animais', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_empatia_animais" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_empatia_animais" align="client" field="spec_hab_empatia_animais" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Ofícios" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_oficios') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_oficios" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_oficios', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_oficios" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_oficios" align="left" width="34" field="hab_oficios" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_oficios" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_oficios', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_oficios" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_oficios" align="client" field="spec_hab_oficios" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Condução" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_conducao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_conducao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_conducao', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_conducao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_conducao" align="left" width="34" field="hab_conducao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_conducao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_conducao', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_conducao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_conducao" align="client" field="spec_hab_conducao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Etiqueta" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_etiqueta') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_etiqueta" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_etiqueta', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_etiqueta" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_etiqueta" align="left" width="34" field="hab_etiqueta" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_etiqueta" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_etiqueta', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_etiqueta" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_etiqueta" align="client" field="spec_hab_etiqueta" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Armas de Fogo" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_armas_fogo') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_armas_fogo" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_armas_fogo', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_armas_fogo" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_armas_fogo" align="left" width="34" field="hab_armas_fogo" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_armas_fogo" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_armas_fogo', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_armas_fogo" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_armas_fogo" align="client" field="spec_hab_armas_fogo" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Arrombamento" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_arrombamento') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_arrombamento" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_arrombamento', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_arrombamento" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_arrombamento" align="left" width="34" field="hab_arrombamento" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_arrombamento" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_arrombamento', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_arrombamento" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_arrombamento" align="client" field="spec_hab_arrombamento" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Armas Brancas" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_armas_brancas') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_armas_brancas" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_armas_brancas', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_armas_brancas" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_armas_brancas" align="left" width="34" field="hab_armas_brancas" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_armas_brancas" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_armas_brancas', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_armas_brancas" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_armas_brancas" align="client" field="spec_hab_armas_brancas" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Performance" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_performance') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_performance" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_performance', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_performance" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_performance" align="left" width="34" field="hab_performance" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_performance" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_performance', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_performance" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_performance" align="client" field="spec_hab_performance" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Furtividade" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_furtividade') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_furtividade" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_furtividade', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_furtividade" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_furtividade" align="left" width="34" field="hab_furtividade" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_furtividade" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_furtividade', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_furtividade" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_furtividade" align="client" field="spec_hab_furtividade" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Sobrevivência" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_sobrevivencia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_sobrevivencia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_sobrevivencia', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_sobrevivencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_sobrevivencia" align="left" width="34" field="hab_sobrevivencia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_sobrevivencia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_sobrevivencia', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_sobrevivencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_sobrevivencia" align="client" field="spec_hab_sobrevivencia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                             </layout>
                             <layout align="client" >
@@ -593,141 +626,141 @@
                             <button align="left" width="118" text="Acadêmicos" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_academicos') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_academicos" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_academicos', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_academicos" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_academicos" align="left" width="34" field="hab_academicos" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_academicos" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_academicos', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_academicos" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_academicos" align="client" field="spec_hab_academicos" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Computador" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_computador') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_computador" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_computador', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_computador" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_computador" align="left" width="34" field="hab_computador" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_computador" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_computador', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_computador" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_computador" align="client" field="spec_hab_computador" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Finanças" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_financas') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_financas" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_financas', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_financas" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_financas" align="left" width="34" field="hab_financas" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_financas" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_financas', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_financas" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_financas" align="client" field="spec_hab_financas" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Investigação" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_investigacao') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_investigacao" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_investigacao', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_investigacao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_investigacao" align="left" width="34" field="hab_investigacao" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_investigacao" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_investigacao', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_investigacao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_investigacao" align="client" field="spec_hab_investigacao" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Direito" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_direito') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_direito" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_direito', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_direito" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_direito" align="left" width="34" field="hab_direito" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_direito" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_direito', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_direito" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_direito" align="client" field="spec_hab_direito" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Medicina" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_medicina') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_medicina" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_medicina', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_medicina" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_medicina" align="left" width="34" field="hab_medicina" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_medicina" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_medicina', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_medicina" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_medicina" align="client" field="spec_hab_medicina" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Ocultismo" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_ocultismo') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_ocultismo" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_ocultismo', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_ocultismo" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_ocultismo" align="left" width="34" field="hab_ocultismo" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_ocultismo" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_ocultismo', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_ocultismo" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_ocultismo" align="client" field="spec_hab_ocultismo" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Política" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_politica') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_politica" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_politica', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_politica" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_politica" align="left" width="34" field="hab_politica" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_politica" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_politica', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_politica" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_politica" align="client" field="spec_hab_politica" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Ciências" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_ciencias') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_ciencias" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_ciencias', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_ciencias" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_ciencias" align="left" width="34" field="hab_ciencias" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_ciencias" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_ciencias', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_ciencias" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_ciencias" align="client" field="spec_hab_ciencias" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                         <layout align="top" height="28" margins="{bottom=2}">
                             <button align="left" width="118" text="Tecnologia" fontSize="10" horzTextAlign="leading" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, 'hab', 'hab_tecnologia') end</event>
                             </button>
-                            <button align="left" width="22" text="-" fontSize="11">
+                            <button name="btnMinus_hab_tecnologia" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_tecnologia', -1, 0, 'atributo_max_geracao') end</event>
                             </button>
-                            <edit align="left" width="34" field="hab_tecnologia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
-                            <button align="left" width="22" text="+" fontSize="11">
+                            <edit name="edt_hab_tecnologia" align="left" width="34" field="hab_tecnologia" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                            <button name="btnPlus_hab_tecnologia" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'hab_tecnologia', 1, 0, 'atributo_max_geracao') end</event>
                             </button>
                             
-                            <edit align="client" field="spec_hab_tecnologia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
+                            <edit name="edt_spec_hab_tecnologia" align="client" field="spec_hab_tecnologia" textPrompt="Especialidade" fontColor="#9E9890" fontSize="10" margins="{left=4}"/>
                         </layout>
                             </layout>
                             </layout>
@@ -736,24 +769,24 @@
                         <rectangle align="top" height="155" color="#16161E" strokeColor="#24303E" strokeSize="1" xradius="6" yradius="6" padding="{left=10, right=10, top=8, bottom=8}">
                             <label align="top" height="22" text="HABILIDADES SECUNDÁRIAS / OFÍCIOS ESPECÍFICOS" fontColor="#C48F36" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <edit align="left" width="190" field="hab_extra1_nome" textPrompt="Habilidade Extra #1" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="42" field="hab_extra1_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <edit align="client" field="hab_extra1_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
+                                <edit name="edtHabExtraNome1" align="left" width="190" field="hab_extra1_nome" textPrompt="Habilidade Extra #1" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtHabExtraVal1" align="left" width="42" field="hab_extra1_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <edit name="edtHabExtraEspec1" align="client" field="hab_extra1_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <edit align="left" width="190" field="hab_extra2_nome" textPrompt="Habilidade Extra #2" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="42" field="hab_extra2_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <edit align="client" field="hab_extra2_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
+                                <edit name="edtHabExtraNome2" align="left" width="190" field="hab_extra2_nome" textPrompt="Habilidade Extra #2" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtHabExtraVal2" align="left" width="42" field="hab_extra2_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <edit name="edtHabExtraEspec2" align="client" field="hab_extra2_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <edit align="left" width="190" field="hab_extra3_nome" textPrompt="Habilidade Extra #3" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="42" field="hab_extra3_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <edit align="client" field="hab_extra3_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
+                                <edit name="edtHabExtraNome3" align="left" width="190" field="hab_extra3_nome" textPrompt="Habilidade Extra #3" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtHabExtraVal3" align="left" width="42" field="hab_extra3_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <edit name="edtHabExtraEspec3" align="client" field="hab_extra3_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <edit align="left" width="190" field="hab_extra4_nome" textPrompt="Habilidade Extra #4" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="42" field="hab_extra4_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <edit align="client" field="hab_extra4_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
+                                <edit name="edtHabExtraNome4" align="left" width="190" field="hab_extra4_nome" textPrompt="Habilidade Extra #4" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtHabExtraVal4" align="left" width="42" field="hab_extra4_val" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <edit name="edtHabExtraEspec4" align="client" field="hab_extra4_espec" textPrompt="Especialidade / Categoria" fontColor="#9E9890" fontSize="10"/>
                             </layout>
                         </rectangle>
                     </layout>
@@ -789,38 +822,38 @@
                                 </button>
                             </layout>
                             <layout align="top" height="28" margins="{bottom=3}">
-                                <comboBox align="left" width="195" field="disc_slot1_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="36" field="disc_slot1_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <comboBox align="left" width="105" field="disc_slot1_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotId1" align="left" width="195" field="disc_slot1_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtDiscSlotNivel1" align="left" width="36" field="disc_slot1_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl1" align="left" width="105" field="disc_slot1_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
                                 <label align="client" field="disc_slot1_resumo" fontColor="#9E9890" fontSize="10" horzTextAlign="leading" margins="{right=6}"/>
-                                <button align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
+                                <button name="btnDiscSlotAtivar1" align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, 1) end</event>
                                 </button>
                             </layout>
                             <layout align="top" height="28" margins="{bottom=3}">
-                                <comboBox align="left" width="195" field="disc_slot2_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="36" field="disc_slot2_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <comboBox align="left" width="105" field="disc_slot2_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotId2" align="left" width="195" field="disc_slot2_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtDiscSlotNivel2" align="left" width="36" field="disc_slot2_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl2" align="left" width="105" field="disc_slot2_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
                                 <label align="client" field="disc_slot2_resumo" fontColor="#9E9890" fontSize="10" horzTextAlign="leading" margins="{right=6}"/>
-                                <button align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
+                                <button name="btnDiscSlotAtivar2" align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, 2) end</event>
                                 </button>
                             </layout>
                             <layout align="top" height="28" margins="{bottom=3}">
-                                <comboBox align="left" width="195" field="disc_slot3_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="36" field="disc_slot3_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <comboBox align="left" width="105" field="disc_slot3_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotId3" align="left" width="195" field="disc_slot3_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtDiscSlotNivel3" align="left" width="36" field="disc_slot3_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl3" align="left" width="105" field="disc_slot3_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
                                 <label align="client" field="disc_slot3_resumo" fontColor="#9E9890" fontSize="10" horzTextAlign="leading" margins="{right=6}"/>
-                                <button align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
+                                <button name="btnDiscSlotAtivar3" align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, 3) end</event>
                                 </button>
                             </layout>
                             <layout align="top" height="28" margins="{bottom=3}">
-                                <comboBox align="left" width="195" field="disc_slot4_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
-                                <edit align="left" width="36" field="disc_slot4_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
-                                <comboBox align="left" width="105" field="disc_slot4_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotId4" align="left" width="195" field="disc_slot4_id" items="{'— Nenhuma —', 'Animalismo', 'Auspícios', 'Rapidez', 'Quimerismo', 'Demência', 'Dominação', 'Fortitude', 'Necromancia (Sepulcro)', 'Ofuscação', 'Tenebrosidade', 'Potência', 'Presença', 'Metamorfose', 'Quietus', 'Serpentis', 'Taumaturgia (Sangue)', 'Vicissitude'}" values="{'', 'animalism', 'auspex', 'celerity', 'chimerstry', 'dementation', 'dominate', 'fortitude', 'necromancy', 'obfuscate', 'obtenebration', 'potence', 'presence', 'protean', 'quietus', 'serpentis', 'thaumaturgy', 'vicissitude'}" fontColor="#ECE8E1" fontSize="11" margins="{right=6}"/>
+                                <edit name="edtDiscSlotNivel4" align="left" width="36" field="disc_slot4_nivel" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=6}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl4" align="left" width="105" field="disc_slot4_pwr_lvl" items="{'Poder Nv 1', 'Poder Nv 2', 'Poder Nv 3'}" values="{'1', '2', '3'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
                                 <label align="client" field="disc_slot4_resumo" fontColor="#9E9890" fontSize="10" horzTextAlign="leading" margins="{right=6}"/>
-                                <button align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
+                                <button name="btnDiscSlotAtivar4" align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, 4) end</event>
                                 </button>
                             </layout>
@@ -830,21 +863,21 @@
                             <label align="top" height="22" text="DONS NUMINA (FÉ VERDADEIRA, MAGIA DE CERCA &amp; FENÔMENOS PSÍQUICOS)" fontColor="#D9B45B" fontSize="12" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="28" margins="{bottom=3}">
                                 <label align="left" width="280" text="Fé Verdadeira (FdV Dif 7)" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="42" field="numina_true_faith" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtNumina_true_faith" align="left" width="42" field="numina_true_faith" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
                                 <button align="left" width="135" text="Rolar Numina" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollNuminaAction(sheet, 'true_faith') end</event>
                                 </button>
                             </layout>
                             <layout align="top" height="28" margins="{bottom=3}">
                                 <label align="left" width="280" text="Magia de Cerca (Inteligência Dif 7)" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="42" field="numina_hedge_magic" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtNumina_hedge_magic" align="left" width="42" field="numina_hedge_magic" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
                                 <button align="left" width="135" text="Rolar Numina" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollNuminaAction(sheet, 'hedge_magic') end</event>
                                 </button>
                             </layout>
                             <layout align="top" height="28" margins="{bottom=3}">
                                 <label align="left" width="280" text="Fenômeno Psíquico (Percepção Dif 7)" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="42" field="numina_psychic" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtNumina_psychic" align="left" width="42" field="numina_psychic" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
                                 <button align="left" width="135" text="Rolar Numina" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollNuminaAction(sheet, 'psychic') end</event>
                                 </button>
@@ -861,67 +894,67 @@
                             <layout align="top" height="26" margins="{top=4, bottom=6}"><label align="left" width="115" text="Faixa Financeira:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/><label align="client" field="recursos_faixa" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/></layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Aliados" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_allies" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_allies" align="left" width="38" field="bg_allies" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_allies" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Acionar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'allies') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Identidade Alternativa" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_alternate_identity" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_alternate_identity" align="left" width="38" field="bg_alternate_identity" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_alternate_identity" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Testar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'alternate_identity') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Contatos" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_contacts" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_contacts" align="left" width="38" field="bg_contacts" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_contacts" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Sondar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'contacts') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Domínio" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_domain" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_domain" align="left" width="38" field="bg_domain" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_domain" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Caçar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'domain') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Fama" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_fame" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_fame" align="left" width="38" field="bg_fame" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_fame" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Usar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'fame') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Rebanho" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_herd" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_herd" align="left" width="38" field="bg_herd" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_herd" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Caçar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'herd') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Influência" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_influence" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_influence" align="left" width="38" field="bg_influence" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_influence" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Exercer" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'influence') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Mentor" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_mentor" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_mentor" align="left" width="38" field="bg_mentor" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_mentor" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Consultar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'mentor') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Recursos" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_resources" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_resources" align="left" width="38" field="bg_resources" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_resources" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Liquidar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'resources') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Lacaios" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_retainers" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_retainers" align="left" width="38" field="bg_retainers" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_retainers" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Comandar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'retainers') end</event></button>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
                                 <label align="left" width="155" text="Status" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="bg_status" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
+                                <edit name="edtBg_status" align="left" width="38" field="bg_status" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=8}"/>
                                 <edit align="client" field="bg_notes_status" textPrompt="Detalhes / Esfera / Recipientes" fontColor="#9E9890" fontSize="10" margins="{right=8}"/>
                                 <button align="right" width="92" text="Invocar" fontSize="10"><event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, 'status') end</event></button>
                             </layout>
@@ -982,46 +1015,46 @@
                         <rectangle align="top" height="220" color="#16161E" strokeColor="#24303E" strokeSize="1" xradius="6" yradius="6" padding="{left=12, right=12, top=8, bottom=8}">
                             <label align="top" height="22" text="QUALIDADES &amp; DEFEITOS V20 (TETO +7 DEFEITOS NA CRIAÇÃO)" fontColor="#C48F36" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <checkBox align="left" width="56" field="mf_slot1_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot1_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="mf_slot1_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="95" field="mf_slot1_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="right" width="38" field="mf_slot1_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
+                                <checkBox name="chkMfAtivo1" align="left" width="56" field="mf_slot1_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
+                                <comboBox name="cmbMfId1" align="left" width="255" field="mf_slot1_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfNome1" align="client" field="mf_slot1_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbMfTipo1" align="left" width="95" field="mf_slot1_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfPontos1" align="right" width="38" field="mf_slot1_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <checkBox align="left" width="56" field="mf_slot2_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot2_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="mf_slot2_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="95" field="mf_slot2_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="right" width="38" field="mf_slot2_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
+                                <checkBox name="chkMfAtivo2" align="left" width="56" field="mf_slot2_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
+                                <comboBox name="cmbMfId2" align="left" width="255" field="mf_slot2_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfNome2" align="client" field="mf_slot2_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbMfTipo2" align="left" width="95" field="mf_slot2_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfPontos2" align="right" width="38" field="mf_slot2_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <checkBox align="left" width="56" field="mf_slot3_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot3_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="mf_slot3_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="95" field="mf_slot3_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="right" width="38" field="mf_slot3_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
+                                <checkBox name="chkMfAtivo3" align="left" width="56" field="mf_slot3_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
+                                <comboBox name="cmbMfId3" align="left" width="255" field="mf_slot3_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfNome3" align="client" field="mf_slot3_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbMfTipo3" align="left" width="95" field="mf_slot3_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfPontos3" align="right" width="38" field="mf_slot3_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <checkBox align="left" width="56" field="mf_slot4_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot4_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="mf_slot4_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="95" field="mf_slot4_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="right" width="38" field="mf_slot4_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
+                                <checkBox name="chkMfAtivo4" align="left" width="56" field="mf_slot4_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
+                                <comboBox name="cmbMfId4" align="left" width="255" field="mf_slot4_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfNome4" align="client" field="mf_slot4_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbMfTipo4" align="left" width="95" field="mf_slot4_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfPontos4" align="right" width="38" field="mf_slot4_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <checkBox align="left" width="56" field="mf_slot5_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot5_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="mf_slot5_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="95" field="mf_slot5_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="right" width="38" field="mf_slot5_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
+                                <checkBox name="chkMfAtivo5" align="left" width="56" field="mf_slot5_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
+                                <comboBox name="cmbMfId5" align="left" width="255" field="mf_slot5_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfNome5" align="client" field="mf_slot5_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbMfTipo5" align="left" width="95" field="mf_slot5_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfPontos5" align="right" width="38" field="mf_slot5_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="26" margins="{bottom=2}">
-                                <checkBox align="left" width="56" field="mf_slot6_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot6_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="mf_slot6_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="95" field="mf_slot6_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="right" width="38" field="mf_slot6_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
+                                <checkBox name="chkMfAtivo6" align="left" width="56" field="mf_slot6_ativo" text="Ativo" fontColor="#ECE8E1" fontSize="10"/>
+                                <comboBox name="cmbMfId6" align="left" width="255" field="mf_slot6_id" items="{'— Selecionar Catálogo / Custom —', 'Qualidade: Sentidos Aguçados (1 pt, -2 dif Percepção)', 'Qualidade: Ambidestro (1 pt)', 'Qualidade: Vontade de Ferro (3 pts)', 'Qualidade: Tamanho Grande (4 pts, +1 Escoriado)', 'Qualidade: Disciplina Adicional (5 pts)', 'Defeito: 14ª Geração / Sangue-Fraco (+2 pts)', 'Defeito: 15ª Geração / Sangue-Fraco (+4 pts)', 'Defeito: Deficiência Visual (+1 pt, +2 dif Percepção)', 'Personalizada / Outra do V20 Corebook'}" values="{'', 'acute_senses', 'ambidextrous', 'iron_will', 'huge_size', 'additional_disc', 'gen_14th', 'gen_15th', 'bad_sight', 'custom'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfNome6" align="client" field="mf_slot6_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbMfTipo6" align="left" width="95" field="mf_slot6_tipo" items="{'Qualidade', 'Defeito'}" values="{'qualidade', 'defeito'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtMfPontos6" align="right" width="38" field="mf_slot6_pontos" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center"/>
                             </layout>
                         </rectangle>
                     </layout>
@@ -1114,7 +1147,7 @@
                         <edit align="left" width="38" field="dano_aggravado" type="number" fontColor="#E05A5A" fontSize="11" horzTextAlign="center" margins="{right=12}"/>
                         <label align="left" width="66" text="Armadura:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
                         <edit align="left" width="38" field="armadura_absorcao" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=8}"/>
-                        <checkBox align="left" width="130" field="tem_tamanho_grande" text="Tamanho Grande (+1)" fontColor="#ECE8E1" fontSize="10"/>
+                        <checkBox name="chkTamanhoGrande" align="left" width="130" field="tem_tamanho_grande" text="Tamanho Grande (+1)" fontColor="#ECE8E1" fontSize="10"/>
                     </layout>
                     <layout align="top" height="28" margins="{top=4}">
                         <label align="left" width="36" text="Qtd:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
@@ -1153,17 +1186,17 @@
                             <label align="top" height="22" text="VIRTUDES HUMANAS, HUMANIDADE &amp; FORÇA DE VONTADE" fontColor="#C48F36" fontSize="12" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="28" margins="{top=6}">
                                 <label align="left" width="95" text="Consciência:" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="virtude1_val" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=16}"/>
+                                <edit name="edtVirtude1Val" align="left" width="40" field="virtude1_val" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=16}"/>
                                 <label align="left" width="95" text="Autocontrole:" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="virtude2_val" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=16}"/>
+                                <edit name="edtVirtude2Val" align="left" width="40" field="virtude2_val" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=16}"/>
                                 <label align="left" width="75" text="Coragem:" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="40" field="virtude3_val" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
+                                <edit name="edtVirtude3Val" align="left" width="40" field="virtude3_val" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center"/>
                             </layout>
                             <layout align="top" height="28" margins="{top=8}">
                                 <label align="left" width="95" text="Humanidade:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="42" field="moralidade_val" type="number" fontColor="#D9B45B" fontSize="12" fontStyle="bold" horzTextAlign="center" margins="{right=14}"/>
+                                <edit name="edtMoralidadeVal" align="left" width="42" field="moralidade_val" type="number" fontColor="#D9B45B" fontSize="12" fontStyle="bold" horzTextAlign="center" margins="{right=14}"/>
                                 <label align="left" width="95" text="FdV Perm.:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="42" field="fdv_perm" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=14}"/>
+                                <edit name="edtFdvPerm" align="left" width="42" field="fdv_perm" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=14}"/>
                                 <label align="left" width="44" text="Aura:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
                                 <label align="client" field="aura_resumo" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
                             </layout>
@@ -1174,7 +1207,7 @@
                                 <button align="left" width="185" text="Testar Coragem / Pânico" fontSize="11" margins="{right=10}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollRotschreck(sheet, 6) end</event>
                                 </button>
-                                <button align="left" width="185" text="Frenesi Carniçal" fontSize="11">
+                                <button name="btnFrenesiCarnical" visible="false" align="left" width="185" text="Frenesi Carniçal" fontSize="11">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFrenzy(sheet, 6) end</event>
                                 </button>
                             </layout>
@@ -1189,29 +1222,29 @@
                             <label align="top" height="22" text="CHAVE DO NARRADOR — TRANSIÇÃO SOBRENATURAL EM JOGO (HUMANO | CARNIÇAL | NUMINA)" fontColor="#C48F36" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="30" margins="{top=4}">
                                 <label align="left" width="140" text="Condição Sobrenatural:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <comboBox align="left" width="390" field="mortal_sobrenatural_modo" items="{'Humano Puro (Padrão)', 'Carniçal / Ghoul (Vitae máx 2 + Potência 1)', 'Numina (Fé Verdadeira / Magia de Cerca / Psíquico)'}" values="{'humano', 'carnical', 'numina'}" fontColor="#D9B45B" fontSize="11" margins="{right=12}"/>
+                                <comboBox name="cmbMortalSobrenaturalModo" align="left" width="390" field="mortal_sobrenatural_modo" items="{'Humano Puro (Padrão)', 'Carniçal / Ghoul (Vitae máx 2 + Potência 1)', 'Numina (Fé Verdadeira / Magia de Cerca / Psíquico)'}" values="{'humano', 'carnical', 'numina'}" fontColor="#D9B45B" fontSize="11" margins="{right=12}"/>
                                 <label align="left" width="110" text="Teto Disc. Ghoul:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
-                                <edit align="left" width="38" field="carnical_disc_max" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center"/>
+                                <edit name="edtCarnicalDiscMax" align="left" width="38" field="carnical_disc_max" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center"/>
                             </layout>
                         </rectangle>
                         <rectangle align="top" height="190" color="#16161E" strokeColor="#24303E" strokeSize="1" xradius="6" yradius="6" padding="{left=12, right=12, top=10, bottom=10}" margins="{bottom=10}">
                             <label align="top" height="22" text="EVOLUÇÃO POR EXPERIÊNCIA (XP) &amp; FILA DE APROVAÇÃO DO NARRADOR" fontColor="#C48F36" fontSize="12" fontStyle="bold" horzTextAlign="leading"/>
                             <layout align="top" height="28" margins="{top=4}">
                                 <label align="left" width="68" text="XP Total:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="48" field="xp_total" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtXpTotal" align="left" width="48" field="xp_total" type="number" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="center" margins="{right=10}"/>
                                 <label align="left" width="68" text="XP Gasto:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
-                                <edit align="left" width="48" field="xp_gasto" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
+                                <edit name="edtXpGasto" align="left" width="48" field="xp_gasto" type="number" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{right=10}"/>
                                 <label align="left" width="95" text="XP Disponível:" fontColor="#9E9890" fontSize="11" horzTextAlign="leading"/>
                                 <label align="left" width="48" field="xp_disponivel" fontColor="#D9B45B" fontSize="12" fontStyle="bold" horzTextAlign="center" margins="{right=14}"/>
-                                <checkBox align="left" width="185" field="xp_exige_aprovacao" text="Exigir Aprovação Mestre" fontColor="#ECE8E1" fontSize="10"/>
-                                <checkBox align="left" width="165" field="narrador_override" text="Override do Narrador" fontColor="#E05A5A" fontSize="10"/>
+                                <checkBox name="chkXpExigeAprovacao" align="left" width="185" field="xp_exige_aprovacao" text="Exigir Aprovação Mestre" fontColor="#ECE8E1" fontSize="10"/>
+                                <checkBox name="chkNarradorOverride" align="left" width="165" field="narrador_override" text="Override do Narrador" fontColor="#E05A5A" fontSize="10"/>
                             </layout>
                             <layout align="top" height="28" margins="{top=6}">
-                                <comboBox align="left" width="215" field="xp_loja_tipo" items="{'Atributo (Atual x4)', 'Habilidade (Nova 3 / Atual x2)', 'Disciplina (Nova 10 / Clã x5 / Fora x7)', 'Linha Secundária (Nova 7 / Atual x4)', 'Virtude (Atual x2)', 'Moralidade (Atual x2)', 'Força de Vontade (Atual x1)'}" values="{'attribute', 'ability', 'discipline', 'secondary_path', 'virtue', 'morality', 'willpower'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="left" width="145" field="xp_loja_campo" textPrompt="Campo (ex: attr_forca)" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <comboBox align="left" width="125" field="xp_loja_cat_custo" items="{'De Clã (x5)', 'Fora do Clã (x7)', 'Caitiff (x6)'}" values="{'cla', 'fora_cla', 'caitiff'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
-                                <edit align="client" field="xp_loja_descricao" textPrompt="Rótulo p/ Auditoria" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
-                                <button align="right" width="135" text="Solicitar Evolução" fontSize="10" fontStyle="bold">
+                                <comboBox name="cmbXpLojaTipo" align="left" width="195" field="xp_loja_tipo" items="{'Automático (pelo Campo)', 'Atributo (Atual x4)', 'Habilidade (Nova 3 / Atual x2)', 'Disciplina (Nova 10 / Clã x5 / Fora x7)', 'Linha Secundária (Nova 7 / Atual x4)', 'Virtude (Atual x2)', 'Moralidade (Atual x2)', 'Força de Vontade (Atual x1)'}" values="{'auto', 'attribute', 'ability', 'discipline', 'secondary_path', 'virtue', 'morality', 'willpower'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbXpLojaCampo" align="left" width="175" field="xp_loja_campo" items="{'Atributo: Força', 'Atributo: Destreza', 'Atributo: Vigor', 'Atributo: Carisma', 'Atributo: Manipulação', 'Atributo: Aparência', 'Atributo: Percepção', 'Atributo: Inteligência', 'Atributo: Raciocínio', 'Habilidade: Prontidão', 'Habilidade: Esportes', 'Habilidade: Consciência', 'Habilidade: Briga', 'Habilidade: Empatia', 'Habilidade: Expressão', 'Habilidade: Intimidação', 'Habilidade: Liderança', 'Habilidade: Manha', 'Habilidade: Lábia', 'Habilidade: Empatia c/ Animais', 'Habilidade: Ofícios', 'Habilidade: Condução', 'Habilidade: Etiqueta', 'Habilidade: Armas de Fogo', 'Habilidade: Arrombamento', 'Habilidade: Armas Brancas', 'Habilidade: Performance', 'Habilidade: Furtividade', 'Habilidade: Sobrevivência', 'Habilidade: Acadêmicos', 'Habilidade: Computador', 'Habilidade: Finanças', 'Habilidade: Investigação', 'Habilidade: Direito', 'Habilidade: Medicina', 'Habilidade: Ocultismo', 'Habilidade: Política', 'Habilidade: Ciências', 'Habilidade: Tecnologia', 'Hab. Secundária #1', 'Hab. Secundária #2', 'Hab. Secundária #3', 'Hab. Secundária #4', 'Disciplina Slot #1', 'Disciplina Slot #2', 'Disciplina Slot #3', 'Disciplina Slot #4', 'Disciplina Slot #5', 'Disciplina Slot #6', 'Disciplina Slot #7', 'Disciplina Slot #8', 'Disciplina Slot #9', 'Virtude 1 (Consciência/Convicção)', 'Virtude 2 (Autocontrole/Instinto)', 'Virtude 3 (Coragem)', 'Moralidade / Humanidade / Trilha', 'Força de Vontade Permanente'}" values="{'attr_forca', 'attr_destreza', 'attr_vigor', 'attr_carisma', 'attr_manipulacao', 'attr_aparencia', 'attr_percepcao', 'attr_inteligencia', 'attr_raciocinio', 'hab_prontidao', 'hab_esportes', 'hab_consciencia', 'hab_briga', 'hab_empatia', 'hab_expressao', 'hab_intimidacao', 'hab_lideranca', 'hab_manha', 'hab_labia', 'hab_empatia_animais', 'hab_oficios', 'hab_conducao', 'hab_etiqueta', 'hab_armas_fogo', 'hab_arrombamento', 'hab_armas_brancas', 'hab_performance', 'hab_furtividade', 'hab_sobrevivencia', 'hab_academicos', 'hab_computador', 'hab_financas', 'hab_investigacao', 'hab_direito', 'hab_medicina', 'hab_ocultismo', 'hab_politica', 'hab_ciencias', 'hab_tecnologia', 'hab_extra1_val', 'hab_extra2_val', 'hab_extra3_val', 'hab_extra4_val', 'disc_slot1_nivel', 'disc_slot2_nivel', 'disc_slot3_nivel', 'disc_slot4_nivel', 'disc_slot5_nivel', 'disc_slot6_nivel', 'disc_slot7_nivel', 'disc_slot8_nivel', 'disc_slot9_nivel', 'virtude1_val', 'virtude2_val', 'virtude3_val', 'moralidade_val', 'fdv_perm'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <comboBox name="cmbXpLojaCatCusto" align="left" width="140" field="xp_loja_cat_custo" items="{'Automático (pela Ficha)', 'De Clã (x5)', 'Caitiff (x6)', 'Fora do Clã (x7)'}" values="{'auto', 'cla', 'caitiff', 'fora_cla'}" fontColor="#ECE8E1" fontSize="10" margins="{right=6}"/>
+                                <edit name="edtXpLojaDescricao" align="client" field="xp_loja_descricao" textPrompt="Rótulo p/ Auditoria" fontColor="#9E9890" fontSize="10" margins="{right=6}"/>
+                                <button name="btnSolicitarXP" align="right" width="135" text="Solicitar Evolução" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'submit', nil) end</event>
                                 </button>
                             </layout>
@@ -1219,10 +1252,10 @@
                                 <label align="left" width="75" text="Pendente:" fontColor="#9E9890" fontSize="10" horzTextAlign="leading"/>
                                 <label align="left" width="85" field="xp_pendente_status" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
                                 <label align="client" field="xp_pendente_desc" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading"/>
-                                <button align="right" width="115" text="Recusar (Mestre)" fontSize="10" margins="{left=6}">
+                                <button name="btnRecusarXP" align="right" width="115" text="Recusar (Mestre)" fontSize="10" margins="{left=6}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'reject', nil) end</event>
                                 </button>
-                                <button align="right" width="115" text="Aprovar (Mestre)" fontSize="10" fontStyle="bold">
+                                <button name="btnAprovarXP" align="right" width="115" text="Aprovar (Mestre)" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'approve', nil) end</event>
                                 </button>
                             </layout>
@@ -1243,9 +1276,9 @@
         </tabControl>
     </rectangle>
 
-    <dataLink fields="{'nome', 'is_vampire', 'modo_ficha', 'mortal_perfil', 'mortal_sobrenatural_modo', 'carnical_disc_max', 'sangue_atual', 'sangue_max', 'sangue_por_turno', 'sangue_gasto_turno', 'fdv_perm', 'fdv_temp', 'virtude1_tipo', 'virtude1_val', 'virtude2_tipo', 'virtude2_val', 'virtude3_val', 'moralidade_tipo', 'moralidade_nome', 'moralidade_val', 'dano_contundente', 'dano_letal', 'dano_aggravado', 'dano_aplicar_qtd', 'dano_aplicar_tipo', 'cura_tipo', 'armadura_absorcao', 'roll_attr_id', 'roll_hab_id', 'roll_bonus_dice', 'roll_diff', 'roll_usar_espec'}" defaultValues="{'Mortal V20', 'false', 'criacao', 'padrao_643', 'humano', '1', '0', '0', '0', '0', '5', '5', 'consciencia', '3', 'autocontrole', '3', '3', 'humanidade', 'Humanidade', '7', '0', '0', '0', '1', 'bashing', 'bashing', '0', 'attr_percepcao', 'hab_investigacao', '0', '6', 'false'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self) end</event></dataLink>
-    <dataLink fields="{'roll_gastar_fdv', 'roll_usar_fama', 'roll_usar_status', 'roll_ignorar_ferimento', 'xp_total', 'xp_gasto', 'xp_exige_aprovacao', 'narrador_override', 'xp_loja_tipo', 'xp_loja_campo', 'xp_loja_cat_custo', 'xp_pendente_status', 'disc_slot1_id', 'disc_slot1_nivel', 'disc_slot1_pwr_lvl', 'disc_slot2_id', 'disc_slot2_nivel', 'disc_slot2_pwr_lvl', 'disc_slot3_id', 'disc_slot3_nivel', 'disc_slot3_pwr_lvl', 'disc_slot4_id', 'disc_slot4_nivel', 'disc_slot4_pwr_lvl', 'numina_true_faith', 'numina_hedge_magic', 'numina_psychic', 'attr_forca', 'attr_destreza', 'attr_vigor', 'attr_carisma', 'attr_manipulacao'}" defaultValues="{'false', 'false', 'false', 'false', '0', '0', 'true', 'false', 'ability', 'hab_investigacao', 'fora_cla', 'nenhum', 'potence', '0', '1', '', '0', '1', '', '0', '1', '', '0', '1', '0', '0', '0', '1', '1', '1', '1', '1'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self) end</event></dataLink>
-    <dataLink fields="{'attr_aparencia', 'attr_percepcao', 'attr_inteligencia', 'attr_raciocinio', 'hab_prontidao', 'hab_esportes', 'hab_consciencia', 'hab_briga', 'hab_empatia', 'hab_expressao', 'hab_intimidacao', 'hab_lideranca', 'hab_manha', 'hab_labia', 'hab_empatia_animais', 'hab_oficios', 'hab_conducao', 'hab_etiqueta', 'hab_armas_fogo', 'hab_arrombamento', 'hab_armas_brancas', 'hab_performance', 'hab_furtividade', 'hab_sobrevivencia', 'hab_academicos', 'hab_computador', 'hab_financas', 'hab_investigacao', 'hab_direito', 'hab_medicina', 'hab_ocultismo', 'hab_politica'}" defaultValues="{'1', '1', '1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self) end</event></dataLink>
-    <dataLink fields="{'hab_ciencias', 'hab_tecnologia', 'bg_allies', 'bg_alternate_identity', 'bg_contacts', 'bg_domain', 'bg_fame', 'bg_herd', 'bg_influence', 'bg_mentor', 'bg_resources', 'bg_retainers', 'bg_status', 'mf_slot1_ativo', 'mf_slot1_id', 'mf_slot1_tipo', 'mf_slot1_pontos', 'mf_slot2_ativo', 'mf_slot2_id', 'mf_slot2_tipo', 'mf_slot2_pontos', 'mf_slot3_ativo', 'mf_slot3_id', 'mf_slot3_tipo', 'mf_slot3_pontos', 'mf_slot4_ativo', 'mf_slot4_id', 'mf_slot4_tipo', 'mf_slot4_pontos', 'mf_slot5_ativo', 'mf_slot5_id', 'mf_slot5_tipo'}" defaultValues="{'0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'true', '', 'qualidade', '0', 'true', '', 'qualidade', '0', 'true', '', 'qualidade', '0', 'true', '', 'qualidade', '0', 'true', '', 'qualidade'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self) end</event></dataLink>
-    <dataLink fields="{'mf_slot5_pontos', 'mf_slot6_ativo', 'mf_slot6_id', 'mf_slot6_tipo', 'mf_slot6_pontos'}" defaultValues="{'0', 'true', '', 'qualidade', '0'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self) end</event></dataLink>
+    <dataLink fields="{'nome', 'is_vampire', 'modo_ficha', 'mortal_perfil', 'mortal_sobrenatural_modo', 'carnical_disc_max', 'sangue_atual', 'sangue_max', 'sangue_por_turno', 'sangue_gasto_turno', 'fdv_perm', 'fdv_temp', 'virtude1_tipo', 'virtude1_val', 'virtude2_tipo', 'virtude2_val', 'virtude3_val', 'moralidade_tipo', 'moralidade_nome', 'moralidade_val', 'dano_contundente', 'dano_letal', 'dano_aggravado', 'dano_aplicar_qtd', 'dano_aplicar_tipo', 'cura_tipo', 'armadura_absorcao', 'tem_tamanho_grande', 'roll_attr_id', 'roll_hab_id', 'roll_bonus_dice', 'roll_diff'}" defaultValues="{'Mortal V20', 'false', 'criacao', 'padrao_643', 'humano', '1', '0', '0', '0', '0', '5', '5', 'consciencia', '3', 'autocontrole', '3', '3', 'humanidade', 'Humanidade', '7', '0', '0', '0', '1', 'bashing', 'bashing', '0', 'false', 'attr_percepcao', 'hab_investigacao', '0', '6'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self); atualizarPermissoesModo(self); end</event></dataLink>
+    <dataLink fields="{'roll_usar_espec', 'roll_gastar_fdv', 'roll_usar_fama', 'roll_usar_status', 'roll_ignorar_ferimento', 'xp_total', 'xp_gasto', 'xp_exige_aprovacao', 'narrador_override', 'xp_loja_tipo', 'xp_loja_campo', 'xp_loja_cat_custo', 'xp_pendente_status', 'disc_slot1_id', 'disc_slot1_nivel', 'disc_slot1_pwr_lvl', 'disc_slot2_id', 'disc_slot2_nivel', 'disc_slot2_pwr_lvl', 'disc_slot3_id', 'disc_slot3_nivel', 'disc_slot3_pwr_lvl', 'disc_slot4_id', 'disc_slot4_nivel', 'disc_slot4_pwr_lvl', 'numina_true_faith', 'numina_hedge_magic', 'numina_psychic', 'attr_forca', 'attr_destreza', 'attr_vigor', 'attr_carisma'}" defaultValues="{'false', 'false', 'false', 'false', 'false', '0', '0', 'true', 'false', 'auto', 'hab_investigacao', 'auto', 'nenhum', 'potence', '0', '1', '', '0', '1', '', '0', '1', '', '0', '1', '0', '0', '0', '1', '1', '1', '1'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self); atualizarPermissoesModo(self); end</event></dataLink>
+    <dataLink fields="{'attr_manipulacao', 'attr_aparencia', 'attr_percepcao', 'attr_inteligencia', 'attr_raciocinio', 'hab_prontidao', 'hab_esportes', 'hab_consciencia', 'hab_briga', 'hab_empatia', 'hab_expressao', 'hab_intimidacao', 'hab_lideranca', 'hab_manha', 'hab_labia', 'hab_empatia_animais', 'hab_oficios', 'hab_conducao', 'hab_etiqueta', 'hab_armas_fogo', 'hab_arrombamento', 'hab_armas_brancas', 'hab_performance', 'hab_furtividade', 'hab_sobrevivencia', 'hab_academicos', 'hab_computador', 'hab_financas', 'hab_investigacao', 'hab_direito', 'hab_medicina', 'hab_ocultismo'}" defaultValues="{'1', '1', '1', '1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self); atualizarPermissoesModo(self); end</event></dataLink>
+    <dataLink fields="{'hab_politica', 'hab_ciencias', 'hab_tecnologia', 'bg_allies', 'bg_alternate_identity', 'bg_contacts', 'bg_domain', 'bg_fame', 'bg_herd', 'bg_influence', 'bg_mentor', 'bg_resources', 'bg_retainers', 'bg_status', 'mf_slot1_ativo', 'mf_slot1_id', 'mf_slot1_nome', 'mf_slot1_tipo', 'mf_slot1_pontos', 'mf_slot2_ativo', 'mf_slot2_id', 'mf_slot2_nome', 'mf_slot2_tipo', 'mf_slot2_pontos', 'mf_slot3_ativo', 'mf_slot3_id', 'mf_slot3_nome', 'mf_slot3_tipo', 'mf_slot3_pontos', 'mf_slot4_ativo', 'mf_slot4_id', 'mf_slot4_nome'}" defaultValues="{'0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', ''}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self); atualizarPermissoesModo(self); end</event></dataLink>
+    <dataLink fields="{'mf_slot4_tipo', 'mf_slot4_pontos', 'mf_slot5_ativo', 'mf_slot5_id', 'mf_slot5_nome', 'mf_slot5_tipo', 'mf_slot5_pontos', 'mf_slot6_ativo', 'mf_slot6_id', 'mf_slot6_nome', 'mf_slot6_tipo', 'mf_slot6_pontos'}" defaultValues="{'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarVisibilidadeMortal(self); atualizarPermissoesModo(self); end</event></dataLink>
 </form>

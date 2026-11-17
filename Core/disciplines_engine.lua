@@ -7,7 +7,7 @@ local Engine = {}
 
 local function safeNum(val, default)
     local n = tonumber(val)
-    if n == nil or n ~= n then return default end
+    if n == nil or n ~= n or n == math.huge or n == -math.huge then return default end
     return n
 end
 
@@ -241,7 +241,7 @@ function Engine.activatePower(state, discEntry, power, opts)
         local wCost = math.max(0, math.floor(safeNum(resolved.cost and resolved.cost.willpower, 0)))
 
         if bCost > 0 then
-            local bypass = (discId == "celerity") or (opts.bypassTurnLimit == true)
+            local bypass = (discEntry and discEntry.disc_id == "celerity") or (opts.bypassTurnLimit == true)
             local bRes = Blood.spend(nextSt, bCost, {
                 forDisciplineOrHeal = true,
                 bypassTurnLimit = bypass,

@@ -8,6 +8,14 @@ local function safeNum(val, default)
     return n
 end
 
+local function safeInt(val, default)
+    return math.floor(safeNum(val, default or 0))
+end
+
+local function safeNonNegInt(val, default)
+    return math.max(0, safeInt(val, default or 0))
+end
+
 Creation.FREEBIE_COSTS = {
     attributes = 5,
     abilities = 2,
@@ -40,7 +48,7 @@ local function sortedDesc(list)
     local copy = {}
     if type(list) == "table" then
         for i, v in ipairs(list) do
-            copy[i] = safeNum(v, 0)
+            copy[i] = safeInt(v, 0)
         end
     end
     table.sort(copy, function(a, b) return a > b end)
@@ -80,27 +88,28 @@ function Creation.validate(state)
         table.insert(errors, "Nosferatu possui Aparência obrigatoriamente igual a 0.")
     end
 
-    if safeNum(state.baseDisciplines, 0) ~= prof.disciplines then
+    if safeInt(state.baseDisciplines, 0) ~= prof.disciplines then
         table.insert(errors, string.format("Disciplinas iniciais devem somar %d pontos.", prof.disciplines))
     end
-    if safeNum(state.baseBackgrounds, 0) ~= prof.backgrounds then
+    if safeInt(state.baseBackgrounds, 0) ~= prof.backgrounds then
         table.insert(errors, string.format("Antecedentes iniciais devem somar %d pontos.", prof.backgrounds))
     end
-    if safeNum(state.baseVirtues, 0) ~= prof.virtues then
+    if safeInt(state.baseVirtues, 0) ~= prof.virtues then
         table.insert(errors, string.format("Virtudes iniciais devem somar %d pontos.", prof.virtues))
     end
 
-    local flawBonus = math.min(7, math.max(0, math.floor(safeNum(state.flawsBonus, 0))))
+    local flawBonus = math.min(7, safeNonNegInt(state.flawsBonus, 0))
     local available = prof.freebies + flawBonus
     local fp = type(state.freebiePurchases) == "table" and state.freebiePurchases or {}
     local spent = 0
     for _, k in ipairs(FREEBIE_KEYS_ORDER) do
         local cost = Creation.FREEBIE_COSTS[k]
-        local qty = safeNum(fp[k], 0)
-        if qty < 0 then
+        local rawQty = safeNum(fp[k], 0)
+        if rawQty < 0 then
             table.insert(errors, string.format("Compra negativa inválida de Pontos de Bônus em '%s'.", k))
-            qty = 0
+            rawQty = 0
         end
+        local qty = math.floor(rawQty)
         spent = spent + (qty * cost)
     end
 

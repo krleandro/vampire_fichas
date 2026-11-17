@@ -179,6 +179,61 @@ def main() -> None:
         assert req_field in mortal_fields, f"Campo obrigatório '{req_field}' ausente em frmMortal.lfm"
     assert "health_box_8" not in mortal_fields, "health_box_8 não deve existir em frmMortal.lfm"
 
+    # Verificar controles nomeados de permissões, comboBox de XP e dataLinks reativos (Findings #2, #4, #6)
+    for root_el, label_lfm, is_mortal in ((brujah_root, "frmBrujah.lfm", False), (mortal_root, "frmMortal.lfm", True)):
+        xp_campo_combos = [el for el in root_el.iter("comboBox") if el.attrib.get("field") == "xp_loja_campo"]
+        xp_campo_edits = [el for el in root_el.iter("edit") if el.attrib.get("field") == "xp_loja_campo"]
+        assert len(xp_campo_combos) == 1 and len(xp_campo_edits) == 0, (
+            f"{label_lfm} deve usar <comboBox field='xp_loja_campo'/> no lugar de <edit>"
+        )
+        vals_str = xp_campo_combos[0].attrib.get("values", "")
+        for expected_xp_field in (
+            "attr_forca",
+            "hab_briga",
+            "disc_slot1_nivel",
+            "disc_slot9_nivel",
+            "virtude1_val",
+            "virtude2_val",
+            "virtude3_val",
+            "moralidade_val",
+            "fdv_perm",
+        ):
+            assert f"'{expected_xp_field}'" in vals_str, f"'{expected_xp_field}' ausente em xp_loja_campo ({label_lfm})"
+
+        xp_cat_combos = [el for el in root_el.iter("comboBox") if el.attrib.get("field") == "xp_loja_cat_custo"]
+        assert len(xp_cat_combos) == 1 and "'auto'" in xp_cat_combos[0].attrib.get("values", ""), (
+            f"xp_loja_cat_custo deve incluir 'auto' em {label_lfm}"
+        )
+
+        named_ctrls = {el.attrib.get("name") for el in root_el.iter() if "name" in el.attrib}
+        for req_ctrl in (
+            "cmbModoFicha",
+            "edtXpTotal",
+            "edtXpGasto",
+            "chkXpExigeAprovacao",
+            "chkNarradorOverride",
+            "edt_attr_forca",
+            "btnPlus_attr_forca",
+            "chkTamanhoGrande",
+        ):
+            assert req_ctrl in named_ctrls, f"Controle nomeado '{req_ctrl}' ausente em {label_lfm}"
+        if is_mortal:
+            for m_ctrl in ("cmbMortalSobrenaturalModo", "edtCarnicalDiscMax", "btnFrenesiCarnical"):
+                assert m_ctrl in named_ctrls, f"Controle mortal '{m_ctrl}' ausente em {label_lfm}"
+
+        dl_blob = "\n".join(
+            (el.attrib.get("fields", "") + " || " + el.attrib.get("defaultValues", ""))
+            for el in root_el.findall("dataLink")
+        )
+        assert "'tem_tamanho_grande'" in dl_blob, f"tem_tamanho_grande ausente nos <dataLink> de {label_lfm}"
+        for slot_i in range(1, 7):
+            assert f"'mf_slot{slot_i}_nome'" in dl_blob, f"mf_slot{slot_i}_nome ausente nos <dataLink> de {label_lfm}"
+
+        dl_events = [ev.text or "" for dl in root_el.findall("dataLink") for ev in dl.findall("event")]
+        assert all("atualizarPermissoesModo(self)" in txt for txt in dl_events), (
+            f"<dataLink> onChange deve invocar atualizarPermissoesModo(self) em {label_lfm}"
+        )
+
     # Validar sintaxe Lua 5.4 de Adapter/firecast_bridge.lua
     bridge_path = os.path.join(ROOT, "Adapter", "firecast_bridge.lua")
     assert os.path.exists(bridge_path), "Adapter/firecast_bridge.lua não encontrado"
@@ -640,7 +695,252 @@ healthTest.dano_letal = 8
 Bridge.syncDerivedFields(healthTest)
 assert(healthTest.vitalidade_resumo == "Incapacitado")
 assert(healthTest.health_box_0 == "[X]" and healthTest.health_box_7 == "[X]", "Com 8 níveis letais em Tamanho Grande, health_box_0..7 ficam todos [X]")
-''')
+
+-- 2.15 Finding #1: Coerção inteira de XP decimal ("2.5") no Bridge sem crash Lua 5.4
+local decSheet = {
+    nome = "[TESTE_E2E] Decimal XP",
+    cla_id = "brujah",
+    is_vampire = true,
+    xp_total = "2.5",
+    xp_gasto = "0.5",
+    xp_exige_aprovacao = false,
+    attr_forca = 3,
+}
+Bridge.syncDerivedFields(decSheet)
+assert(decSheet.xp_disponivel == 2 and math.type(decSheet.xp_disponivel) == "integer")
+local decFail = Bridge.submitOrApproveXP(
+    decSheet, "submit", { field = "attr_forca" }, nil, mockFirecast, mockDialogs
+)
+assert(decFail.ok == false and decFail.error:find("disponível 2") ~= nil)
+
+-- 2.16 Finding #2: modo_ficha ("criacao" | "jogo" | "narrador_livre") e chaves exclusivas do Narrador
+local modeSheet = {
+    nome = "[TESTE_E2E] Trava Modo Jogo",
+    cla_id = "brujah",
+    is_vampire = true,
+    modo_ficha = "jogo",
+    attr_forca = 3,
+    sangue_atual = 8,
+    fdv_temp = 5,
+    dano_contundente = 0,
+}
+isMestreFlag = false
+dialogMessages = {}
+local blockedPerm = Bridge.adjustResource(modeSheet, "attr_forca", 1, 1, "atributo_max_geracao", mockFirecast, mockDialogs)
+assert(blockedPerm.ok == false and modeSheet.attr_forca == 3, "Atributo permanente deve ser bloqueado em modo_ficha='jogo'")
+assert(#dialogMessages >= 1 and dialogMessages[#dialogMessages]:find("Aba 7") ~= nil, "Mensagem deve orientar uso da Aba 7 (XP)")
+
+local okTempBlood = Bridge.adjustResource(modeSheet, "sangue_atual", -2, 0, "sangue_max", mockFirecast, mockDialogs)
+assert(okTempBlood.ok == true and modeSheet.sangue_atual == 6, "sangue_atual temporário deve continuar liberado em modo_ficha='jogo'")
+local okTempWP = Bridge.adjustResource(modeSheet, "fdv_temp", -1, 0, "fdv_perm", mockFirecast, mockDialogs)
+assert(okTempWP.ok == true and modeSheet.fdv_temp == 4, "fdv_temp temporário deve continuar liberado em modo_ficha='jogo'")
+
+-- Não-Narrador bloqueado de trocar modo_ficha ou mortal_sobrenatural_modo
+local blockSetMode = Bridge.setSheetMode(modeSheet, "narrador_livre", mockFirecast, mockDialogs)
+assert(blockSetMode.ok == false and modeSheet.modo_ficha == "jogo", "Jogador comum não pode mudar modo_ficha")
+
+local mortalGuardSheet = {
+    nome = "[TESTE_E2E] Mortal Guard",
+    is_vampire = false,
+    mortal_sobrenatural_modo = "humano",
+}
+local blockSetSob = Bridge.setMortalSupernaturalMode(mortalGuardSheet, "carnical", mockFirecast, mockDialogs)
+assert(blockSetSob.ok == false and mortalGuardSheet.mortal_sobrenatural_modo == "humano", "Jogador comum não pode mudar mortal_sobrenatural_modo")
+
+-- narrador_livre bloqueado para jogador comum e auditado para o Narrador (isMestre = true)
+modeSheet.modo_ficha = "narrador_livre"
+local blockFreeNonMaster = Bridge.adjustResource(modeSheet, "attr_forca", 1, 1, "atributo_max_geracao", mockFirecast, mockDialogs)
+assert(blockFreeNonMaster.ok == false and modeSheet.attr_forca == 3, "narrador_livre deve bloquear jogador que não é Mestre")
+
+isMestreFlag = true
+local okSetMode = Bridge.setSheetMode(modeSheet, "jogo", mockFirecast, mockDialogs)
+assert(okSetMode.ok == true and modeSheet.modo_ficha == "jogo")
+local okSetFree = Bridge.setSheetMode(modeSheet, "narrador_livre", mockFirecast, mockDialogs)
+assert(okSetFree.ok == true and modeSheet.modo_ficha == "narrador_livre")
+
+local okFreeMaster = Bridge.adjustResource(modeSheet, "attr_forca", 1, 1, "atributo_max_geracao", mockFirecast, mockDialogs)
+assert(okFreeMaster.ok == true and modeSheet.attr_forca == 4, "Narrador em narrador_livre deve ajustar característica")
+assert((modeSheet.auditoria_xp_log or ""):find("3 %-> 4") ~= nil, "Edição livre do Narrador deve registrar antes -> depois em logAudit")
+
+local okSetSob = Bridge.setMortalSupernaturalMode(mortalGuardSheet, "carnical", mockFirecast, mockDialogs)
+assert(okSetSob.ok == true and mortalGuardSheet.mortal_sobrenatural_modo == "carnical" and mortalGuardSheet.isGhoul == true)
+
+-- 2.17 Finding #3: Sangue-Fraco de 15ª Geração canalizando ações de 1 ponto base (custo 2 em 2 turnos) na UI
+local gen15Sheet = {
+    nome = "[TESTE_E2E] ThinBlood 15 UI",
+    cla_id = "brujah",
+    is_vampire = true,
+    mf_gen_15th = true,
+    sangue_atual = 10,
+    sangue_gasto_turno = 0,
+    sangue_fraco_usado = 0,
+    dano_contundente = 2,
+    attr_forca = 2,
+    disc_slot1_id = "potence",
+    disc_slot1_nivel = 1,
+}
+Bridge.syncDerivedFields(gen15Sheet)
+assert(gen15Sheet.geracao == 15 and gen15Sheet.sangue_usavel_max == 6 and gen15Sheet.sangue_por_turno == 1)
+
+sentMessages = {}
+local g15Heal1 = Bridge.healDamage(gen15Sheet, "bashing", {}, mockFirecast, mockDialogs)
+assert(g15Heal1.ok == true and gen15Sheet.sangue_atual == 8 and gen15Sheet.sangue_gasto_turno == 2 and gen15Sheet.dano_contundente == 1)
+assert(#sentMessages == 1 and sentMessages[1]:find("(15ª Geração: 2 pts de vitae canalizados em 2 turnos)", 1, true) ~= nil)
+
+-- Segundo gasto no mesmo turno deve falhar pois sangue_gasto_turno == 2
+local g15HealSameTurn = Bridge.healDamage(gen15Sheet, "bashing", {}, mockFirecast, mockDialogs)
+assert(g15HealSameTurn.ok == false and gen15Sheet.sangue_atual == 8)
+
+Bridge.newTurn(gen15Sheet, mockFirecast, mockDialogs)
+sentMessages = {}
+local g15Buff = Bridge.applyBloodBuff(gen15Sheet, "forca", mockFirecast, mockDialogs)
+assert(g15Buff.ok == true and gen15Sheet.sangue_atual == 6 and gen15Sheet.sangue_gasto_turno == 2 and gen15Sheet.buff_forca == 1)
+assert(#sentMessages == 1 and sentMessages[1]:find("(15ª Geração: 2 pts de vitae canalizados em 2 turnos)", 1, true) ~= nil)
+
+local g15BuffSameTurn = Bridge.applyBloodBuff(gen15Sheet, "destreza", mockFirecast, mockDialogs)
+assert(g15BuffSameTurn.ok == false and gen15Sheet.sangue_atual == 6)
+
+Bridge.newTurn(gen15Sheet, mockFirecast, mockDialogs)
+sentMessages = {}
+local g15Pot = Bridge.activateDisciplineSlot(gen15Sheet, 1, mockFirecast, mockDialogs)
+assert(g15Pot.ok == true and gen15Sheet.sangue_atual == 4 and gen15Sheet.sangue_gasto_turno == 2 and gen15Sheet.potencia_ativa_turno == true)
+assert(#sentMessages == 1 and sentMessages[1]:find("(15ª Geração: 2 pts de vitae canalizados em 2 turnos)", 1, true) ~= nil)
+
+-- 2.18 Finding #4: Loja de XP — guarda pendente, validação campo/tipo, auto-classificação (Clã/Fora/AddDisc/Caitiff) e tetos V20
+local xpSuite = {
+    nome = "[TESTE_E2E] XP Ceilings & AutoCat",
+    cla_id = "brujah",
+    is_vampire = true,
+    geracao_base = 13,
+    xp_total = 100,
+    xp_gasto = 0,
+    xp_exige_aprovacao = true,
+    attr_forca = 5,
+    hab_briga = 5,
+    virtude1_val = 5,
+    moralidade_val = 10,
+    fdv_perm = 10,
+    disc_slot1_id = "potence",
+    disc_slot1_nivel = 1,
+    disc_slot4_id = "auspex",
+    disc_slot4_nivel = 1,
+    disc_slot5_id = "celerity",
+    disc_slot5_nivel = 5,
+}
+isMestreFlag = false
+-- Tetos V20 bloqueiam submissão sem override
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "attr_forca" }, nil, mockFirecast, mockDialogs).ok == false)
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "hab_briga" }, nil, mockFirecast, mockDialogs).ok == false)
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "virtude1_val" }, nil, mockFirecast, mockDialogs).ok == false)
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "moralidade_val" }, nil, mockFirecast, mockDialogs).ok == false)
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "fdv_perm" }, nil, mockFirecast, mockDialogs).ok == false)
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "disc_slot5_nivel" }, nil, mockFirecast, mockDialogs).ok == false)
+
+-- Campo inválido e mismatch traitKind/campo devem falhar
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { field = "sangue_max" }, nil, mockFirecast, mockDialogs).ok == false)
+assert(Bridge.submitOrApproveXP(xpSuite, "submit", { traitKind = "willpower", field = "disc_slot1_nivel" }, nil, mockFirecast, mockDialogs).ok == false)
+
+-- Submissão pendente bloqueia 2ª submissão até resolução
+local pend1 = Bridge.submitOrApproveXP(xpSuite, "submit", { field = "disc_slot1_nivel", costCategory = "auto" }, nil, mockFirecast, mockDialogs)
+assert(pend1.ok == true and xpSuite.xp_pendente_status == "pendente" and xpSuite.xp_pendente_custo == 5, "Potência em Brujah deve custar 5 XP (auto -> cla)")
+local pendBlocked = Bridge.submitOrApproveXP(xpSuite, "submit", { field = "disc_slot4_nivel", costCategory = "auto" }, nil, mockFirecast, mockDialogs)
+assert(pendBlocked.ok == false and pendBlocked.error:find("pendente") ~= nil, "Deve bloquear nova solicitação enquanto houver pendente")
+
+-- Guarda de nível duplicado na aprovação
+isMestreFlag = true
+xpSuite.disc_slot1_nivel = 2
+local staleApprove = Bridge.submitOrApproveXP(xpSuite, "approve", nil, nil, mockFirecast, mockDialogs)
+assert(staleApprove.ok == false and xpSuite.xp_gasto == 0, "Não deve aprovar nem descontar XP se o nível já foi atingido")
+xpSuite.disc_slot1_nivel = 1
+local validApprove = Bridge.submitOrApproveXP(xpSuite, "approve", nil, nil, mockFirecast, mockDialogs)
+assert(validApprove.ok == true and xpSuite.disc_slot1_nivel == 2 and xpSuite.xp_gasto == 5)
+
+-- Auto-classificação fora do clã (x7) vs Qualidade Disciplina Adicional (x5) vs Caitiff (x6)
+xpSuite.xp_exige_aprovacao = false
+isMestreFlag = false
+xpSuite.xp_loja_tipo = "auto"
+xpSuite.xp_loja_campo = "disc_slot4_nivel"
+xpSuite.xp_loja_cat_custo = "auto"
+local outClanUp = Bridge.submitOrApproveXP(xpSuite, "submit", nil, nil, mockFirecast, mockDialogs)
+assert(outClanUp.ok == true and xpSuite.disc_slot4_nivel == 2 and xpSuite.xp_gasto == 12, "Auspícios Nv 1->2 fora do clã deve custar 7 XP (5+7=12)")
+
+xpSuite.mf_slot1_ativo = true
+xpSuite.mf_slot1_id = "additional_disc"
+local addDiscUp = Bridge.submitOrApproveXP(xpSuite, "submit", nil, nil, mockFirecast, mockDialogs)
+assert(addDiscUp.ok == true and xpSuite.disc_slot4_nivel == 3 and xpSuite.xp_gasto == 22, "Com Disciplina Adicional, Auspícios Nv 2->3 deve custar 10 XP (x5)")
+
+local caitiffXp = {
+    nome = "[TESTE_E2E] Caitiff AutoCat",
+    cla_id = "caitiff",
+    is_vampire = true,
+    xp_total = 30,
+    xp_gasto = 0,
+    xp_exige_aprovacao = false,
+    disc_slot1_id = "auspex",
+    disc_slot1_nivel = 2,
+    disc_slot1_cat = "cla",
+    xp_loja_tipo = "auto",
+    xp_loja_campo = "disc_slot1_nivel",
+    xp_loja_cat_custo = "auto",
+}
+local caitRes = Bridge.submitOrApproveXP(caitiffXp, "submit", nil, nil, mockFirecast, mockDialogs)
+assert(caitRes.ok == true and caitiffXp.disc_slot1_nivel == 3 and caitiffXp.xp_gasto == 12, "Caitiff Nv 2->3 deve custar 12 XP (x6)")
+
+-- Teto de Disciplina em Mortal Humano (0) vs Carniçal (carnical_disc_max default 1)
+local humanXp = {
+    nome = "[TESTE_E2E] Mortal Sem Disc",
+    is_vampire = false,
+    mortal_sobrenatural_modo = "humano",
+    xp_total = 30,
+    xp_gasto = 0,
+    xp_exige_aprovacao = false,
+    disc_slot2_id = "fortitude",
+    disc_slot2_nivel = 0,
+}
+assert(Bridge.submitOrApproveXP(humanXp, "submit", { field = "disc_slot2_nivel" }, nil, mockFirecast, mockDialogs).ok == false)
+
+-- 2.19 Finding #5: Carniçal (Ghoul) com Potência 1 automática destravada e ativável em 1 clique no Slot 1
+local ghoulAutoSheet = {
+    nome = "[TESTE_E2E] Renfield Slot 1",
+    is_vampire = false,
+    mortal_sobrenatural_modo = "carnical",
+    sangue_atual = 2,
+    sangue_gasto_turno = 0,
+    disc_slot1_id = "potence",
+    disc_slot1_nivel = 0,
+    disc_slot1_pwr_lvl = 1,
+    xp_total = 30,
+    xp_gasto = 0,
+    xp_exige_aprovacao = false,
+}
+Bridge.syncDerivedFields(ghoulAutoSheet)
+assert(ghoulAutoSheet.isGhoul == true and ghoulAutoSheet.ghoulPotence == 1)
+assert((ghoulAutoSheet.disc_slot1_resumo or ""):find("%[Requer Nv") == nil, "Potência Nv 1 do Carniçal deve aparecer destravada no resumo: " .. tostring(ghoulAutoSheet.disc_slot1_resumo))
+local ghoulDiscs = Bridge.collectDisciplines(ghoulAutoSheet)
+assert(#ghoulDiscs == 1 and ghoulDiscs[1].disc_id == "potence" and ghoulDiscs[1].nivel == 1)
+
+sentMessages = {}
+local ghoulPotAct = Bridge.activateDisciplineSlot(ghoulAutoSheet, 1, mockFirecast, mockDialogs)
+assert(ghoulPotAct.ok == true and ghoulAutoSheet.sangue_atual == 1 and ghoulAutoSheet.potencia_ativa_turno == true and ghoulAutoSheet.potencia_sucessos_ativos == 1)
+-- Teto de Disciplina Carniçal default = 1 bloqueia compra de Potência 1 -> 2 sem aumentar carnical_disc_max
+assert(Bridge.submitOrApproveXP(ghoulAutoSheet, "submit", { field = "disc_slot1_nivel" }, nil, mockFirecast, mockDialogs).ok == false)
+
+-- 2.20 Finding #6: Espelhamento bidirecional dano_agravado <-> dano_aggravado
+local aggMirrorSheet = {
+    nome = "[TESTE_E2E] Mirror Agravado",
+    is_vampire = true,
+    dano_agravado = 2,
+}
+Bridge.syncDerivedFields(aggMirrorSheet)
+assert(aggMirrorSheet.dano_aggravado == 2 and aggMirrorSheet.dano_agravado == 2)
+assert(aggMirrorSheet.vitalidade_resumo == "Machucado")
+aggMirrorSheet.dano_aggravado = 3
+Bridge.syncDerivedFields(aggMirrorSheet)
+assert(aggMirrorSheet.dano_agravado == 3, "Alterar dano_aggravado deve espelhar em dano_agravado")
+aggMirrorSheet.dano_agravado = 1
+Bridge.syncDerivedFields(aggMirrorSheet)
+assert(aggMirrorSheet.dano_aggravado == 1, "Alterar dano_agravado deve espelhar em dano_aggravado")
+''' )
         run_lua_file(lua_probe)
     finally:
         if os.path.exists(lua_probe):

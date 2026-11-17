@@ -27,7 +27,9 @@ from Templates.theme_gothic import (  # noqa: E402
     TEXT_MUTED,
     all_attr_options,
     all_hab_options,
+    all_xp_upgradable_field_options,
     assert_align,
+    build_mode_permissions_lua,
     dice_roller_footer_xml,
     header_bar_xml,
     health_track_xml,
@@ -65,11 +67,11 @@ def build_tab1_creation(clan: dict, accent: str) -> str:
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
                                 <label align="left" width="95" text="Geração Base:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="44" field="geracao_base" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtGeracaoBase" align="left" width="44" field="geracao_base" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="105" text="Geração Efetiva:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="left" width="38" field="geracao" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
                                 <label align="left" width="85" text="Modo Ficha:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox align="left" width="210" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <comboBox name="cmbModoFicha" align="left" width="210" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
                             </layout>
                         </rectangle>
 
@@ -78,30 +80,30 @@ def build_tab1_creation(clan: dict, accent: str) -> str:
                             <label align="top" height="20" text="Informe os pontos extras comprados com Pontos de Bônus (Atrib: 5, Hab: 2, Disc: 7, Antec: 1, Virt: 2, Moral: 1, FdV: 1):" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
                                 <label align="left" width="85" text="Bônus Atrib:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_attributes" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieAttributes" align="left" width="40" field="freebie_attributes" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus Hab:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_abilities" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieAbilities" align="left" width="40" field="freebie_abilities" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus Disc:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_disciplines" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieDisciplines" align="left" width="40" field="freebie_disciplines" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="85" text="Bônus Antec:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_backgrounds" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <edit name="edtFreebieBackgrounds" align="left" width="40" field="freebie_backgrounds" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=4}}">
                                 <label align="left" width="85" text="Bônus Virt:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_virtues" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieVirtues" align="left" width="40" field="freebie_virtues" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus Moral:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_morality" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtFreebieMorality" align="left" width="40" field="freebie_morality" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="80" text="Bônus FdV:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="40" field="freebie_willpower" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
-                                <button align="left" width="160" text="Rolar 1d10 Vitae Inicial" fontSize="11">
+                                <edit name="edtFreebieWillpower" align="left" width="40" field="freebie_willpower" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
+                                <button name="btnRolarVitaeInicial" align="left" width="160" text="Rolar 1d10 Vitae Inicial" fontSize="11">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollInitialBlood(sheet) end</event>
                                 </button>
                             </layout>
                             <layout align="top" height="32" margins="{{top=8}}">
-                                <button align="left" width="150" text="Validar Criação V20" fontSize="11" margins="{{right=8}}">
+                                <button name="btnValidarCriacao" align="left" width="150" text="Validar Criação V20" fontSize="11" margins="{{right=8}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.validateCreationOnSheet(sheet, nil, nil, nil, false) end</event>
                                 </button>
-                                <button align="left" width="245" text="Concluir Criação -&gt; Modo Jogo" fontSize="11" fontStyle="bold">
+                                <button name="btnConcluirCriacao" align="left" width="245" text="Concluir Criação -&gt; Modo Jogo" fontSize="11" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.validateCreationOnSheet(sheet, nil, nil, nil, true) end</event>
                                 </button>
                             </layout>
@@ -164,9 +166,9 @@ def build_tab2_traits(clan: dict, accent: str, is_vampire: bool = True, border: 
     for i in range(1, 5):
         extra_rows.append(
             f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
-                                <edit align="left" width="190" field="hab_extra{i}_nome" textPrompt="Habilidade Extra #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit align="left" width="42" field="hab_extra{i}_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <edit align="client" field="hab_extra{i}_espec" textPrompt="Especialidade / Categoria" fontColor="{TEXT_MUTED}" fontSize="10"/>
+                                <edit name="edtHabExtraNome{i}" align="left" width="190" field="hab_extra{i}_nome" textPrompt="Habilidade Extra #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit name="edtHabExtraVal{i}" align="left" width="42" field="hab_extra{i}_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit name="edtHabExtraEspec{i}" align="client" field="hab_extra{i}_espec" textPrompt="Especialidade / Categoria" fontColor="{TEXT_MUTED}" fontSize="10"/>
                             </layout>"""
         )
 
@@ -222,12 +224,12 @@ def build_tab3_disciplines(accent: str) -> str:
             f"""                        <rectangle align="top" height="62" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="5" yradius="5" padding="{{left=10, right=10, top=6, bottom=6}}" margins="{{bottom=6}}">
                             <layout align="top" height="26">
                                 <label align="left" width="66" text="{badge}" fontColor="{accent}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox align="left" width="185" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotId{i}" align="left" width="185" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
                                 <label align="left" width="36" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                                <edit align="left" width="36" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <comboBox align="left" width="140" field="disc_slot{i}_cat" items="{cat_items}" values="{cat_vals}" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox align="left" width="110" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <button align="right" width="118" text="Ativar / Rolar" fontSize="11" fontStyle="bold">
+                                <edit name="edtDiscSlotNivel{i}" align="left" width="36" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotCat{i}" align="left" width="140" field="disc_slot{i}_cat" items="{cat_items}" values="{cat_vals}" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl{i}" align="left" width="110" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <button name="btnDiscSlotAtivar{i}" align="right" width="118" text="Ativar / Rolar" fontSize="11" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, {i}) end</event>
                                 </button>
                             </layout>
@@ -296,7 +298,7 @@ def build_tab4_backgrounds(accent: str, border: str = BORDER_VAMP, is_vampire: b
         bg_rows.append(
             f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
                                 <label align="left" width="155" text="{xml_esc(bname)}" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="38" field="bg_{bid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <edit name="edtBg_{bid}" align="left" width="38" field="bg_{bid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
                                 <edit align="client" field="bg_notes_{bid}" textPrompt="Detalhes / Esfera / Recipientes" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=8}}"/>
                                 {btn_xml}
                             </layout>"""
@@ -328,11 +330,11 @@ def build_tab4_backgrounds(accent: str, border: str = BORDER_VAMP, is_vampire: b
     for i in range(1, 7):
         mf_rows.append(
             f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
-                                <checkBox align="left" width="56" field="mf_slot{i}_ativo" text="Ativo" fontColor="{TEXT_MAIN}" fontSize="10"/>
-                                <comboBox align="left" width="255" field="mf_slot{i}_id" items="{mf_items}" values="{mf_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit align="client" field="mf_slot{i}_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox align="left" width="95" field="mf_slot{i}_tipo" items="{tipo_items}" values="{tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit align="right" width="38" field="mf_slot{i}_pontos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <checkBox name="chkMfAtivo{i}" align="left" width="56" field="mf_slot{i}_ativo" text="Ativo" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                                <comboBox name="cmbMfId{i}" align="left" width="255" field="mf_slot{i}_id" items="{mf_items}" values="{mf_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <edit name="edtMfNome{i}" align="client" field="mf_slot{i}_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbMfTipo{i}" align="left" width="95" field="mf_slot{i}_tipo" items="{tipo_items}" values="{tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <edit name="edtMfPontos{i}" align="right" width="38" field="mf_slot{i}_pontos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
                             </layout>"""
         )
 
@@ -449,23 +451,23 @@ def build_tab6_morality(clan: dict, accent: str) -> str:
                         <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="VIRTUDES, TRILHA DE MORALIDADE &amp; MODIFICADOR DE AURA" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <comboBox align="left" width="135" field="virtude1_tipo" items="{v1_items}" values="{v1_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit align="left" width="38" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
-                                <comboBox align="left" width="135" field="virtude2_tipo" items="{v2_items}" values="{v2_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit align="left" width="38" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
+                                <comboBox name="cmbVirtude1Tipo" align="left" width="135" field="virtude1_tipo" items="{v1_items}" values="{v1_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit name="edtVirtude1Val" align="left" width="38" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
+                                <comboBox name="cmbVirtude2Tipo" align="left" width="135" field="virtude2_tipo" items="{v2_items}" values="{v2_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit name="edtVirtude2Val" align="left" width="38" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
                                 <label align="left" width="68" text="Coragem:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="38" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                <edit name="edtVirtude3Val" align="left" width="38" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=8}}">
                                 <label align="left" width="78" text="Moralidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox align="left" width="215" field="moralidade_tipo" items="{path_items}" values="{path_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
-                                <edit align="left" width="42" field="moralidade_val" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=12}}"/>
+                                <comboBox name="cmbMoralidadeTipo" align="left" width="215" field="moralidade_tipo" items="{path_items}" values="{path_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <edit name="edtMoralidadeVal" align="left" width="42" field="moralidade_val" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=12}}"/>
                                 <label align="left" width="44" text="Aura:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="client" field="aura_resumo" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=8}}">
                                 <label align="left" width="135" text="FdV Permanente:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="42" field="fdv_perm" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
+                                <edit name="edtFdvPerm" align="left" width="42" field="fdv_perm" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
                                 <checkBox align="left" width="210" field="em_frenesi" text="Em Frenesi Ativo (Ignora Ferim.)" fontColor="{TEXT_ALERT}" fontSize="11" fontStyle="bold"/>
                             </layout>
                         </rectangle>
@@ -498,6 +500,7 @@ def build_tab6_morality(clan: dict, accent: str) -> str:
 
 def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = "") -> str:
     xp_tipo_items = lua_str_list([
+        "Automático (pelo Campo)",
         "Atributo (Atual x4)",
         "Habilidade (Nova 3 / Atual x2)",
         "Disciplina (Nova 10 / Clã x5 / Fora x7)",
@@ -507,6 +510,7 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
         "Força de Vontade (Atual x1)",
     ])
     xp_tipo_vals = lua_str_list([
+        "auto",
         "attribute",
         "ability",
         "discipline",
@@ -515,8 +519,9 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
         "morality",
         "willpower",
     ])
-    xp_cat_items = lua_str_list(["De Clã (x5)", "Fora do Clã (x7)", "Caitiff (x6)"])
-    xp_cat_vals = lua_str_list(["cla", "fora_cla", "caitiff"])
+    xp_campo_items, xp_campo_vals = all_xp_upgradable_field_options()
+    xp_cat_items = lua_str_list(["Automático (pela Ficha)", "De Clã (x5)", "Caitiff (x6)", "Fora do Clã (x7)"])
+    xp_cat_vals = lua_str_list(["auto", "cla", "caitiff", "fora_cla"])
 
     return f"""            <tab name="tabExperiencia" title="7. Experiência &amp; Narrador">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
@@ -526,20 +531,20 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
                             <label align="top" height="22" text="EVOLUÇÃO POR EXPERIÊNCIA (XP) &amp; FILA DE APROVAÇÃO DO NARRADOR" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
                                 <label align="left" width="68" text="XP Total:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="48" field="xp_total" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtXpTotal" align="left" width="48" field="xp_total" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="68" text="XP Gasto:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="48" field="xp_gasto" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <edit name="edtXpGasto" align="left" width="48" field="xp_gasto" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
                                 <label align="left" width="95" text="XP Disponível:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="left" width="48" field="xp_disponivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
-                                <checkBox align="left" width="185" field="xp_exige_aprovacao" text="Exigir Aprovação Mestre" fontColor="{TEXT_MAIN}" fontSize="10"/>
-                                <checkBox align="left" width="165" field="narrador_override" text="Override do Narrador" fontColor="{TEXT_ALERT}" fontSize="10"/>
+                                <checkBox name="chkXpExigeAprovacao" align="left" width="185" field="xp_exige_aprovacao" text="Exigir Aprovação Mestre" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                                <checkBox name="chkNarradorOverride" align="left" width="165" field="narrador_override" text="Override do Narrador" fontColor="{TEXT_ALERT}" fontSize="10"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <comboBox align="left" width="215" field="xp_loja_tipo" items="{xp_tipo_items}" values="{xp_tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit align="left" width="145" field="xp_loja_campo" textPrompt="Campo (ex: attr_forca)" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox align="left" width="125" field="xp_loja_cat_custo" items="{xp_cat_items}" values="{xp_cat_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit align="client" field="xp_loja_descricao" textPrompt="Rótulo p/ Auditoria" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <button align="right" width="135" text="Solicitar Evolução" fontSize="10" fontStyle="bold">
+                                <comboBox name="cmbXpLojaTipo" align="left" width="195" field="xp_loja_tipo" items="{xp_tipo_items}" values="{xp_tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbXpLojaCampo" align="left" width="175" field="xp_loja_campo" items="{xp_campo_items}" values="{xp_campo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbXpLojaCatCusto" align="left" width="140" field="xp_loja_cat_custo" items="{xp_cat_items}" values="{xp_cat_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <edit name="edtXpLojaDescricao" align="client" field="xp_loja_descricao" textPrompt="Rótulo p/ Auditoria" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
+                                <button name="btnSolicitarXP" align="right" width="135" text="Solicitar Evolução" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'submit', nil) end</event>
                                 </button>
                             </layout>
@@ -547,10 +552,10 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
                                 <label align="left" width="75" text="Pendente:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="left" width="85" field="xp_pendente_status" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="client" field="xp_pendente_desc" fontColor="{TEXT_MAIN}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <button align="right" width="115" text="Recusar (Mestre)" fontSize="10" margins="{{left=6}}">
+                                <button name="btnRecusarXP" align="right" width="115" text="Recusar (Mestre)" fontSize="10" margins="{{left=6}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'reject', nil) end</event>
                                 </button>
-                                <button align="right" width="115" text="Aprovar (Mestre)" fontSize="10" fontStyle="bold">
+                                <button name="btnAprovarXP" align="right" width="115" text="Aprovar (Mestre)" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'approve', nil) end</event>
                                 </button>
                             </layout>
@@ -614,6 +619,7 @@ def generate_vampire_lfm(clan_id: str) -> str:
         ("dano_aplicar_tipo", "bashing"),
         ("cura_tipo", "bashing"),
         ("armadura_absorcao", "0"),
+        ("tem_tamanho_grande", "false"),
         ("frenesi_dif", "6"),
         ("rotschreck_dif", "6"),
         ("em_frenesi", "false"),
@@ -630,9 +636,9 @@ def generate_vampire_lfm(clan_id: str) -> str:
         ("xp_gasto", "0"),
         ("xp_exige_aprovacao", "true"),
         ("narrador_override", "false"),
-        ("xp_loja_tipo", "ability"),
+        ("xp_loja_tipo", "auto"),
         ("xp_loja_campo", "hab_briga"),
-        ("xp_loja_cat_custo", "cla"),
+        ("xp_loja_cat_custo", "auto"),
         ("xp_pendente_status", "nenhum"),
         ("disc_slot1_id", d1),
         ("disc_slot1_nivel", "1" if d1 else "0"),
@@ -672,15 +678,18 @@ def generate_vampire_lfm(clan_id: str) -> str:
         defaults.extend([
             (f"mf_slot{i}_ativo", "true"),
             (f"mf_slot{i}_id", ""),
+            (f"mf_slot{i}_nome", ""),
             (f"mf_slot{i}_tipo", "qualidade"),
             (f"mf_slot{i}_pontos", "0"),
         ])
 
     datalinks = root_datalinks_xml(
         defaults,
-        on_change_lua="if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet) end",
+        on_change_lua="if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarPermissoesModo(self); end",
         chunk_size=32,
     )
+
+    perms_lua = build_mode_permissions_lua(is_vampire=True)
 
     xml_out = f"""<?xml version="1.0" encoding="UTF-8"?>
 <form name="{form_name}" formType="sheetTemplate" dataType="{data_type}" title="{xml_esc(title)}" align="client" theme="dark">
@@ -688,6 +697,8 @@ def generate_vampire_lfm(clan_id: str) -> str:
     <script>
         <![CDATA[
         local V20Bridge = _G.V20Bridge or require("Adapter.firecast_bridge")
+
+{perms_lua}
         ]]>
     </script>
 

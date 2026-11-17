@@ -14,6 +14,12 @@ local function safeInt(val, default)
     return math.floor(safeNum(val, default or 0))
 end
 
+local function safeNonNegInt(val, default)
+    return math.max(0, safeInt(val, default or 0))
+end
+
+local GEN15_CHANNEL_NOTE = "(15ª Geração: 2 pts de vitae canalizados em 2 turnos)"
+
 local function isTrue(val)
     return val == true or val == "true"
 end
@@ -246,7 +252,10 @@ function Bridge.collectDisciplines(sheet, ndbApi)
 
     for i = 1, 9 do
         local sid = sheet["disc_slot" .. i .. "_id"]
-        local slvl = sheet["disc_slot" .. i .. "_nivel"]
+        local slvl = safeInt(sheet["disc_slot" .. i .. "_nivel"], 0)
+        if isTrue(sheet.isGhoul) and sid == "potence" then
+            slvl = math.max(slvl, safeInt(sheet.ghoulPotence, 0))
+        end
         local scat = sheet["disc_slot" .. i .. "_cat"]
         local sauto = sheet["disc_slot" .. i .. "_auto"]
         upsert(sid, slvl, scat, sauto)
@@ -462,6 +471,7 @@ end
 
 local SYNC_IN_PROGRESS = setmetatable({}, { __mode = "k" })
 local HUGE_FROM_MF = setmetatable({}, { __mode = "k" })
+local LAST_AGG_MIRROR = setmetatable({}, { __mode = "k" })
 
 local function setIfChanged(sheet, key, val)
     if sheet[key] ~= val then
@@ -469,10 +479,41 @@ local function setIfChanged(sheet, key, val)
     end
 end
 
+local function resolveMirroredAggravated(sheet)
+    local prevAgg = LAST_AGG_MIRROR[sheet]
+    local rawAggrav = (sheet.dano_aggravado ~= nil) and safeNonNegInt(sheet.dano_aggravado, 0) or nil
+    local rawAgrav = (sheet.dano_agravado ~= nil) and safeNonNegInt(sheet.dano_agravado, 0) or nil
+    local agg = 0
+    if rawAggrav ~= nil and rawAgrav ~= nil then
+        if prevAgg ~= nil then
+            if rawAggrav ~= prevAgg then
+                agg = rawAggrav
+            elseif rawAgrav ~= prevAgg then
+                agg = rawAgrav
+            else
+                agg = rawAggrav
+            end
+        else
+            agg = (rawAggrav ~= 0) and rawAggrav or rawAgrav
+        end
+    elseif rawAggrav ~= nil then
+        agg = rawAggrav
+    elseif rawAgrav ~= nil then
+        agg = rawAgrav
+    end
+    LAST_AGG_MIRROR[sheet] = agg
+    setIfChanged(sheet, "dano_aggravado", agg)
+    setIfChanged(sheet, "dano_agravado", agg)
+    return agg
+end
+
 local function updateDisciplineSummaries(sheet)
     for i = 1, 9 do
         local did = sheet["disc_slot" .. i .. "_id"]
         local dots = safeInt(sheet["disc_slot" .. i .. "_nivel"], 0)
+        if isTrue(sheet.isGhoul) and did == "potence" then
+            dots = math.max(dots, safeInt(sheet.ghoulPotence, 0))
+        end
         local pwrLvl = math.max(1, math.min(5, safeInt(sheet["disc_slot" .. i .. "_pwr_lvl"], 1)))
         local cat = (type(did) == "string") and V20.DisciplinesCatalog.DISCIPLINES[did] or nil
         if cat and cat.powers and cat.powers[pwrLvl] then
@@ -554,12 +595,13 @@ local function syncDerivedFieldsImpl(sheet, ndbApi)
     end
 
     local huge = isTrue(sheet.tem_tamanho_grande) or mfAgg.hugeSize
+    local aggMirrored = resolveMirroredAggravated(sheet)
     local hStatus = V20.Health.getStatus({
         isVampire = isVamp,
         hugeSize = huge,
         bashing = sheet.dano_contundente,
         lethal = sheet.dano_letal,
-        aggravated = sheet.dano_aggravado,
+        aggravated = aggMirrored,
     })
     setIfChanged(sheet, "vitalidade_resumo", hStatus.currentLevelName)
     setIfChanged(sheet, "vitalidade_label", hStatus.currentLevelName)
@@ -607,7 +649,7 @@ local function syncDerivedFieldsImpl(sheet, ndbApi)
     setIfChanged(sheet, "aura_label", aura.label)
     setIfChanged(sheet, "aura_mod_dif", aura.diffMod)
 
-    setIfChanged(sheet, "xp_disponivel", safeNum(sheet.xp_total, 0) - safeNum(sheet.xp_gasto, 0))
+    setIfChanged(sheet, "xp_disponivel", safeNonNegInt(sheet.xp_total, 0) - safeNonNegInt(sheet.xp_gasto, 0))
 
     local discList = Bridge.collectDisciplines(sheet, ndb)
     local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), discList)
@@ -675,20 +717,164 @@ function Bridge.selectRollTrait(sheet, kind, traitId)
     Bridge.syncDerivedFields(sheet)
 end
 
-function Bridge.adjustResource(sheet, field, delta, minVal, maxFieldOrVal)
-    if type(sheet) ~= "table" or type(field) ~= "string" then return end
-    Bridge.syncDerivedFields(sheet)
+local TEMP_RESOURCE_FIELDS = {
+    sangue_atual = true,
+    fdv_temp = true,
+    dano_contundente = true,
+    dano_letal = true,
+    dano_aggravado = true,
+    dano_agravado = true,
+}
+
+local function isTemporaryResourceField(field)
+    if type(field) ~= "string" then return false end
+    if TEMP_RESOURCE_FIELDS[field] then return true end
+    if field:match("^municao_") or field:match("_municao$") then return true end
+    return false
+end
+
+function Bridge.adjustResource(sheet, field, delta, minVal, maxFieldOrVal, firecastApi, dialogsApi, ndbApi)
+    if type(sheet) ~= "table" or type(field) ~= "string" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet, ndbApi)
+
+    local isTemp = isTemporaryResourceField(field)
+    local modo = sheet.modo_ficha or "criacao"
+    local isMaster = Bridge.isStoryteller(sheet, fc)
+    local stOverride = isTrue(sheet.narrador_override) and isMaster
+
+    if not isTemp then
+        if modo == "jogo" and not stOverride then
+            local err = "Ficha em Modo Jogo: características permanentes estão bloqueadas. Utilize a Aba 7 (Experiência / XP) para evoluir o personagem."
+            dlg.showMessage(err)
+            return { ok = false, blocked = true, error = err }
+        elseif modo == "narrador_livre" and not isMaster then
+            local err = "Apenas o Narrador pode alterar características permanentes no modo Edição Livre."
+            dlg.showMessage(err)
+            return { ok = false, blocked = true, error = err }
+        end
+    end
+
     local cur = safeInt(sheet[field], 0)
     local lo = safeInt(minVal, 0)
     local hi = 99
     if type(maxFieldOrVal) == "string" then
         hi = safeInt(sheet[maxFieldOrVal], 10)
     elseif type(maxFieldOrVal) == "number" then
-        hi = maxFieldOrVal
+        hi = safeInt(maxFieldOrVal, 99)
     end
     local nextVal = math.max(lo, math.min(hi, cur + safeInt(delta, 0)))
+    if not isTemp and sheet.cla_id == "nosferatu" and field == "attr_aparencia" and not stOverride then
+        nextVal = 0
+    end
     sheet[field] = nextVal
-    Bridge.syncDerivedFields(sheet)
+    if field == "dano_agravado" then
+        sheet.dano_aggravado = nextVal
+        LAST_AGG_MIRROR[sheet] = nextVal
+    elseif field == "dano_aggravado" then
+        sheet.dano_agravado = nextVal
+        LAST_AGG_MIRROR[sheet] = nextVal
+    end
+    Bridge.syncDerivedFields(sheet, ndbApi)
+
+    if not isTemp and nextVal ~= cur then
+        if modo == "narrador_livre" then
+            Bridge.logAudit(
+                sheet,
+                ndbApi,
+                fc,
+                "edicao_narrador",
+                string.format("Edição Livre (%s): %d -> %d", field, cur, nextVal),
+                0,
+                "aprovado",
+                field,
+                nextVal
+            )
+        elseif modo == "jogo" and stOverride then
+            Bridge.logAudit(
+                sheet,
+                ndbApi,
+                fc,
+                "override_narrador",
+                string.format("Ajuste com Override (%s): %d -> %d", field, cur, nextVal),
+                0,
+                "aprovado",
+                field,
+                nextVal
+            )
+        end
+    end
+    return { ok = true, before = cur, after = nextVal }
+end
+
+local VALID_SHEET_MODES = { criacao = true, jogo = true, narrador_livre = true }
+
+function Bridge.setSheetMode(sheet, newMode, firecastApi, dialogsApi, ndbApi)
+    if type(sheet) ~= "table" then return { ok = false, error = "Ficha inválida." } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    if not VALID_SHEET_MODES[newMode] then
+        local err = "Modo de ficha inválido: " .. tostring(newMode)
+        dlg.showMessage(err)
+        return { ok = false, error = err }
+    end
+    if not Bridge.isStoryteller(sheet, fc) then
+        local err = "Apenas o Narrador pode alterar manualmente o Modo da Ficha."
+        dlg.showMessage(err)
+        return { ok = false, error = err }
+    end
+    local prevMode = sheet.modo_ficha or "criacao"
+    if prevMode ~= newMode then
+        sheet.modo_ficha = newMode
+        Bridge.syncDerivedFields(sheet, ndbApi)
+        Bridge.logAudit(
+            sheet,
+            ndbApi,
+            fc,
+            "modo_ficha",
+            string.format("Modo da ficha alterado: %s -> %s", tostring(prevMode), tostring(newMode)),
+            0,
+            "aprovado",
+            "modo_ficha",
+            newMode
+        )
+    else
+        Bridge.syncDerivedFields(sheet, ndbApi)
+    end
+    return { ok = true, mode = newMode }
+end
+
+local VALID_MORTAL_MODES = { humano = true, carnical = true, numina = true }
+
+function Bridge.setMortalSupernaturalMode(sheet, newMode, firecastApi, dialogsApi, ndbApi)
+    if type(sheet) ~= "table" then return { ok = false, error = "Ficha inválida." } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    if not VALID_MORTAL_MODES[newMode] then
+        local err = "Condição sobrenatural mortal inválida: " .. tostring(newMode)
+        dlg.showMessage(err)
+        return { ok = false, error = err }
+    end
+    if not Bridge.isStoryteller(sheet, fc) then
+        local err = "Apenas o Narrador pode alterar a Condição Sobrenatural (Humano / Carniçal / Numina)."
+        dlg.showMessage(err)
+        return { ok = false, error = err }
+    end
+    local prevMode = sheet.mortal_sobrenatural_modo or "humano"
+    sheet.mortal_sobrenatural_modo = newMode
+    Bridge.syncDerivedFields(sheet, ndbApi)
+    if prevMode ~= newMode then
+        Bridge.logAudit(
+            sheet,
+            ndbApi,
+            fc,
+            "transicao_sobrenatural",
+            string.format("Condição sobrenatural mortal: %s -> %s", tostring(prevMode), tostring(newMode)),
+            0,
+            "aprovado",
+            "mortal_sobrenatural_modo",
+            newMode
+        )
+    end
+    return { ok = true, mode = newMode }
 end
 
 function Bridge.rollInitialBlood(sheet, firecastApi, dialogsApi)
@@ -700,9 +886,9 @@ function Bridge.rollInitialBlood(sheet, firecastApi, dialogsApi)
 
     local function applyFace(val)
         local cap = math.max(1, safeInt(sheet.sangue_max, 10))
-        sheet.sangue_atual = math.min(cap, math.max(1, val))
+        sheet.sangue_atual = math.min(cap, math.max(1, safeInt(val, 5)))
         Bridge.syncDerivedFields(sheet)
-        return string.format("[%s] Reserva Inicial de Vitae (1d10): %d ponto(s).", sheet.nome or "Personagem", sheet.sangue_atual)
+        return string.format("[%s] Reserva Inicial de Vitae (1d10): %d ponto(s).", sheet.nome or "Personagem", safeInt(sheet.sangue_atual, 0))
     end
 
     if mesa ~= nil and mesa.activeChat ~= nil and rolObj ~= nil then
@@ -916,6 +1102,9 @@ function Bridge.activateDisciplinePower(sheet, discNode, powerId, firecastApi, d
     if type(discNode) == "number" then
         local sid = sheet["disc_slot" .. discNode .. "_id"]
         local slvl = safeInt(sheet["disc_slot" .. discNode .. "_nivel"], 0)
+        if isTrue(sheet.isGhoul) and sid == "potence" then
+            slvl = math.max(slvl, safeInt(sheet.ghoulPotence, 0))
+        end
         resolvedEntry = { disc_id = sid, nivel = slvl }
     elseif type(discNode) == "string" then
         for _, d in ipairs(Bridge.collectDisciplines(sheet)) do
@@ -924,7 +1113,11 @@ function Bridge.activateDisciplinePower(sheet, discNode, powerId, firecastApi, d
                 break
             end
         end
-        resolvedEntry = resolvedEntry or { disc_id = discNode, nivel = safeInt(sheet["disc_" .. discNode], 0) }
+        local fallbackLvl = safeInt(sheet["disc_" .. discNode], 0)
+        if isTrue(sheet.isGhoul) and discNode == "potence" then
+            fallbackLvl = math.max(fallbackLvl, safeInt(sheet.ghoulPotence, 0))
+        end
+        resolvedEntry = resolvedEntry or { disc_id = discNode, nivel = fallbackLvl }
     elseif type(discNode) == "table" then
         resolvedEntry = discNode
     end
@@ -937,10 +1130,42 @@ function Bridge.activateDisciplinePower(sheet, discNode, powerId, firecastApi, d
         end
     end
 
+    local pwObj = nil
+    if type(resolvedPower) == "table" then
+        pwObj = resolvedPower
+    elseif type(resolvedPower) == "string" and resolvedEntry and resolvedEntry.disc_id then
+        local cat = V20.DisciplinesCatalog.DISCIPLINES[resolvedEntry.disc_id]
+        if cat and cat.powers then
+            for _, pw in ipairs(cat.powers) do
+                if pw.id == resolvedPower then
+                    pwObj = pw
+                    break
+                end
+            end
+        end
+    end
+
+    local baseBloodCost = 0
+    if resolvedEntry and resolvedEntry.disc_id == "potence" then
+        baseBloodCost = isTrue(sheet.potencia_ativa_turno) and 0 or 1
+    elseif resolvedEntry and resolvedEntry.disc_id == "celerity" then
+        baseBloodCost = 1
+    elseif pwObj ~= nil then
+        local curBuffs = Bridge.deserializeBuffs(sheet)
+        local isDeactivating = (pwObj.toggleBuff ~= nil) and (curBuffs[pwObj.toggleBuff.id] ~= nil)
+        baseBloodCost = isDeactivating and 0 or math.max(0, safeInt(pwObj.cost and pwObj.cost.blood, 0))
+    end
+
+    local isGen15Channel = Bridge.isVampireSheet(sheet)
+        and (baseBloodCost == 1)
+        and (safeInt(sheet.geracao, 13) == 15)
+        and (safeInt(sheet.sangue_gasto_turno, 0) == 0)
+
     local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
     local engState = Bridge.sheetToEngineState(sheet)
     local res = V20.DisciplinesEngine.activatePower(engState, resolvedEntry, resolvedPower, {
         storytellerOverride = stOverride,
+        bypassTurnLimit = isGen15Channel,
     })
 
     if not res.ok then
@@ -951,13 +1176,20 @@ function Bridge.activateDisciplinePower(sheet, discNode, powerId, firecastApi, d
     applyEngineStateToSheet(sheet, res.newState)
 
     if res.rollSpec then
+        local notes = {}
+        if res.rollSpec.diffHint and res.rollSpec.diffHint ~= "" then
+            table.insert(notes, res.rollSpec.diffHint)
+        end
+        if isGen15Channel then
+            table.insert(notes, GEN15_CHANNEL_NOTE)
+        end
         Bridge.rollFromSheet(sheet, {
             attrId = res.rollSpec.attr,
             habId = res.rollSpec.hab,
             difficulty = res.rollSpec.defaultDiff,
             label = res.rollSpec.powerName,
             spendWillpower = false,
-            extraNotes = (res.rollSpec.diffHint and res.rollSpec.diffHint ~= "") and { res.rollSpec.diffHint } or nil,
+            extraNotes = (#notes > 0) and notes or nil,
         }, fc, dlg)
     else
         local statusTxt = "ativado"
@@ -966,16 +1198,18 @@ function Bridge.activateDisciplinePower(sheet, discNode, powerId, firecastApi, d
         end
         local discMeta = resolvedEntry and V20.DisciplinesCatalog.DISCIPLINES[resolvedEntry.disc_id]
         local title = (discMeta and discMeta.name) or tostring(powerId)
+        local gen15Note = isGen15Channel and (" " .. GEN15_CHANNEL_NOTE) or ""
         Bridge.notify(
             sheet,
-            string.format("🦇 [%s] %s %s (Sangue: %d/%d | Turno: %d/%d).",
+            string.format("🦇 [%s] %s %s (Sangue: %d/%d | Turno: %d/%d).%s",
                 sheet.nome or "Personagem",
                 title,
                 statusTxt,
                 safeInt(sheet.sangue_atual, 0),
                 safeInt(sheet.sangue_max, 10),
                 safeInt(sheet.sangue_gasto_turno, 0),
-                safeInt(sheet.sangue_por_turno, 1)
+                safeInt(sheet.sangue_por_turno, 1),
+                gen15Note
             ),
             fc,
             dlg
@@ -1043,6 +1277,10 @@ function Bridge.healDamage(sheet, damageType, opts, firecastApi, dialogsApi)
     Bridge.syncDerivedFields(sheet)
 
     local dtype = damageType or sheet.cura_tipo or "bashing"
+    local isGen15Channel = Bridge.isVampireSheet(sheet)
+        and (dtype ~= "aggravated")
+        and (safeInt(sheet.geracao, 13) == 15)
+        and (safeInt(sheet.sangue_gasto_turno, 0) == 0)
     local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
     local st = Bridge.sheetToEngineState(sheet)
     st.bashing = safeInt(sheet.dano_contundente, 0)
@@ -1051,7 +1289,7 @@ function Bridge.healDamage(sheet, damageType, opts, firecastApi, dialogsApi)
 
     local res = V20.Health.healWithBlood(st, dtype, {
         useWillpowerForExtra = isTrue(opts.useWillpowerForExtra) or isTrue(sheet.cura_agravado_extra_fdv),
-        bypassTurnLimit = isTrue(opts.bypassTurnLimit),
+        bypassTurnLimit = isTrue(opts.bypassTurnLimit) or isGen15Channel,
         storytellerOverride = stOverride,
     })
     if not res.ok then
@@ -1066,16 +1304,20 @@ function Bridge.healDamage(sheet, damageType, opts, firecastApi, dialogsApi)
     sheet.dano_contundente = res.newState.bashing
     sheet.dano_letal = res.newState.lethal
     sheet.dano_aggravado = res.newState.aggravated
+    sheet.dano_agravado = res.newState.aggravated
+    LAST_AGG_MIRROR[sheet] = res.newState.aggravated
     Bridge.syncDerivedFields(sheet)
 
+    local gen15Note = isGen15Channel and (" " .. GEN15_CHANNEL_NOTE) or ""
     Bridge.notify(
         sheet,
-        string.format("🩸 [%s] Curou 1 nível (%s) | Vitalidade: %s | Sangue: %d/%d",
+        string.format("🩸 [%s] Curou 1 nível (%s) | Vitalidade: %s | Sangue: %d/%d%s",
             sheet.nome or "Personagem",
             dtype,
             sheet.vitalidade_resumo or "Saudável",
             safeInt(sheet.sangue_atual, 0),
-            safeInt(sheet.sangue_max, 10)
+            safeInt(sheet.sangue_max, 10),
+            gen15Note
         ),
         fc,
         dlg
@@ -1109,6 +1351,8 @@ function Bridge.applyDamage(sheet, amount, damageType, opts, firecastApi, dialog
     sheet.dano_contundente = nextH.bashing
     sheet.dano_letal = nextH.lethal
     sheet.dano_aggravado = nextH.aggravated
+    sheet.dano_agravado = nextH.aggravated
+    LAST_AGG_MIRROR[sheet] = nextH.aggravated
     Bridge.syncDerivedFields(sheet)
 
     local alert = (sheet.vitalidade_alerta and sheet.vitalidade_alerta ~= "") and (" ⚠️ " .. sheet.vitalidade_alerta) or ""
@@ -1144,8 +1388,12 @@ function Bridge.applyBloodBuff(sheet, attrKey, firecastApi, dialogsApi)
         return { ok = false, error = "Mortal humano não possui vitae para Blood Buff." }
     end
 
+    local isGen15Channel = Bridge.isVampireSheet(sheet)
+        and (safeInt(sheet.geracao, 13) == 15)
+        and (safeInt(sheet.sangue_gasto_turno, 0) == 0)
     local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
     local res = V20.Blood.applyPhysicalBuff(Bridge.sheetToEngineState(sheet), attrKey, {
+        bypassTurnLimit = isGen15Channel,
         storytellerOverride = stOverride,
     })
     if not res.ok then
@@ -1155,15 +1403,17 @@ function Bridge.applyBloodBuff(sheet, attrKey, firecastApi, dialogsApi)
 
     applyEngineStateToSheet(sheet, res.newState)
     local durNote = res.temporaryAboveMax and " (Acima do teto da geração: dura 3 turnos)" or " (Dura toda a cena)"
+    local gen15Note = isGen15Channel and (" " .. GEN15_CHANNEL_NOTE) or ""
     Bridge.notify(
         sheet,
-        string.format("🩸 [%s] Blood Buff em %s -> Efetivo %d%s | Sangue: %d/%d",
+        string.format("🩸 [%s] Blood Buff em %s -> Efetivo %d%s | Sangue: %d/%d%s",
             sheet.nome or "Personagem",
             attrKey,
             res.effectiveAttr,
             durNote,
             safeInt(sheet.sangue_atual, 0),
-            safeInt(sheet.sangue_max, 10)
+            safeInt(sheet.sangue_max, 10),
+            gen15Note
         ),
         fc,
         dlg
@@ -1262,8 +1512,9 @@ function Bridge.rollInitiative(sheet, firecastApi, dialogsApi)
     local mesa = (fc and fc.getMesaDe) and fc.getMesaDe(sheet) or nil
 
     local function formatInit(d10Val)
-        local total = d10Val + mod
-        return string.format("⚡ [%s] Iniciativa V20: 1d10 (%d) + Mod (%d) = %d", sheet.nome or "Personagem", d10Val, mod, total)
+        local faceInt = safeInt(d10Val, 1)
+        local total = faceInt + mod
+        return string.format("⚡ [%s] Iniciativa V20: 1d10 (%d) + Mod (%d) = %d", sheet.nome or "Personagem", faceInt, mod, total)
     end
 
     if mesa ~= nil and mesa.activeChat ~= nil and rolObj ~= nil then
@@ -1305,7 +1556,7 @@ function Bridge.huntWithHerdDomain(sheet, opts, firecastApi, dialogsApi)
                 sheet.sangue_atual = g.newState.currentBlood
                 sheet.sangue_fraco_usado = g.newState.thinBloodUsed
                 Bridge.syncDerivedFields(sheet)
-                return string.format("+%d Vitae absorvida -> %d/%d", g.added, sheet.sangue_atual, sheet.sangue_max)
+                return string.format("+%d Vitae absorvida -> %d/%d", safeInt(g.added, 0), safeInt(sheet.sangue_atual, 0), safeInt(sheet.sangue_max, 10))
             end
             return nil
         end,
@@ -1490,8 +1741,13 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
     local effMaxBaseHab = (excessAbove3 <= math.max(0, freebieHab)) and math.min(maxHab, 3) or maxHab
 
     local discDots = 0
+    local freeGhoulPotence = (not isVamp and isTrue(sheet.isGhoul)) and safeNonNegInt(sheet.ghoulPotence, 0) or 0
     for _, d in ipairs(Bridge.collectDisciplines(sheet, ndbApi)) do
-        discDots = discDots + math.max(0, safeInt(d.nivel, 0))
+        local n = math.max(0, safeInt(d.nivel, 0))
+        if d.disc_id == "potence" and freeGhoulPotence > 0 then
+            n = math.max(0, n - freeGhoulPotence)
+        end
+        discDots = discDots + n
     end
 
     local bgDots = 0
@@ -1552,46 +1808,213 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
     return res
 end
 
+local function inferTraitKindFromField(sheet, campo)
+    if type(campo) ~= "string" or campo == "" then
+        return nil, nil, nil
+    end
+    if V20.Traits.ATTRIBUTES[campo] ~= nil then
+        return "attribute", nil, nil
+    end
+    if V20.Traits.ABILITIES[campo] ~= nil or campo:match("^hab_extra[1-4]_val$") then
+        return "ability", nil, nil
+    end
+    local slotIdx = campo:match("^disc_slot([1-9])_nivel$")
+    if slotIdx then
+        local discId = (type(sheet) == "table") and sheet["disc_slot" .. slotIdx .. "_id"] or nil
+        return "discipline", tonumber(slotIdx), discId
+    end
+    local directDisc = campo:match("^disc_([a-z_]+)$")
+    if directDisc and V20.DisciplinesCatalog.DISCIPLINES[directDisc] ~= nil then
+        return "discipline", nil, directDisc
+    end
+    if campo:match("^trilha_sec_%d+$") or campo:match("^sec_path_[a-z0-9_]+$") then
+        return "secondary_path", nil, nil
+    end
+    if campo == "virtude1_val" or campo == "virtude2_val" or campo == "virtude3_val" then
+        return "virtue", nil, nil
+    end
+    if campo == "moralidade_val" then
+        return "morality", nil, nil
+    end
+    if campo == "fdv_perm" then
+        return "willpower", nil, nil
+    end
+    return nil, nil, nil
+end
+
+local function getEffectiveFieldRatingForXP(sheet, campo, traitKind, discId)
+    if type(sheet) ~= "table" or type(campo) ~= "string" then
+        return 0
+    end
+    if traitKind == "discipline" and isTrue(sheet.isGhoul) and discId == "potence" then
+        return math.max(safeNonNegInt(sheet[campo], 0), safeNonNegInt(sheet.ghoulPotence, 0))
+    end
+    if sheet[campo] == nil then
+        if traitKind == "attribute" then
+            return (sheet.cla_id == "nosferatu" and campo == "attr_aparencia") and 0 or 1
+        elseif traitKind == "virtue" or traitKind == "willpower" then
+            return 1
+        end
+    end
+    return safeNonNegInt(sheet[campo], 0)
+end
+
+local function checkV20TraitCeiling(sheet, traitKind, campo, targetVal)
+    if traitKind == "attribute" then
+        if sheet.cla_id == "nosferatu" and campo == "attr_aparencia" and targetVal > 0 then
+            return false, "Nosferatu não pode aumentar Aparência acima de 0 (V20, p. 60)."
+        end
+        local cap = safeInt(sheet.atributo_max_geracao, 5)
+        if targetVal > cap then
+            return false, string.format("Teto máximo de Atributo atingido para a geração (%d).", cap)
+        end
+    elseif traitKind == "ability" then
+        local cap = math.max(5, safeInt(sheet.atributo_max_geracao, 5))
+        if targetVal > cap then
+            return false, string.format("Teto máximo de Habilidade atingido (%d).", cap)
+        end
+    elseif traitKind == "discipline" then
+        local cap = safeInt(sheet.disciplina_max_geracao, 5)
+        if cap <= 0 then
+            return false, "Mortal humano sem vitae vampírica não pode adquirir Disciplinas (teto 0)."
+        end
+        if targetVal > cap then
+            return false, string.format("Teto máximo de Disciplina atingido (%d).", cap)
+        end
+    elseif traitKind == "secondary_path" then
+        local cap = math.min(5, safeInt(sheet.disciplina_max_geracao, 5))
+        if cap <= 0 or targetVal > cap then
+            return false, string.format("Teto máximo de Linha Secundária atingido (%d).", math.max(0, cap))
+        end
+    elseif traitKind == "virtue" then
+        if targetVal > 5 then
+            return false, "Virtudes possuem teto máximo igual a 5 na V20."
+        end
+    elseif traitKind == "morality" then
+        if targetVal > 10 then
+            return false, "Moralidade possui teto máximo igual a 10 na V20."
+        end
+    elseif traitKind == "willpower" then
+        if targetVal > 10 then
+            return false, "Força de Vontade permanente possui teto máximo igual a 10 na V20."
+        end
+    end
+    return true, nil
+end
+
 function Bridge.submitOrApproveXP(sheet, action, payload, ndbApi, firecastApi, dialogsApi)
     local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
     Bridge.syncDerivedFields(sheet, ndbApi)
 
     local act = action or "submit"
     local isMaster = Bridge.isStoryteller(sheet, fc)
+    local stOverride = isTrue(sheet.narrador_override) and isMaster
     local login = Bridge.getCurrentLogin(sheet, fc)
 
-    local function makeXpSnapshot(targetField)
+    local function makeXpSnapshot(targetField, overrideRating)
         local snap = {
             cla_id = sheet.cla_id,
-            xp_total = safeNum(sheet.xp_total, 0),
-            xp_gasto = safeNum(sheet.xp_gasto, 0),
+            xp_total = safeNonNegInt(sheet.xp_total, 0),
+            xp_gasto = safeNonNegInt(sheet.xp_gasto, 0),
             xp_exige_aprovacao = sheet.xp_exige_aprovacao,
         }
         if type(targetField) == "string" and targetField ~= "" then
-            snap[targetField] = sheet[targetField]
+            if overrideRating ~= nil then
+                snap[targetField] = overrideRating
+            else
+                snap[targetField] = sheet[targetField]
+            end
         end
         return snap
     end
 
     if act == "submit" then
-        local req = type(payload) == "table" and payload or {
-            traitKind = sheet.xp_loja_tipo or "ability",
-            field = sheet.xp_loja_campo or "hab_prontidao",
-            costCategory = sheet.xp_loja_cat_custo or "fora_cla",
-            label = (type(sheet.xp_loja_descricao) == "string" and sheet.xp_loja_descricao ~= "") and sheet.xp_loja_descricao or sheet.xp_loja_campo,
-            author = login,
-        }
-        req.author = req.author or login
-
-        if req.traitKind == "discipline" and not req.costCategory then
-            local slotIdx = tostring(req.field or ""):match("^disc_slot(%d+)_nivel$")
-            local discId = slotIdx and sheet["disc_slot" .. slotIdx .. "_id"] or tostring(req.field or ""):match("^disc_(.+)$")
-            req.costCategory = V20.DisciplinesEngine.classifyCostCategory(sheet.cla_id, discId, isTrue(sheet.tem_disc_adicional))
+        if sheet.xp_pendente_status == "pendente" then
+            local err = "Já existe uma solicitação de XP pendente aguardando o Narrador."
+            dlg.showMessage(err)
+            return { ok = false, error = err }
         end
 
-        local res = V20.Experience.submitUpgrade(makeXpSnapshot(req.field), req, {
+        local campo = (type(payload) == "table") and payload.field or sheet.xp_loja_campo
+        local rawKind = (type(payload) == "table") and payload.traitKind or sheet.xp_loja_tipo
+        local rawCat = (type(payload) == "table") and payload.costCategory or sheet.xp_loja_cat_custo
+        local rawLabel = (type(payload) == "table") and payload.label
+            or ((type(sheet.xp_loja_descricao) == "string" and sheet.xp_loja_descricao ~= "") and sheet.xp_loja_descricao or campo)
+        local author = ((type(payload) == "table") and payload.author) or login
+
+        local inferredKind, slotIdx, discId = inferTraitKindFromField(sheet, campo)
+        if inferredKind == nil then
+            local err = "Campo alvo inválido para evolução por XP: " .. tostring(campo)
+            dlg.showMessage(err)
+            return { ok = false, error = err }
+        end
+
+        local finalKind = inferredKind
+        if rawKind ~= nil and rawKind ~= "" and rawKind ~= "auto" then
+            local compatibleSecPath = (rawKind == "secondary_path" and inferredKind == "discipline")
+            if rawKind ~= inferredKind and not compatibleSecPath then
+                local err = string.format(
+                    "Tipo de característica '%s' incompatível com o campo '%s' (esperado '%s').",
+                    tostring(rawKind), tostring(campo), inferredKind
+                )
+                dlg.showMessage(err)
+                return { ok = false, error = err }
+            end
+            finalKind = rawKind
+        elseif slotIdx and sheet["disc_slot" .. slotIdx .. "_cat"] == "linha_secundaria" then
+            finalKind = "secondary_path"
+        end
+
+        local finalCat = rawCat
+        if finalKind == "discipline" and (finalCat == nil or finalCat == "" or finalCat == "auto") then
+            local slotCat = slotIdx and sheet["disc_slot" .. slotIdx .. "_cat"] or nil
+            local hasAddDisc = isTrue(sheet.tem_disc_adicional)
+            local clanForClass = Bridge.isVampireSheet(sheet) and (sheet.cla_id or "brujah") or (sheet.cla_id or "none")
+            if type(discId) == "string" and discId ~= "" then
+                local classified = V20.DisciplinesEngine.classifyCostCategory(clanForClass, discId, hasAddDisc)
+                if sheet.cla_id == "caitiff" then
+                    finalCat = "caitiff"
+                elseif classified == "cla" or slotCat == "cla" then
+                    finalCat = "cla"
+                elseif slotCat == "caitiff" then
+                    finalCat = "caitiff"
+                else
+                    finalCat = classified
+                end
+            elseif slotCat == "cla" or slotCat == "caitiff" or slotCat == "fora_cla" then
+                finalCat = slotCat
+            else
+                finalCat = V20.DisciplinesEngine.classifyCostCategory(clanForClass, discId, hasAddDisc)
+            end
+        end
+
+        local curRating
+        if type(payload) == "table" and payload.currentRating ~= nil then
+            curRating = safeNonNegInt(payload.currentRating, 0)
+        else
+            curRating = getEffectiveFieldRatingForXP(sheet, campo, finalKind, discId)
+        end
+
+        if not stOverride then
+            local okCeil, ceilErr = checkV20TraitCeiling(sheet, finalKind, campo, curRating + 1)
+            if not okCeil then
+                dlg.showMessage(ceilErr)
+                return { ok = false, error = ceilErr }
+            end
+        end
+
+        local req = {
+            traitKind = finalKind,
+            field = campo,
+            currentRating = curRating,
+            costCategory = finalCat,
+            label = rawLabel,
+            author = author,
+        }
+
+        local res = V20.Experience.submitUpgrade(makeXpSnapshot(req.field, curRating), req, {
             isMestre = isMaster,
-            storytellerOverride = isTrue(sheet.narrador_override) and isMaster,
+            storytellerOverride = stOverride,
         })
         if not res.ok then
             dlg.showMessage(res.error or "Falha na compra de XP.")
@@ -1629,13 +2052,32 @@ function Bridge.submitOrApproveXP(sheet, action, payload, ndbApi, firecastApi, d
             autor_login = sheet.xp_pendente_autor or "Jogador",
             tipo_evento = "evolucao_xp",
             descricao = sheet.xp_pendente_desc or sheet.xp_pendente_campo or "Evolução",
-            custo_xp = safeInt(sheet.xp_pendente_custo, 0),
+            custo_xp = safeNonNegInt(sheet.xp_pendente_custo, 0),
             campo_alvo = sheet.xp_pendente_campo,
-            novo_valor = safeInt(sheet.xp_pendente_novo_val, 1),
+            novo_valor = safeNonNegInt(sheet.xp_pendente_novo_val, 1),
             status = sheet.xp_pendente_status or "nenhum",
         }
 
-        local res = V20.Experience.resolvePending(makeXpSnapshot(pendingEntry.campo_alvo), pendingEntry, act == "approve", login)
+        local effCur = nil
+        if act == "approve" and pendingEntry.campo_alvo ~= nil and pendingEntry.campo_alvo ~= "" then
+            local inferredKind, slotIdx, discId = inferTraitKindFromField(sheet, pendingEntry.campo_alvo)
+            if inferredKind == nil then
+                local err = "Campo alvo inválido na solicitação pendente: " .. tostring(pendingEntry.campo_alvo)
+                dlg.showMessage(err)
+                return { ok = false, error = err }
+            end
+            local kindForCeil = (slotIdx and sheet["disc_slot" .. slotIdx .. "_cat"] == "linha_secundaria") and "secondary_path" or inferredKind
+            effCur = getEffectiveFieldRatingForXP(sheet, pendingEntry.campo_alvo, kindForCeil, discId)
+            if not stOverride then
+                local okCeil, ceilErr = checkV20TraitCeiling(sheet, kindForCeil, pendingEntry.campo_alvo, safeNonNegInt(pendingEntry.novo_valor, 1))
+                if not okCeil then
+                    dlg.showMessage(ceilErr)
+                    return { ok = false, error = ceilErr }
+                end
+            end
+        end
+
+        local res = V20.Experience.resolvePending(makeXpSnapshot(pendingEntry.campo_alvo, effCur), pendingEntry, act == "approve", login)
         if not res.ok then
             dlg.showMessage(res.error or "Não há evolução pendente válida.")
             return res
