@@ -1,0 +1,237 @@
+local Catalog = {}
+
+local function m(spec)
+    return {
+        id              = spec.id,
+        name            = spec.name,
+        category        = spec.category,
+        defaultAttr     = spec.defaultAttr or "attr_destreza",
+        defaultHab      = spec.defaultHab or "hab_briga",
+        usesWeaponSlot  = spec.usesWeaponSlot == true,
+        usesSlotTraits  = spec.usesSlotTraits == true,
+        accBonus        = spec.accBonus or 0,
+        vampireAccBonus = spec.vampireAccBonus or 0,
+        diffMod         = spec.diffMod or 0,
+        fixedDiff       = spec.fixedDiff,
+        strDamageBonus  = spec.strDamageBonus or 0,
+        damageType      = spec.damageType or "bashing",
+        noDamage        = spec.noDamage == true,
+        setsGrapple     = spec.setsGrapple == true,
+        requiresGrapple = spec.requiresGrapple == true,
+        isDisarm        = spec.isDisarm == true,
+        isStaking       = spec.isStaking == true,
+        isDefense       = spec.isDefense == true,
+        allowAim        = spec.allowAim == true,
+        page            = spec.page or "V20, p. 276",
+        summary         = spec.summary or "",
+    }
+end
+
+Catalog.MANEUVER_ORDER = {
+    "strike",
+    "kick",
+    "bite",
+    "claw",
+    "clinch",
+    "hold",
+    "tackle",
+    "sweep_brawl",
+    "disarm_brawl",
+    "weapon_strike",
+    "stake_heart",
+    "disarm_melee",
+    "sweep_melee",
+    "single_shot",
+    "double_tap",
+    "three_round_burst",
+    "full_auto",
+    "dodge",
+    "block",
+    "parry",
+}
+
+Catalog.MANEUVERS = {
+    strike = m({
+        id = "strike", name = "Soco", category = "brawl",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 0, strDamageBonus = 0, damageType = "bashing",
+        page = "V20, p. 276",
+        summary = "Manobra padrão desarmada (Força Contundente; V20, p. 276).",
+    }),
+    kick = m({
+        id = "kick", name = "Chute", category = "brawl",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 1, strDamageBonus = 1, damageType = "bashing",
+        page = "V20, p. 276",
+        summary = "Chute potente (+1 dif, Força + 1 Contundente; falha crítica derruba o atacante; V20, p. 276).",
+    }),
+    bite = m({
+        id = "bite", name = "Mordida Vampírica", category = "brawl",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, vampireAccBonus = 1, diffMod = 0, strDamageBonus = 1,
+        damageType = "aggravated", requiresGrapple = true,
+        page = "V20, p. 276",
+        summary = "Exige Agarrão ativo; vampiros recebem +1 dado e causam Força + 1 Agravado (mortal causa Letal s/ +1 dado; V20, p. 276).",
+    }),
+    claw = m({
+        id = "claw", name = "Garras", category = "brawl",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 0, strDamageBonus = 1, damageType = "lethal",
+        page = "V20, p. 276",
+        summary = "Ataque com garras (Força + 1 Agravado com Garras da Besta/Metamorfose 2, senão Letal; V20, p. 276).",
+    }),
+    clinch = m({
+        id = "clinch", name = "Agarrão (Clinch)", category = "brawl",
+        defaultAttr = "attr_forca", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 0, strDamageBonus = 0, damageType = "bashing",
+        setsGrapple = true,
+        page = "V20, p. 276",
+        summary = "Agarra o alvo causando Força Contundente e ativando Agarrão em acerto (V20, p. 276).",
+    }),
+    hold = m({
+        id = "hold", name = "Segurar (Hold)", category = "brawl",
+        defaultAttr = "attr_forca", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 0, damageType = "none",
+        noDamage = true, setsGrapple = true,
+        page = "V20, p. 276",
+        summary = "Imobiliza o alvo sem causar dano, ativando Agarrão até a próxima ação (V20, p. 276).",
+    }),
+    tackle = m({
+        id = "tackle", name = "Encontrão (Tackle)", category = "brawl",
+        defaultAttr = "attr_forca", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 1, strDamageBonus = 1, damageType = "bashing",
+        page = "V20, p. 277",
+        summary = "Investida corporal (+1 dif, Força + 1 Contundente; alvo e atacante testam Destreza + Esportes para não cair; V20, p. 277).",
+    }),
+    sweep_brawl = m({
+        id = "sweep_brawl", name = "Rasteira (Briga)", category = "brawl",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 1, strDamageBonus = 0, damageType = "bashing",
+        page = "V20, p. 277",
+        summary = "Derruba o alvo causando Força Contundente (+2 dif para ações dele no chão; V20, p. 277).",
+    }),
+    disarm_brawl = m({
+        id = "disarm_brawl", name = "Desarmar (Desarmado)", category = "brawl",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 1, damageType = "none",
+        noDamage = true, isDisarm = true,
+        page = "V20, p. 276",
+        summary = "Desarma desarmado (+1 dif; exige sucessos líquidos > Força do alvo; falha crítica fere o atacante; V20, p. 276).",
+    }),
+    weapon_strike = m({
+        id = "weapon_strike", name = "Golpe com Arma Equipada", category = "melee",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_brancas",
+        usesWeaponSlot = true, usesSlotTraits = true,
+        accBonus = 0, diffMod = 0, strDamageBonus = 0, damageType = "weapon",
+        allowAim = true,
+        page = "V20, p. 276",
+        summary = "Ataque com a arma equipada no slot selecionado (Força + Dano da Arma; permite Mira se arremessada; V20, p. 276).",
+    }),
+    stake_heart = m({
+        id = "stake_heart", name = "Estacar Coração", category = "melee",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_brancas",
+        usesWeaponSlot = true, usesSlotTraits = false,
+        accBonus = 0, diffMod = 0, fixedDiff = 9, damageType = "lethal",
+        isStaking = true,
+        page = "V20, p. 279",
+        summary = "Golpe no coração (dif. mínima 9; se causar >= 3 níveis efetivos pós-absorção, paralisa vampiro; V20, p. 279).",
+    }),
+    disarm_melee = m({
+        id = "disarm_melee", name = "Desarmar com Arma", category = "melee",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_brancas",
+        usesWeaponSlot = true, usesSlotTraits = false,
+        accBonus = 0, diffMod = 1, damageType = "none",
+        noDamage = true, isDisarm = true,
+        page = "V20, p. 276",
+        summary = "Desarma com arma branca (+1 dif da arma; exige sucessos líquidos > Força do alvo; botch perde a própria arma; V20, p. 276).",
+    }),
+    sweep_melee = m({
+        id = "sweep_melee", name = "Rasteira com Haste/Arma", category = "melee",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_brancas",
+        usesWeaponSlot = true, usesSlotTraits = false,
+        accBonus = 0, diffMod = 1, strDamageBonus = 0, damageType = "bashing",
+        page = "V20, p. 277",
+        summary = "Rasteira com haste/arma (+1 dif da arma, Força Contundente e derruba o alvo em acerto; V20, p. 277).",
+    }),
+    single_shot = m({
+        id = "single_shot", name = "Tiro Único", category = "ranged",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_fogo",
+        usesWeaponSlot = true, usesSlotTraits = true,
+        accBonus = 0, diffMod = 0, damageType = "weapon",
+        allowAim = true,
+        page = "V20, p. 277",
+        summary = "Disparo único (não soma Força nem Potência; permite Mira; tiro na cabeça é Letal até em vampiros; V20, pp. 277, 280).",
+    }),
+    double_tap = m({
+        id = "double_tap", name = "Tiro Duplo Rápido", category = "ranged",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_fogo",
+        usesWeaponSlot = true, usesSlotTraits = true,
+        accBonus = 1, diffMod = 1, damageType = "weapon",
+        page = "V20, p. 278",
+        summary = "Dois disparos seguidos (+1 dado de ataque, +1 dif de recuo; consome 2 munições; V20, p. 278).",
+    }),
+    three_round_burst = m({
+        id = "three_round_burst", name = "Rajada Curta (3 Tiros)", category = "ranged",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_fogo",
+        usesWeaponSlot = true, usesSlotTraits = true,
+        accBonus = 2, diffMod = 1, damageType = "weapon",
+        page = "V20, p. 277",
+        summary = "Rajada controlada de 3 tiros (+2 dados de ataque, +1 dificuldade; gasta 3 balas; V20, p. 277).",
+    }),
+    full_auto = m({
+        id = "full_auto", name = "Rajada Completa (Full-Auto)", category = "ranged",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_fogo",
+        usesWeaponSlot = true, usesSlotTraits = true,
+        accBonus = 10, diffMod = 2, damageType = "weapon",
+        page = "V20, p. 277",
+        summary = "Rajada automática (+10 dados de ataque, +2 dificuldade; esvazia o carregador e exige recarga; V20, p. 277).",
+    }),
+    dodge = m({
+        id = "dodge", name = "Esquiva Ativa", category = "defense",
+        defaultAttr = "attr_destreza", defaultHab = "hab_esportes",
+        accBonus = 0, diffMod = 0, damageType = "none",
+        noDamage = true, isDefense = true,
+        page = "V20, p. 274",
+        summary = "Defesa reativa com Esportes (-1 dado cumulativo por defesa prévia no mesmo turno; V20, p. 274).",
+    }),
+    block = m({
+        id = "block", name = "Bloqueio (Briga)", category = "defense",
+        defaultAttr = "attr_destreza", defaultHab = "hab_briga",
+        accBonus = 0, diffMod = 0, damageType = "none",
+        noDamage = true, isDefense = true,
+        page = "V20, p. 274",
+        summary = "Defesa reativa com Briga contra ataques desarmados/contundentes (-1 dado por defesa prévia no turno; V20, p. 274).",
+    }),
+    parry = m({
+        id = "parry", name = "Aparar (Armas Brancas)", category = "defense",
+        defaultAttr = "attr_destreza", defaultHab = "hab_armas_brancas",
+        accBonus = 0, diffMod = 0, damageType = "none",
+        noDamage = true, isDefense = true,
+        page = "V20, p. 275",
+        summary = "Defesa reativa aparando com arma branca (-1 dado por defesa prévia no turno; V20, p. 275).",
+    }),
+}
+
+Catalog.TARGET_LOCATION_ORDER = { "nenhum", "membro", "cabeca" }
+Catalog.TARGET_LOCATIONS = {
+    nenhum = { id = "nenhum", name = "Sem Alvo Específico",            diffMod = 0, extraDamageDice = 0, isHeadshot = false },
+    membro = { id = "membro", name = "Membro / Arma (Braço/Perna/Mão)", diffMod = 1, extraDamageDice = 0, isHeadshot = false },
+    cabeca = { id = "cabeca", name = "Cabeça / Ponto Vital",            diffMod = 2, extraDamageDice = 1, isHeadshot = true  },
+}
+
+Catalog.COVER_LEVEL_ORDER = { "nenhuma", "leve", "boa", "superior" }
+Catalog.COVER_LEVELS = {
+    nenhuma  = { id = "nenhuma",  name = "Sem Cobertura",      diffMod = 0 },
+    leve     = { id = "leve",     name = "Cobertura Leve",     diffMod = 1 },
+    boa      = { id = "boa",      name = "Boa Cobertura",      diffMod = 2 },
+    superior = { id = "superior", name = "Cobertura Superior", diffMod = 3 },
+}
+
+Catalog.FLANK_MODE_ORDER = { "frontal", "flanco", "retaguarda" }
+Catalog.FLANK_MODES = {
+    frontal    = { id = "frontal",    name = "Frontal",               diffMod =  0 },
+    flanco     = { id = "flanco",     name = "Flanco",                diffMod = -1 },
+    retaguarda = { id = "retaguarda", name = "Retaguarda / Surpresa", diffMod = -2 },
+}
+
+return Catalog
