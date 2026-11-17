@@ -15,6 +15,9 @@ V20 = V20 or {
     BackgroundsEngine  = require("Core.backgrounds_engine"),
     Creation           = require("Core.creation"),
     Experience         = require("Core.experience"),
+    ClanWeaknesses     = require("Core.clan_weaknesses"),
 }
+
+V20.ClanWeaknesses = V20.ClanWeaknesses or require("Core.clan_weaknesses")
 
 return V20

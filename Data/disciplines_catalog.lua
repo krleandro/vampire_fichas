@@ -102,7 +102,7 @@ Catalog.DISCIPLINES = {
         powers = {
             p(1, "obf_1", "Manto das Sombras", 0, 0, nil, nil, 6, "Automático se imóvel e em cobertura", { id = "obf_cloak", stealthActive = true }, "Oculta-se das vistas enquanto permanecer imóvel na penumbra (V20, p. 184)."),
             p(2, "obf_2", "Presença Invisível", 0, 0, "attr_raciocinio", "hab_furtividade", 6, "Automático, ou Raciocínio + Furtividade se arriscar ruído", { id = "obf_unseen", stealthActive = true }, "Move-se pelo ambiente sem ser notado por observadores comuns (V20, p. 185)."),
-            p(3, "obf_3", "Máscara das Mil Faces", 0, 0, "attr_manipulacao", "hab_performance", 7, "Dif 7", nil, "Projeta feições ilusórias escolhidas na mente de quem o observa (V20, p. 186)."),
+            p(3, "obf_3", "Máscara das Mil Faces", 0, 0, "attr_manipulacao", "hab_performance", 7, "Dif 7", { id = "obf_mask", maskThousandFaces = true }, "Projeta feições ilusórias escolhidas na mente de quem o observa (V20, p. 186)."),
             p(4, "obf_4", "Desaparecer do Olho da Mente", 0, 0, "attr_carisma", "hab_furtividade", 6, "Dif = Raciocínio + Prontidão das testemunhas", nil, "Desaparece abruptamente mesmo diante de olhares diretos (V20, p. 187)."),
             p(5, "obf_5", "Cobrir o Grupo", 0, 0, nil, nil, 6, "Estende poderes de Ofuscação a 1 aliado por ponto de Furtividade", nil, "Oculta ou disfarça companheiros próximos sob o mesmo véu mental (V20, p. 187)."),
         },
