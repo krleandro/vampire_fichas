@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module sdkVersion="3.7b">
+    <id>br.com.v20.suite</id>
+    <version>0.2.0</version>
+    <info lang="pt-BR">
+        <name>Vampiro: A Máscara V20 — Suíte Oficial Automatizada</name>
+        <description>Ecossistema automatizado para Vampiro: A Máscara Edição de 20º Aniversário (V20): Motor Universal das 17 Disciplinas (de clã e fora do clã), Antecedentes interativos, Gerações 4ª-15ª, Vitalidade, Criação validada, XP auditado, Ficha Brujah e Ficha Mortal (com evolução Carniçal/Numina).</description>
+        <author>Carlos Leandro</author>
+        <site>https://firecast.app</site>
+        <contact>Mestre Carlos</contact>
+    </info>
+</module>
