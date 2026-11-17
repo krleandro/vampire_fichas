@@ -376,7 +376,7 @@ _G.require = function(modName)
         vhdLoaded[modName] = (res == nil) and true or res
         return vhdLoaded[modName]
     end
-    if type(modName) == "string" and modName:match("%.lua$") then
+    if type(modName) == "string" and (modName:match("%.lua$") or modName:match("%.dlua$")) then
         local rel = modName:gsub("^/+", "")
         local fullPath = RPK_ROOT .. "/" .. rel
         local f = io.open(fullPath, "rb")
@@ -508,6 +508,229 @@ assert(#createdHandles == #destroyedHandles, "Todos os handles criados devem ser
         shutil.rmtree(extract_dir, ignore_errors=True)
 
 
+def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL) -> None:
+    """
+    Fix Round 1: Reproduz fielmente o auto-boot VHD do Firecast SDK 3.7b, que executa todos os
+    arquivos .lua (exceto sdk/, *.lfm.lua e *.dlua) em ordem alfabética de caminho — executando
+    Adapter/firecast_bridge.lua ANTES de Core/* e ANTES de v20_loader.lua — seguido da instanciação,
+    binding [TESTE_E2E] e destruição reversa de frmBrujah e frmMortal.
+    """
+    extract_dir = os.path.join(ROOT, "output", "test_e2e_rpk_autoboot")
+    shutil.rmtree(extract_dir, ignore_errors=True)
+    os.makedirs(extract_dir, exist_ok=True)
+    try:
+        with zipfile.ZipFile(RPK_PATH, "r") as zf:
+            names = zf.namelist()
+            zf.extractall(extract_dir)
+
+        boot_entries = sorted(
+            n
+            for n in names
+            if n.endswith(".lua") and not n.startswith("sdk/") and not n.endswith(".lfm.lua")
+        )
+        assert boot_entries[0] == "Adapter/firecast_bridge.lua", (
+            f"Adapter/firecast_bridge.lua deve ser o 1º script no auto-boot alfabético, obteve: {boot_entries[0]}"
+        )
+        assert boot_entries[-1] == "v20_loader.lua", (
+            f"v20_loader.lua deve ser o último script no auto-boot alfabético, obteve: {boot_entries[-1]}"
+        )
+        assert all(not n.endswith(".dlua") for n in boot_entries), (
+            "Arquivos .dlua JAMAIS devem entrar no auto-boot do VHD"
+        )
+
+        rpk_dir_lua = extract_dir.replace("\\", "/")
+        boot_lua_list = ", ".join(f'"{e}"' for e in boot_entries)
+
+        lua_autoboot = f"""
+local RPK_ROOT = "{rpk_dir_lua}"
+local BOOT_ENTRIES = {{ {boot_lua_list} }}
+
+package.path = ""
+package.cpath = ""
+
+local vhdSearchPaths = {{ "" }}
+local vhdLoaded = {{}}
+local registeredForms = {{}}
+local registeredDataTypes = {{}}
+local allControls = {{}}
+local activeListeners = {{}}
+local nextHandle = 500
+local nextListenerId = 1
+
+local ctrlProto = {{}}
+local ctrlMeta = {{ __index = ctrlProto }}
+local ALLOWED_SETTERS = {{
+    "setAlign", "setWidth", "setHeight", "setLeft", "setTop",
+    "setColor", "setStrokeColor", "setStrokeSize", "setXradius", "setYradius",
+    "setMargins", "setPadding", "setText", "setFontColor", "setFontSize",
+    "setHorzTextAlign", "setVertTextAlign", "setWordWrap", "setField", "setType",
+    "setTransparent", "setTextPrompt", "setItems", "setValues", "setValue",
+    "setTitle", "setSRC", "setStyle", "setOptimize", "setFields", "setDefaultValues",
+    "setReadOnly", "setHitTest", "setCursor", "setHint", "setVisible", "setEnabled",
+    "setName", "setFormType", "setDataType", "setTheme"
+}}
+for _, mName in ipairs(ALLOWED_SETTERS) do
+    ctrlProto[mName] = function(self, val) self._props[mName] = val end
+end
+function ctrlProto:beginUpdate() end
+function ctrlProto:endUpdate() end
+function ctrlProto:setParent(p) table.insert(p._children, self) end
+function ctrlProto:addEventListener(evName, fn, ctx)
+    local id = nextListenerId
+    nextListenerId = nextListenerId + 1
+    local rec = {{ id = id, ctrl = self, evName = evName, fn = fn, ctx = ctx }}
+    activeListeners[id] = rec
+    table.insert(self._listeners, rec)
+    return id
+end
+function ctrlProto:setNodeObject(nodeObject)
+    self._nodeObject = nodeObject
+    if nodeObject ~= nil then
+        for _, child in ipairs(self._children) do
+            if child._tag == "dataLink" then
+                local fields = child._props.setFields
+                local defaults = child._props.setDefaultValues
+                if type(fields) == "table" and type(defaults) == "table" then
+                    for i, fName in ipairs(fields) do
+                        if nodeObject[fName] == nil and defaults[i] ~= nil then
+                            nodeObject[fName] = defaults[i]
+                        end
+                    end
+                end
+                for _, lRec in ipairs(child._listeners) do
+                    if lRec.evName == "onChange" and activeListeners[lRec.id] ~= nil then
+                        lRec.fn(child)
+                    end
+                end
+            end
+        end
+    end
+end
+function ctrlProto:setNodeDatabase(nodeObject) self:setNodeObject(nodeObject) end
+function ctrlProto:destroy()
+    assert(not self._destroyed)
+    for _, ch in ipairs(self._children) do assert(ch._destroyed == true) end
+    self._destroyed = true
+end
+
+_G._obj_newObject = function(tag)
+    nextHandle = nextHandle + 1
+    local h = nextHandle
+    allControls[h] = setmetatable({{ handle = h, _tag = tag, _props = {{}}, _children = {{}}, _listeners = {{}}, _destroyed = false }}, ctrlMeta)
+    return h
+end
+_G.GUI = {{ fromHandle = function(h) return assert(allControls[h]) end }}
+_G.gui = _G.GUI
+_G._gui_assignInitialParentForForm = function(_) end
+_G.lfm_setPropAsString = function(ctrl, prop, val) ctrl._props[prop] = tostring(val) end
+_G.showMessage = function(_) end
+_G.Dialogs = {{ showMessage = _G.showMessage }}
+_G.Firecast = {{
+    registrarForm = function(spec) registeredForms[spec.name] = spec end,
+    registrarDataType = function(spec) registeredDataTypes[spec.dataType] = spec end,
+    interpretarRolagem = function(expr)
+        return {{ expr = expr, ops = {{ {{ tipo = "dado", resultados = {{ 10, 8 }} }} }}, rolarLocalmente = function() end }}
+    end,
+    getMesaDe = function(_) return nil end,
+}}
+_G.RRPG = _G.Firecast
+_G.rrpg = _G.Firecast
+_G.NDB = {{ getChildNodes = function(_) return {{}} end }}
+
+local mockRrpgObjs = {{
+    beginObjectsLoading = function() end,
+    endObjectsLoading = function() end,
+    removeEventListenerById = function(id) activeListeners[id] = nil end,
+}}
+local mockUtils = {{
+    tryFinally = function(tryFn, finallyFn)
+        local ok, err = pcall(tryFn)
+        finallyFn()
+        if not ok then error(err, 0) end
+    end,
+}}
+local mockVhd = {{
+    addSearchPath = function(p) table.insert(vhdSearchPaths, tostring(p)) end,
+}}
+local sdkPreloads = {{
+    ["firecast.lua"] = function() return _G.Firecast end,
+    ["rrpgObjs.lua"] = function() return mockRrpgObjs end,
+    ["rrpgGUI.lua"] = function() return _G.GUI end,
+    ["rrpgDialogs.lua"] = function() return _G.Dialogs end,
+    ["rrpgLFM.lua"] = function() return true end,
+    ["ndb.lua"] = function() return _G.NDB end,
+    ["locale.lua"] = function() return true end,
+    ["utils.lua"] = function() return mockUtils end,
+    ["vhd.lua"] = function() return mockVhd end,
+}}
+
+-- Mock VHD require: aceita APENAS .lua e .dlua (como o VHD real do Firecast SDK 3.7b)
+_G.require = function(modName)
+    if vhdLoaded[modName] ~= nil then
+        return vhdLoaded[modName]
+    end
+    if sdkPreloads[modName] ~= nil then
+        local res = sdkPreloads[modName]()
+        vhdLoaded[modName] = (res == nil) and true or res
+        return vhdLoaded[modName]
+    end
+    if type(modName) == "string" and (modName:match("%.lua$") or modName:match("%.dlua$")) then
+        local rel = modName:gsub("^/+", "")
+        local f = io.open(RPK_ROOT .. "/" .. rel, "rb")
+        if f ~= nil then
+            local src = f:read("*a")
+            f:close()
+            local chunk, loadErr = load(src, "@" .. rel)
+            if not chunk then error(loadErr, 0) end
+            local res = chunk()
+            vhdLoaded[modName] = (res == nil) and true or res
+            return vhdLoaded[modName]
+        end
+    end
+    error("VHD module not found: " .. tostring(modName), 0)
+end
+
+-- Confirma que v20_shim.dlua NÃO foi auto-executado antes do boot
+assert(vhdLoaded["v20_shim.dlua"] == nil and _G.__v20_loader_ready == nil)
+
+-- Auto-boot estrito em ordem alfabética (Adapter/firecast_bridge.lua é o #1!)
+for idx, relEntry in ipairs(BOOT_ENTRIES) do
+    assert(not relEntry:match("%.dlua$"), ".dlua proibido no auto-boot: " .. relEntry)
+    local f = assert(io.open(RPK_ROOT .. "/" .. relEntry, "rb"), "Arquivo ausente: " .. relEntry)
+    local src = f:read("*a")
+    f:close()
+    local chunk, loadErr = load(src, "@" .. relEntry)
+    if not chunk then error(loadErr, 0) end
+    chunk()
+    if idx == 1 then
+        -- Logo após Adapter/firecast_bridge.lua (#1), v20_shim.dlua já deve ter sido carregado via require!
+        assert(vhdLoaded["v20_shim.dlua"] ~= nil, "v20_shim.dlua deve ser carregado sob demanda via require no 1º script!")
+        assert(_G.__v20_loader_ready == true, "__v20_loader_ready deve estar ativo já no 1º script do boot!")
+        assert(type(_G.V20) == "table" and type(_G.V20Bridge) == "table")
+    end
+end
+
+-- Agora carrega e instancia ambas as fichas compiladas após o auto-boot alfabético
+require("Sheets/frmBrujah.lfm.lua")
+require("Sheets/frmMortal.lfm.lua")
+
+local fb = newfrmBrujah()
+local sb = {{ nome = "[TESTE_E2E] Boot Brujah", cla_id = "brujah", is_vampire = true, geracao_base = 12 }}
+fb:setNodeObject(sb)
+assert(sb.geracao == 12 and sb.sangue_max == 11)
+fb:destroy()
+
+local fm = newfrmMortal()
+local sm = {{ nome = "[TESTE_E2E] Boot Mortal", is_vampire = false, mortal_sobrenatural_modo = "carnical" }}
+fm:setNodeObject(sm)
+assert(sm.isGhoul == true and sm.sangue_max == 2)
+fm:destroy()
+"""
+        run_lua_in_isolated_state(dll, lua_autoboot, "@test_09_vhd_sorted_autoboot")
+    finally:
+        shutil.rmtree(extract_dir, ignore_errors=True)
+
+
 def main() -> None:
     assert os.path.exists(BUILD_SCRIPT), f"Script compilador não encontrado: {BUILD_SCRIPT}"
     subprocess.run([sys.executable, BUILD_SCRIPT], check=True)
@@ -578,10 +801,23 @@ def main() -> None:
             ]
             assert not missing, f"Métodos inválidos em {compiled_lfm} frente a rrpgGUI+rrpgObjs: {missing}"
 
-        # Valida sintaxe Lua 5.4 via lua54x64.dll para todos os scripts Lua empacotados no .rpk
+        # Valida sintaxe Lua 5.4 via lua54x64.dll para todos os scripts Lua e DLua empacotados no .rpk
         for entry in sorted(names):
-            if entry.endswith(".lua"):
+            if entry.endswith((".lua", ".dlua")):
                 validate_lua_buffer(dll, zf.read(entry), f"@{entry}", allow_bom=entry.startswith("sdk/"))
+
+    verify_rpk_vhd_sorted_autoboot_round1(dll)
+
+    with zipfile.ZipFile(RPK_PATH, "r") as zf:
+        names = set(zf.namelist())
+        assert "v20_shim.dlua" in names, "v20_shim.dlua obrigatório na raiz do .rpk"
+        assert 'require("v20_shim.dlua")' in zf.read("v20_loader.lua").decode("utf-8")
+        for entry in sorted(names):
+            if entry.startswith(("Core/", "Adapter/")) and entry.endswith(".lua"):
+                first_line = zf.read(entry).decode("utf-8").splitlines()[0]
+                assert first_line.startswith('require("v20_shim.dlua"); '), (
+                    f"{entry} no .rpk deve iniciar com require(\"v20_shim.dlua\"); na linha 1"
+                )
 
     verify_xml_escaping_pf4()
     verify_rpk_forms_runtime_pf4(dll)

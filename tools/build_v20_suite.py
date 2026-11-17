@@ -126,10 +126,24 @@ def main() -> None:
         glob.glob(os.path.join(ROOT, "Data", "*.lua"))
         + glob.glob(os.path.join(ROOT, "Core", "*.lua"))
         + glob.glob(os.path.join(ROOT, "Adapter", "*.lua"))
-        + [os.path.join(ROOT, "v20_loader.lua")]
+        + [os.path.join(ROOT, "v20_shim.dlua"), os.path.join(ROOT, "v20_loader.lua")]
     ):
         with open(lua_src, "r", encoding="utf-8") as f:
             compiler.validate_lua_syntax(f.read(), "@" + os.path.relpath(lua_src, ROOT).replace("\\", "/"))
+
+    # Fix Round 1: Prepend require("v20_shim.dlua"); na linha 1 de Core/*.lua e Adapter/*.lua no .rpk
+    # para garantir que o auto-boot alfabético do VHD do Firecast inicialize o shim antes de qualquer require.
+    shim_prefix = 'require("v20_shim.dlua"); '
+    packaged_modules: dict[str, str] = {}
+    for folder in ("Data", "Core", "Adapter"):
+        for p in sorted(glob.glob(os.path.join(ROOT, folder, "*.lua"))):
+            rel_entry = f"{folder}/{os.path.basename(p)}"
+            with open(p, "r", encoding="utf-8") as f:
+                src_txt = f.read()
+            if folder in ("Core", "Adapter") and not src_txt.startswith(shim_prefix):
+                src_txt = shim_prefix + src_txt
+                compiler.validate_lua_syntax(src_txt, f"@{rel_entry}")
+            packaged_modules[rel_entry] = src_txt
 
     lfm_entries = ["Sheets/frmBrujah.lfm", "Sheets/frmMortal.lfm"]
     compiled_map = {}
@@ -165,10 +179,10 @@ def main() -> None:
     with zipfile.ZipFile(out_rpk, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("module.xml", assembled_xml)
         zf.write(REF_CLN, "_rdkCompiledLang.cln")
+        zf.write(os.path.join(ROOT, "v20_shim.dlua"), "v20_shim.dlua")
         zf.write(os.path.join(ROOT, "v20_loader.lua"), "v20_loader.lua")
-        for folder in ("Data", "Core", "Adapter"):
-            for p in sorted(glob.glob(os.path.join(ROOT, folder, "*.lua"))):
-                zf.write(p, f"{folder}/{os.path.basename(p)}")
+        for rel_entry, lua_txt in packaged_modules.items():
+            zf.writestr(rel_entry, lua_txt)
         for rel, lua_txt in compiled_map.items():
             zf.write(os.path.join(ROOT, rel), rel)
             zf.writestr(rel + ".lua", lua_txt)
