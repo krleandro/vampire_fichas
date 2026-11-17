@@ -19,7 +19,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BUILD_SCRIPT = os.path.join(ROOT, "tools", "build_v20_suite.py")
 DLL_PATH = r"C:\Users\Cliente\AppData\Local\Firecast\lua54x64.dll"
 
-EXPECTED_VERSION = "1.0.2"
+EXPECTED_VERSION = "1.0.3"
 
 EXPECTED_SHEETS: list[tuple[str, str, str, str, str]] = [
     ("brujah", "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah", "Vampiro V20 - Brujah"),
@@ -406,6 +406,7 @@ for _, mName in ipairs(ALLOWED_SETTERS) do
     end
 end
 
+function ctrlProto:getWidth() return self._width or self._props.setWidth or 1280 end
 function ctrlProto:getTabIndex() return self._tabIdx or 0 end
 function ctrlProto:setTabIndex(idx) self._tabIdx = idx end
 function ctrlProto:beginUpdate() self._updating = true end
@@ -917,6 +918,7 @@ local ALLOWED_SETTERS = {{
 for _, mName in ipairs(ALLOWED_SETTERS) do
     ctrlProto[mName] = function(self, val) self._props[mName] = val end
 end
+function ctrlProto:getWidth() return self._width or self._props.setWidth or 1280 end
 function ctrlProto:getTabIndex() return self._tabIdx or 0 end
 function ctrlProto:setTabIndex(idx) self._tabIdx = idx end
 function ctrlProto:beginUpdate() end

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module sdkVersion="3.7b">
     <id>br.com.v20.suite</id>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <info lang="pt-BR">
         <name>Suite de plugins para Vampiro - A máscara V 20</name>
         <description>Suite de plugins para Vampiro - A máscara V 20 — Desenvolvida por Mestre Carlos (krmirim). Ecossistema automatizado completo (16 formulários): 13 Clãs Tradicionais + Caitiff + Ficha Mortal (Carniçal/Numina) + Painel Acoplável tablesDock de Coterie e Iniciativa, 20 Manobras de Combate Assistido, fraquezas de clã automatizadas, 17 Disciplinas, 9 Linhas e 20 Rituais de Taumaturgia/Necromancia, Antecedentes interativos, Gerações 4ª-15ª, XP auditado e Atualizador Automático via GitHub.</description>

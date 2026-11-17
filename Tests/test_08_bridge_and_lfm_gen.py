@@ -1903,6 +1903,53 @@ assert(sentMessages[#sentMessages]:find("Falha Crítica Taumatúrgica") ~= nil,
         for c_fld in req_combat_dl_fields:
             assert f"'{c_fld}'" in dl_15_blob, f"Campo '{c_fld}' ausente nos <dataLink> raiz de {rel_15}"
 
+        # 2.5. Responsividade Widescreen (max-width 1180px + colunas 1/3 simétricas em todas as abas — v1.0.3)
+        req_resp_ctrls = [
+            "rectRootBg",
+            "layHeaderInner",
+            "layFooterInner",
+            "layPageTab1",
+            "layPageTab2",
+            "layPageTab3",
+            "layPageTab4",
+            "layPageTab5",
+            "layPageTab6",
+            "layPageTab7",
+            "layPageTabSobre",
+            "colBio1_1",
+            "colBio1_2",
+            "colBio1_3",
+            "colBio2_1",
+            "colBio2_2",
+            "colBio2_3",
+            "colAttr1",
+            "colAttr2",
+            "colAttr3",
+            "colHab1",
+            "colHab2",
+            "colHab3",
+            "colHabExtra1",
+            "colHabExtra2",
+            "colVirt1",
+            "colVirt2",
+            "colVirt3",
+        ]
+        if rel_15 != "Sheets/frmMortal.lfm":
+            req_resp_ctrls.extend(["layPageTab8", "colBio3_1", "colBio3_2", "colBio3_3"])
+        else:
+            req_resp_ctrls.extend(["colMortalRow3_1", "colMortalRow3_2"])
+        for r_nm in req_resp_ctrls:
+            assert r_nm in names_15, f"Container responsivo '{r_nm}' ausente em {rel_15}"
+
+        pos_combos = [el for el in root_15.iter("comboBox") if el.attrib.get("name") == "cmbCmbPosicao"]
+        assert len(pos_combos) == 1 and pos_combos[0].attrib.get("align") != "client", (
+            f"cmbCmbPosicao em {rel_15} não deve usar align='client' descontrolado"
+        )
+        mf_tipo_combos = [el for el in root_15.iter("comboBox") if el.attrib.get("name") == "cmbMfTipo1"]
+        assert len(mf_tipo_combos) == 1 and mf_tipo_combos[0].attrib.get("align") == "right", (
+            f"cmbMfTipo1 em {rel_15} deve usar align='right' ao lado de edtMfPontos1"
+        )
+
     # 3. Instanciar e exercitar em runtime na lua54x64.dll TODAS as 15 fichas compiladas (.lfm.lua)
     sandbox_lfm_dir = os.path.join(ROOT, "output", "probe_test_e2e_15_forms")
     os.makedirs(sandbox_lfm_dir, exist_ok=True)
@@ -1910,10 +1957,16 @@ assert(sentMessages[#sentMessages]:find("Falha Crítica Taumatúrgica") ~= nil,
     all_15_specs = expected_vampire_sheets + [
         ("mortal", "Sheets/frmMortal.lfm", "br.com.v20.Mortal", "frmMortal", "Vampiro V20 - Mortal")
     ]
+    build_mod_spec = importlib.util.spec_from_file_location(
+        "build_v20_suite", os.path.join(ROOT, "tools", "build_v20_suite.py")
+    )
+    assert build_mod_spec is not None and build_mod_spec.loader is not None
+    build_mod = importlib.util.module_from_spec(build_mod_spec)
+    build_mod_spec.loader.exec_module(build_mod)
     try:
         compiled_paths: list[tuple[str, str, str]] = []
         for cid, rel_lfm, _, form_name, _ in all_15_specs:
-            lua_src = compiler.compile_lfm_to_lua(os.path.join(ROOT, rel_lfm))
+            lua_src = build_mod.compile_v20_lfm(compiler, os.path.join(ROOT, rel_lfm))
             out_file = os.path.join(sandbox_lfm_dir, f"{form_name}.lfm.lua")
             with open(out_file, "w", encoding="utf-8", newline="\n") as f:
                 f.write(lua_src)
@@ -1950,6 +2003,7 @@ local ALLOWED_SETTERS = {{
 for _, mName in ipairs(ALLOWED_SETTERS) do
     ctrlProto[mName] = function(self, val) self._props[mName] = val end
 end
+function ctrlProto:getWidth() return self._width or self._props.setWidth or 1280 end
 function ctrlProto:getTabIndex() return self._tabIdx or 0 end
 function ctrlProto:setTabIndex(idx) self._tabIdx = idx end
 function ctrlProto:beginUpdate() end
@@ -2047,6 +2101,7 @@ package.preload["utils.lua"] = function()
         end
     }}
 end
+package.preload["v20_loader.lua"] = function() return true end
 
 for _, entry in ipairs(FORMS) do
     local spec = dofile(entry.path)
@@ -2054,6 +2109,39 @@ for _, entry in ipairs(FORMS) do
     local inst = spec.new()
     local mockNode = {{ nome = "[TESTE_E2E] Form " .. entry.formName }}
     inst:setNodeObject(mockNode)
+
+    -- Testa responsividade Ultrawide (2560px) vs Compacto (1024px) via evento onResize do rectRootBg
+    local resizeFn = nil
+    for _, lRec in ipairs(inst.rectRootBg._listeners) do
+        if lRec.evName == "onResize" then resizeFn = lRec.fn end
+    end
+    assert(type(resizeFn) == "function", "rectRootBg deve possuir listener onResize em " .. entry.formName)
+
+    inst.rectRootBg._width = 2560
+    resizeFn(inst.rectRootBg)
+    assert(inst.layHeaderInner._props.setMargins.left == 677 and inst.layHeaderInner._props.setMargins.right == 677,
+        "layHeaderInner deve centralizar em 1180px (margem 677) em monitor 2560px: " .. entry.formName)
+    assert(inst.layFooterInner._props.setMargins.left == 677 and inst.layFooterInner._props.setMargins.right == 677,
+        "layFooterInner deve centralizar em 1180px em monitor 2560px: " .. entry.formName)
+    assert(inst.layPageTab2._props.setMargins.left == 664 and inst.layPageTab2._props.setMargins.right == 664,
+        "layPageTab2 deve centralizar em 1180px (margem 664) em monitor 2560px: " .. entry.formName)
+    assert(inst.colAttr1._props.setWidth == 378 and inst.colAttr2._props.setWidth == 378,
+        "colAttr1 e colAttr2 devem medir exatamente 378px (1/3 exato de 1154px com gaps 10+10) em " .. entry.formName)
+    assert(inst.colHab1._props.setWidth == 378 and inst.colHab2._props.setWidth == 378,
+        "colHab1 e colHab2 devem medir exatamente 378px em " .. entry.formName)
+    assert(inst.colBio1_1._props.setWidth == 378 and inst.colBio1_2._props.setWidth == 378,
+        "colBio1_1 e colBio1_2 devem medir exatamente 378px em " .. entry.formName)
+    assert(inst.colHabExtra1._props.setWidth == 570,
+        "colHabExtra1 deve medir exatamente 570px (1/2 exato de 1154px com gap 14) em " .. entry.formName)
+    assert(inst.colVirt1._props.setWidth == 378 and inst.colVirt2._props.setWidth == 378,
+        "colVirt1 e colVirt2 devem medir exatamente 378px em " .. entry.formName)
+
+    inst.rectRootBg._width = 1024
+    resizeFn(inst.rectRootBg)
+    assert(inst.layHeaderInner._props.setMargins.left == 0 and inst.layPageTab2._props.setMargins.left == 0,
+        "Em janela compacta 1024px, margens laterais devem zerar para aproveitar 100% da tela em " .. entry.formName)
+    assert(inst.colAttr1._props.setWidth == 308 and inst.colAttr2._props.setWidth == 308,
+        "Em janela 1024px (pageW=972, innerW=946), colAttr1/colAttr2 devem escalar simetricamente para 308px em " .. entry.formName)
 
     if entry.cid ~= "mortal" then
         assert(inst.tabMagiaSangue ~= nil, "tabMagiaSangue deve existir em " .. entry.formName)
@@ -2169,6 +2257,7 @@ local ALLOWED_SETTERS = {{
 for _, mName in ipairs(ALLOWED_SETTERS) do
     ctrlProto[mName] = function(self, val) self._props[mName] = val end
 end
+function ctrlProto:getWidth() return self._width or self._props.setWidth or 1280 end
 function ctrlProto:getTabIndex() return self._tabIdx or 0 end
 function ctrlProto:setTabIndex(idx) self._tabIdx = idx end
 function ctrlProto:beginUpdate() end

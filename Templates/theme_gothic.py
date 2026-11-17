@@ -16,6 +16,9 @@ TEXT_MUTED = "#9E9890"
 TEXT_GOLD = "#D9B45B"
 TEXT_ALERT = "#E05A5A"
 
+SUITE_VERSION = "1.0.3"
+MAX_SHEET_WIDTH = 1180
+
 VALID_ALIGNS = {"leading", "center", "trailing"}
 
 ALLOWED_TAGS = {
@@ -696,6 +699,97 @@ def build_mode_permissions_lua(is_vampire: bool = True) -> str:
         end"""
 
 
+def build_responsive_layout_lua(is_vampire: bool = True) -> str:
+    page_tabs = [
+        "layPageTab1",
+        "layPageTab2",
+        "layPageTab3",
+        "layPageTab4",
+        "layPageTab5",
+        "layPageTab6",
+        "layPageTab7",
+    ]
+    if is_vampire:
+        page_tabs.append("layPageTab8")
+    page_tabs.append("layPageTabSobre")
+
+    col3_pairs = [
+        ("colBio1_1", "colBio1_2"),
+        ("colBio2_1", "colBio2_2"),
+        ("colAttr1", "colAttr2"),
+        ("colHab1", "colHab2"),
+        ("colVirt1", "colVirt2"),
+    ]
+    if is_vampire:
+        col3_pairs.insert(2, ("colBio3_1", "colBio3_2"))
+
+    col2_left = ["colHabExtra1"]
+    if not is_vampire:
+        col2_left.append("colMortalRow3_1")
+
+    tabs_lua = "{ " + ", ".join(f'"{t}"' for t in page_tabs) + " }"
+    pairs_lua = "{ " + ", ".join(f'{{ "{a}", "{b}" }}' for a, b in col3_pairs) + " }"
+    col2_lua = "{ " + ", ".join(f'"{c}"' for c in col2_left) + " }"
+
+    return f"""        local PAGE_TABS = {tabs_lua}
+        local COL3_PAIRS = {pairs_lua}
+        local COL2_LEFT = {col2_lua}
+        local QUICK_CMB_BTNS = {{ "btnQuickCmb1", "btnQuickCmb2", "btnQuickCmb3", "btnQuickCmb4" }}
+
+        local function ajustarLayoutResponsivo(self)
+            if self == nil then return end
+            local rootW = 0
+            if self.rectRootBg ~= nil and self.rectRootBg.getWidth ~= nil then
+                rootW = tonumber(self.rectRootBg:getWidth()) or 0
+            end
+            if rootW <= 100 and self.getWidth ~= nil then
+                rootW = tonumber(self:getWidth()) or 0
+            end
+            if rootW <= 100 then
+                rootW = {MAX_SHEET_WIDTH}
+            end
+
+            local barMargin = math.max(0, math.floor((rootW - 26 - {MAX_SHEET_WIDTH}) / 2))
+            if self.layHeaderInner ~= nil then
+                self.layHeaderInner:setMargins({{ left = barMargin, right = barMargin, top = 0, bottom = 0 }})
+            end
+            if self.layFooterInner ~= nil then
+                self.layFooterInner:setMargins({{ left = barMargin, right = barMargin, top = 0, bottom = 0 }})
+            end
+
+            local availW = math.max(720, rootW - 52)
+            local pageW = math.min({MAX_SHEET_WIDTH}, availW)
+            local sideMargin = math.max(0, math.floor((availW - pageW) / 2))
+            for _, pName in ipairs(PAGE_TABS) do
+                local pCtrl = self[pName]
+                if pCtrl ~= nil then
+                    pCtrl:setMargins({{ left = sideMargin, right = sideMargin, top = 0, bottom = 0 }})
+                end
+            end
+
+            local innerW = math.max(694, pageW - 26)
+            local col3W = math.max(220, math.floor((innerW - 20) / 3))
+            for _, pair in ipairs(COL3_PAIRS) do
+                local c1 = self[pair[1]]
+                local c2 = self[pair[2]]
+                if c1 ~= nil then c1:setWidth(col3W) end
+                if c2 ~= nil then c2:setWidth(col3W) end
+            end
+
+            local col2W = math.max(320, math.floor((innerW - 14) / 2))
+            for _, leftName in ipairs(COL2_LEFT) do
+                local cLeft = self[leftName]
+                if cLeft ~= nil then cLeft:setWidth(col2W) end
+            end
+
+            local quickW = math.max(132, math.floor((innerW - 32) / 5))
+            for _, bName in ipairs(QUICK_CMB_BTNS) do
+                local bCtrl = self[bName]
+                if bCtrl ~= nil then bCtrl:setWidth(quickW) end
+            end
+        end"""
+
+
 def make_root_datalink(fields: list[str], defaults: list[str], on_change_lua: str = "") -> str:
     if len(fields) != len(defaults):
         raise ValueError("fields e defaults devem possuir o mesmo tamanho em make_root_datalink")
@@ -734,51 +828,53 @@ def header_bar_xml(accent_color: str, border_color: str, subtitle_label: str, is
 
     blood_visible = "true" if is_vampire else "false"
     return f"""        <rectangle name="barHeaderTop" align="top" height="74" color="{BG_PANEL}" strokeColor="{accent_color}" strokeSize="1" padding="{{left=12, right=12, top=6, bottom=6}}">
-            <layout align="top" height="28">
-                <label align="left" width="175" text="{xml_esc(subtitle_label)}" fontColor="{accent_color}" fontSize="13" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-                <label align="left" width="48" text="Nome:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                <edit align="left" width="210" field="nome" textPrompt="Nome do Personagem" fontColor="{TEXT_MAIN}" fontSize="12" fontStyle="bold"/>
-                {gen_or_prof_xml}
-                <label align="left" width="70" text="Vitalidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{left=8, right=4}}"/>
-                <label align="left" width="120" field="vitalidade_resumo" fontColor="{TEXT_MAIN}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-                <label align="client" field="vitalidade_alerta" fontColor="{TEXT_ALERT}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-            </layout>
-            <layout align="top" height="30" margins="{{top=4}}">
-                <layout name="pnlHeaderBlood" align="left" width="320" visible="{blood_visible}">
-                    <label align="left" width="54" text="Sangue:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                    <button align="left" width="24" text="-" fontSize="12" fontStyle="bold">
-                        <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'sangue_atual', -1, 0, 'sangue_max') end</event>
-                    </button>
-                    <label align="left" width="32" field="sangue_atual" fontColor="{TEXT_ALERT}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
-                    <label align="left" width="12" text="/" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
-                    <label align="left" width="28" field="sangue_max" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
-                    <button align="left" width="24" text="+" fontSize="12" fontStyle="bold" margins="{{right=8}}">
-                        <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'sangue_atual', 1, 0, 'sangue_max') end</event>
-                    </button>
-                    <label align="left" width="46" text="Turno:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}"/>
-                    <label align="left" width="22" field="sangue_gasto_turno" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
-                    <label align="left" width="10" text="/" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("center")}"/>
-                    <label align="left" width="24" field="sangue_por_turno" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+            <layout name="layHeaderInner" align="client">
+                <layout align="top" height="28">
+                    <label align="left" width="180" text="{xml_esc(subtitle_label)}" fontColor="{accent_color}" fontSize="13" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                    <label align="left" width="48" text="Nome:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                    <edit align="left" width="240" field="nome" textPrompt="Nome do Personagem" fontColor="{TEXT_MAIN}" fontSize="12" fontStyle="bold"/>
+                    {gen_or_prof_xml}
+                    <label align="left" width="70" text="Vitalidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{left=8, right=4}}"/>
+                    <label align="left" width="125" field="vitalidade_resumo" fontColor="{TEXT_MAIN}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                    <label align="client" field="vitalidade_alerta" fontColor="{TEXT_ALERT}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                 </layout>
-                <layout align="left" width="215">
-                    <label align="left" width="66" text="FdV Temp:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                    <button align="left" width="24" text="-" fontSize="12" fontStyle="bold">
-                        <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'fdv_temp', -1, 0, 'fdv_perm') end</event>
+                <layout align="top" height="30" margins="{{top=4}}">
+                    <layout name="pnlHeaderBlood" align="left" width="320" visible="{blood_visible}">
+                        <label align="left" width="54" text="Sangue:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                        <button align="left" width="24" text="-" fontSize="12" fontStyle="bold">
+                            <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'sangue_atual', -1, 0, 'sangue_max') end</event>
+                        </button>
+                        <label align="left" width="32" field="sangue_atual" fontColor="{TEXT_ALERT}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                        <label align="left" width="12" text="/" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                        <label align="left" width="28" field="sangue_max" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                        <button align="left" width="24" text="+" fontSize="12" fontStyle="bold" margins="{{right=8}}">
+                            <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'sangue_atual', 1, 0, 'sangue_max') end</event>
+                        </button>
+                        <label align="left" width="46" text="Turno:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}"/>
+                        <label align="left" width="22" field="sangue_gasto_turno" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                        <label align="left" width="10" text="/" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("center")}"/>
+                        <label align="left" width="24" field="sangue_por_turno" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                    </layout>
+                    <layout align="left" width="215">
+                        <label align="left" width="66" text="FdV Temp:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                        <button align="left" width="24" text="-" fontSize="12" fontStyle="bold">
+                            <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'fdv_temp', -1, 0, 'fdv_perm') end</event>
+                        </button>
+                        <label align="left" width="28" field="fdv_temp" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                        <label align="left" width="12" text="/" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                        <label align="left" width="28" field="fdv_perm" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                        <button align="left" width="24" text="+" fontSize="12" fontStyle="bold">
+                            <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'fdv_temp', 1, 0, 'fdv_perm') end</event>
+                        </button>
+                    </layout>
+                    <button align="right" width="94" text="Novo Turno" fontSize="11" margins="{{left=4}}">
+                        <event name="onClick">if sheet ~= nil then V20Bridge.newTurn(sheet) end</event>
                     </button>
-                    <label align="left" width="28" field="fdv_temp" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
-                    <label align="left" width="12" text="/" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
-                    <label align="left" width="28" field="fdv_perm" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
-                    <button align="left" width="24" text="+" fontSize="12" fontStyle="bold">
-                        <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, 'fdv_temp', 1, 0, 'fdv_perm') end</event>
+                    <button align="right" width="76" text="Curar" fontSize="11" margins="{{left=4}}">
+                        <event name="onClick">if sheet ~= nil then V20Bridge.healDamage(sheet, 'bashing') end</event>
                     </button>
+                    {awaken_btn}
                 </layout>
-                <button align="right" width="94" text="Novo Turno" fontSize="11" margins="{{left=4}}">
-                    <event name="onClick">if sheet ~= nil then V20Bridge.newTurn(sheet) end</event>
-                </button>
-                <button align="right" width="76" text="Curar" fontSize="11" margins="{{left=4}}">
-                    <event name="onClick">if sheet ~= nil then V20Bridge.healDamage(sheet, 'bashing') end</event>
-                </button>
-                {awaken_btn}
             </layout>
         </rectangle>"""
 
@@ -787,26 +883,28 @@ def dice_roller_footer_xml(accent_color: str, border_color: str) -> str:
     attr_items, attr_vals = all_attr_options(include_virtual=True)
     hab_items, hab_vals = all_hab_options(include_none=True, include_backgrounds=True)
     return f"""        <rectangle name="barFooterRoller" align="bottom" height="76" color="{BG_PANEL}" strokeColor="{border_color}" strokeSize="1" padding="{{left=12, right=12, top=6, bottom=6}}">
-            <layout align="top" height="30">
-                <label align="left" width="58" text="Atributo:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                <comboBox align="left" width="145" field="roll_attr_id" items="{attr_items}" values="{attr_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
-                <label align="left" width="68" text="Habilidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                <comboBox align="left" width="175" field="roll_hab_id" items="{hab_items}" values="{hab_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
-                <label align="left" width="46" text="Bônus:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                <edit align="left" width="42" field="roll_bonus_dice" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                <label align="left" width="28" text="Dif:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                <edit align="left" width="40" field="roll_diff" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                <button align="right" width="142" text="ROLAR NO CHAT" fontSize="12" fontStyle="bold">
-                    <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet) end</event>
-                </button>
-            </layout>
-            <layout align="top" height="28" margins="{{top=4}}">
-                <checkBox align="left" width="82" field="roll_usar_espec" text="Espec. (10=2)" fontColor="{TEXT_MAIN}" fontSize="10"/>
-                <checkBox align="left" width="84" field="roll_gastar_fdv" text="+1 FdV Auto" fontColor="{TEXT_GOLD}" fontSize="10"/>
-                <checkBox align="left" width="76" field="roll_usar_fama" text="Usar Fama" fontColor="{TEXT_MAIN}" fontSize="10"/>
-                <checkBox align="left" width="82" field="roll_usar_status" text="Usar Status" fontColor="{TEXT_MAIN}" fontSize="10"/>
-                <checkBox align="left" width="106" field="roll_ignorar_ferimento" text="Ignorar Ferim." fontColor="{TEXT_MAIN}" fontSize="10"/>
-                <label align="client" field="roll_equacao_resumo" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}"/>
+            <layout name="layFooterInner" align="client">
+                <layout align="top" height="30">
+                    <label align="left" width="58" text="Atributo:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                    <comboBox align="left" width="165" field="roll_attr_id" items="{attr_items}" values="{attr_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                    <label align="left" width="68" text="Habilidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                    <comboBox align="left" width="205" field="roll_hab_id" items="{hab_items}" values="{hab_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                    <label align="left" width="46" text="Bônus:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                    <edit align="left" width="42" field="roll_bonus_dice" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                    <label align="left" width="28" text="Dif:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                    <edit align="left" width="40" field="roll_diff" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                    <button align="right" width="152" text="ROLAR NO CHAT" fontSize="12" fontStyle="bold">
+                        <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet) end</event>
+                    </button>
+                </layout>
+                <layout align="top" height="28" margins="{{top=4}}">
+                    <checkBox align="left" width="82" field="roll_usar_espec" text="Espec. (10=2)" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                    <checkBox align="left" width="84" field="roll_gastar_fdv" text="+1 FdV Auto" fontColor="{TEXT_GOLD}" fontSize="10"/>
+                    <checkBox align="left" width="76" field="roll_usar_fama" text="Usar Fama" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                    <checkBox align="left" width="82" field="roll_usar_status" text="Usar Status" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                    <checkBox align="left" width="106" field="roll_ignorar_ferimento" text="Ignorar Ferim." fontColor="{TEXT_MAIN}" fontSize="10"/>
+                    <label align="client" field="roll_equacao_resumo" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("trailing")}"/>
+                </layout>
             </layout>
         </rectangle>"""
 
@@ -824,10 +922,10 @@ def trait_row_xml(
     buff_xml = ""
     if blood_buff_key:
         buff_xml = (
-            f'<button align="right" width="44" text="+Buff" fontSize="9" hint="Blood Buff (+1 Físico por 1 Vitae)" margins="{{left=3}}">'
+            f'<button align="right" width="40" text="+Buff" fontSize="9" hint="Blood Buff (+1 Físico por 1 Vitae)" margins="{{left=3}}">'
             f'<event name="onClick">if sheet ~= nil then V20Bridge.applyBloodBuff(sheet, \'{blood_buff_key}\') end</event>'
             f"</button>"
-            f'<label align="right" width="22" field="buff_{blood_buff_key}" fontColor="{TEXT_ALERT}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>'
+            f'<label align="right" width="18" field="buff_{blood_buff_key}" fontColor="{TEXT_ALERT}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>'
         )
     spec_xml = (
         f'<edit name="edt_{spec_field}" align="client" field="{spec_field}" textPrompt="Especialidade" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{left=4}}"/>'
@@ -835,13 +933,13 @@ def trait_row_xml(
         else ""
     )
     return f"""                        <layout align="top" height="28" margins="{{bottom=2}}">
-                            <button align="left" width="118" text="{xml_esc(label_text)}" fontSize="10" horzTextAlign="{assert_align("leading")}" hint="Selecionar na parada de dados">
+                            <button align="left" width="112" text="{xml_esc(label_text)}" fontSize="10" horzTextAlign="{assert_align("leading")}" hint="Selecionar na parada de dados">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.selectRollTrait(sheet, '{kind}', '{field_id}') end</event>
                             </button>
                             <button name="btnMinus_{field_id}" align="left" width="22" text="-" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, '{field_id}', -1, {min_val}, '{max_cap_field}') end</event>
                             </button>
-                            <edit name="edt_{field_id}" align="left" width="34" field="{field_id}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                            <edit name="edt_{field_id}" align="left" width="32" field="{field_id}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
                             <button name="btnPlus_{field_id}" align="left" width="22" text="+" fontSize="11">
                                 <event name="onClick">if sheet ~= nil then V20Bridge.adjustResource(sheet, '{field_id}', 1, {min_val}, '{max_cap_field}') end</event>
                             </button>
@@ -929,19 +1027,20 @@ def suite_credits_tab_xml(
     body_h = "230" if compact else "210"
     total_h = "525" if compact else "525"
     btn_upd_w = "152" if compact else "215"
+    page_name_attr = "" if compact else 'name="layPageTabSobre" '
 
     return f"""            <tab name="tabSobreSuite" title="{xml_esc(tab_title)}">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="{total_h}">
+                    <layout {page_name_attr}align="top" height="{total_h}">
                         <rectangle name="crdSobreIdentificacao" align="top" height="{hero_h}" color="{BG_PANEL}" strokeColor="{accent_color}" strokeSize="1" xradius="6" yradius="6" padding="{{left={pad}, right={pad}, top=14, bottom=14}}" margins="{{bottom=10}}">
                             <label name="lblSobreSelo" align="top" height="20" text="IDENTIFICAÇÃO DA SUÍTE • RRPG FIRECAST SDK 3.7b" fontColor="{TEXT_MUTED}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
                             <label name="lblSobreTituloPrincipal" align="top" height="44" text="Suite de plugins para Vampiro - A máscara V 20" wordWrap="true" fontColor="{TEXT_GOLD}" fontSize="{title_sz}" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
                             <label name="lblSobreAutoria" align="top" height="30" text="Desenvolvida por Mestre Carlos (krmirim)" wordWrap="true" fontColor="{accent_color}" fontSize="{author_sz}" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{top=4}}"/>
-                            <label name="lblSobreVersaoModelo" align="top" height="28" text="{xml_esc(f'Versão 1.0.2 • {model_label}')}" wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
+                            <label name="lblSobreVersaoModelo" align="top" height="28" text="{xml_esc(f'Versão {SUITE_VERSION} • {model_label}')}" wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
                         </rectangle>
 
                         <rectangle name="crdSobreAtualizador" align="top" height="{upd_h}" color="{BG_PANEL}" strokeColor="{border_color}" strokeSize="1" xradius="6" yradius="6" padding="{{left={pad}, right={pad}, top=8, bottom=8}}" margins="{{bottom=10}}">
-                            <label name="lblUpdateStatus" align="top" height="22" text="Versão instalada: v1.0.2 • Repositório: github.com/krleandro/vampire_fichas" wordWrap="true" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <label name="lblUpdateStatus" align="top" height="22" text="{xml_esc(f'Versão instalada: v{SUITE_VERSION} • Repositório: github.com/krleandro/vampire_fichas')}" wordWrap="true" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="30" margins="{{top=6}}">
                                 <button name="btnVerificarAtualizacao" align="left" width="{btn_upd_w}" text="Verificar / Atualizar" fontSize="10" fontStyle="bold" margins="{{right=6}}">
                                     <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkAndInstall(self, {{ manual = true }}) end</event>

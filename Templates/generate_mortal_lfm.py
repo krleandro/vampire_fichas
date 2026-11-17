@@ -33,6 +33,7 @@ from Templates.theme_gothic import (  # noqa: E402
     TEXT_MUTED,
     assert_align,
     build_mode_permissions_lua,
+    build_responsive_layout_lua,
     dice_roller_footer_xml,
     header_bar_xml,
     lua_str_list,
@@ -51,30 +52,46 @@ def build_mortal_tab1() -> str:
 
     return f"""            <tab name="tabCriacao" title="1. Mortal &amp; Criação">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="620">
+                    <layout name="layPageTab1" align="top" height="620">
                         <rectangle align="top" height="180" color="{BG_PANEL}" strokeColor="{BORDER_MORTAL}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="REGISTRO BIOGRÁFICO HUMANO — VAMPIRO V20" fontColor="{ACCENT_MORTAL}" fontSize="13" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="75" text="Jogador:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="180" field="jogador" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="70" text="Crônica:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="190" field="cronica" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="75" text="Ocupação:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="client" field="ocupacao" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <layout name="colBio1_1" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="75" text="Jogador:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="jogador" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio1_2" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="75" text="Crônica:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="cronica" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio1_3" align="client">
+                                    <label align="left" width="75" text="Ocupação:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="ocupacao" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="75" text="Natureza:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="180" field="natureza" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="70" text="Comport.:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="190" field="comportamento" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="75" text="Formação:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="client" field="formacao" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <layout name="colBio2_1" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="75" text="Natureza:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="natureza" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio2_2" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="75" text="Comport.:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="comportamento" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio2_3" align="client">
+                                    <label align="left" width="75" text="Formação:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="formacao" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="85" text="Perfil V20:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbMortalPerfil" align="left" width="320" field="mortal_perfil" items="{perfil_items}" values="{perfil_vals}" fontColor="{TEXT_GOLD}" fontSize="11" margins="{{right=14}}"/>
-                                <label align="left" width="85" text="Modo Ficha:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbModoFicha" align="client" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <layout name="colMortalRow3_1" align="left" width="570" margins="{{right=14}}">
+                                    <label align="left" width="78" text="Perfil V20:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <comboBox name="cmbMortalPerfil" align="client" field="mortal_perfil" items="{perfil_items}" values="{perfil_vals}" fontColor="{TEXT_GOLD}" fontSize="11"/>
+                                </layout>
+                                <layout name="colMortalRow3_2" align="client">
+                                    <label align="left" width="80" text="Modo Ficha:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <comboBox name="cmbModoFicha" align="client" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
                             </layout>
                         </rectangle>
 
@@ -121,11 +138,11 @@ def build_mortal_tab3() -> str:
     for i in range(1, 5):
         ghoul_slots.append(
             f"""                            <layout align="top" height="28" margins="{{bottom=3}}">
-                                <comboBox name="cmbDiscSlotId{i}" align="left" width="195" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit name="edtDiscSlotNivel{i}" align="left" width="36" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <comboBox name="cmbDiscSlotPwrLvl{i}" align="left" width="105" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotId{i}" align="left" width="215" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit name="edtDiscSlotNivel{i}" align="left" width="38" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl{i}" align="left" width="115" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
                                 <label align="client" field="disc_slot{i}_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{right=6}}"/>
-                                <button name="btnDiscSlotAtivar{i}" align="right" width="110" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
+                                <button name="btnDiscSlotAtivar{i}" align="right" width="118" text="Ativar / Rolar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, {i}) end</event>
                                 </button>
                             </layout>"""
@@ -135,9 +152,9 @@ def build_mortal_tab3() -> str:
     for nid, nlabel in NUMINA_LIST:
         numina_rows.append(
             f"""                            <layout align="top" height="28" margins="{{bottom=3}}">
-                                <label align="left" width="280" text="{xml_esc(nlabel)}" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtNumina_{nid}" align="left" width="42" field="numina_{nid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
-                                <button align="left" width="135" text="Rolar Numina" fontSize="10" fontStyle="bold">
+                                <label align="left" width="290" text="{xml_esc(nlabel)}" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtNumina_{nid}" align="left" width="44" field="numina_{nid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <button align="left" width="140" text="Rolar Numina" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollNuminaAction(sheet, '{nid}') end</event>
                                 </button>
                             </layout>"""
@@ -145,7 +162,7 @@ def build_mortal_tab3() -> str:
 
     return f"""            <tab name="tabOcupacao" title="3. Ocupação, Bens &amp; Dons">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="780">
+                    <layout name="layPageTab3" align="top" height="780">
                         <rectangle align="top" height="210" color="{BG_PANEL}" strokeColor="{BORDER_MORTAL}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="VÍNCULOS HUMANOS, EQUIPAMENTOS CIVIS &amp; CONHECIMENTO DO OCULTO" fontColor="{ACCENT_MORTAL}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <label align="top" height="18" text="Vínculos, Família, Empregador e Rede Civil:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=4}}"/>
@@ -158,17 +175,17 @@ def build_mortal_tab3() -> str:
                             <label align="top" height="22" text="CONDIÇÃO CARNIÇAL (GHOUL) — VITAE DO DOMITOR &amp; POTÊNCIA 1 AUTOMÁTICA" fontColor="{TEXT_ALERT}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4, bottom=6}}">
                                 <label align="left" width="70" text="Domitor:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="180" field="senhor_regente" textPrompt="Nome / Clã do Regente" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <button align="left" width="90" text="+Buff Força" fontSize="10" margins="{{right=4}}">
+                                <edit align="left" width="220" field="senhor_regente" textPrompt="Nome / Clã do Regente" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
+                                <button align="left" width="95" text="+Buff Força" fontSize="10" margins="{{right=4}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.applyBloodBuff(sheet, 'forca') end</event>
                                 </button>
-                                <button align="left" width="95" text="+Buff Destreza" fontSize="10" margins="{{right=4}}">
+                                <button align="left" width="100" text="+Buff Destreza" fontSize="10" margins="{{right=4}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.applyBloodBuff(sheet, 'destreza') end</event>
                                 </button>
-                                <button align="left" width="90" text="+Buff Vigor" fontSize="10" margins="{{right=6}}">
+                                <button align="left" width="95" text="+Buff Vigor" fontSize="10" margins="{{right=6}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.applyBloodBuff(sheet, 'vigor') end</event>
                                 </button>
-                                <button align="right" width="110" text="Limpar Buffs" fontSize="10">
+                                <button align="right" width="115" text="Limpar Buffs" fontSize="10">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.clearSceneBuffs(sheet) end</event>
                                 </button>
                             </layout>
@@ -176,7 +193,7 @@ def build_mortal_tab3() -> str:
                         </rectangle>
 
                         <rectangle name="pnlNumina" visible="false" align="top" height="150" color="{BG_PANEL}" strokeColor="{TEXT_GOLD}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}">
-                            <label align="top" height="22" text="DONS NUMINA (FÉ VERDADEIRA, MAGIA DE CERCA &amp; FENÔMENOS PSÍQUICOS)" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <label align="top" height="22" text="DONS NUMINA (FÉ VERADEIRA, MAGIA DE CERCA &amp; FENÔMENOS PSÍQUICOS)" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
 {chr(10).join(numina_rows)}
                         </rectangle>
                     </layout>
@@ -187,16 +204,22 @@ def build_mortal_tab3() -> str:
 def build_mortal_tab6() -> str:
     return f"""            <tab name="tabMoralidade" title="6. Moralidade &amp; Psique">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="420">
+                    <layout name="layPageTab6" align="top" height="420">
                         <rectangle align="top" height="175" color="{BG_PANEL}" strokeColor="{BORDER_MORTAL}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="VIRTUDES HUMANAS, HUMANIDADE &amp; FORÇA DE VONTADE" fontColor="{ACCENT_MORTAL}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="95" text="Consciência:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtVirtude1Val" align="left" width="40" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=16}}"/>
-                                <label align="left" width="95" text="Autocontrole:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtVirtude2Val" align="left" width="40" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=16}}"/>
-                                <label align="left" width="75" text="Coragem:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtVirtude3Val" align="left" width="40" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                <layout name="colVirt1" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="105" text="Consciência:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit name="edtVirtude1Val" align="left" width="44" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
+                                <layout name="colVirt2" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="105" text="Autocontrole:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit name="edtVirtude2Val" align="left" width="44" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
+                                <layout name="colVirt3" align="client">
+                                    <label align="left" width="85" text="Coragem:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit name="edtVirtude3Val" align="left" width="44" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
                             </layout>
                             <layout align="top" height="28" margins="{{top=8}}">
                                 <label align="left" width="95" text="Humanidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
@@ -336,6 +359,7 @@ def generate_mortal_lfm() -> str:
     )
 
     perms_lua = build_mode_permissions_lua(is_vampire=False)
+    resp_lua = build_responsive_layout_lua(is_vampire=False)
 
     xml_out = f"""<?xml version="1.0" encoding="UTF-8"?>
 <form name="frmMortal" formType="sheetTemplate" dataType="br.com.v20.Mortal" title="Vampiro V20 - Mortal" align="client" theme="dark">
@@ -356,14 +380,18 @@ def generate_mortal_lfm() -> str:
         end
 
 {perms_lua}
+
+{resp_lua}
         ]]>
     </script>
 
-    <rectangle align="client" color="{BG_MAIN}">
+    <rectangle name="rectRootBg" align="client" color="{BG_MAIN}">
+        <event name="onResize">ajustarLayoutResponsivo(self)</event>
 {header_bar_xml(ACCENT_MORTAL, BORDER_MORTAL, "MORTAL / INQUISIDOR (V20)", is_vampire=False)}
 {dice_roller_footer_xml(ACCENT_MORTAL, BORDER_MORTAL)}
 
         <tabControl name="pgcPrincipal" align="client" margins="{{left=6, right=6, top=6, bottom=6}}">
+            <event name="onResize">ajustarLayoutResponsivo(self)</event>
 {build_mortal_tab1()}
 {build_tab2_traits(mortal_meta, ACCENT_MORTAL, is_vampire=False, border=BORDER_MORTAL)}
 {build_mortal_tab3()}
@@ -376,7 +404,8 @@ def generate_mortal_lfm() -> str:
     </rectangle>
 
 {datalinks}
-    <event name="OnShow">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
+    <event name="OnShow">ajustarLayoutResponsivo(self); if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
+    <event name="onResize">ajustarLayoutResponsivo(self)</event>
 </form>
 """
     validate_generated_lfm_xml(xml_out)

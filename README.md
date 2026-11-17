@@ -2,7 +2,7 @@
 
 **Desenvolvida por Mestre Carlos (`krmirim`)**  
 Plataforma: **RRPG Firecast (SDK 3.7b / API 88.2 / Lua 5.4)**  
-Versão Atual: **`1.0.2`**
+Versão Atual: **`1.0.3`**
 
 ---
 

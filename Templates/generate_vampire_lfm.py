@@ -40,6 +40,7 @@ from Templates.theme_gothic import (  # noqa: E402
     all_xp_upgradable_field_options,
     assert_align,
     build_mode_permissions_lua,
+    build_responsive_layout_lua,
     dice_roller_footer_xml,
     header_bar_xml,
     health_track_xml,
@@ -57,32 +58,50 @@ def build_tab1_creation(clan: dict, accent: str) -> str:
     modo_vals = lua_str_list(["criacao", "jogo", "narrador_livre"])
     return f"""            <tab name="tabCriacao" title="1. Personagem &amp; Criação">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="720">
+                    <layout name="layPageTab1" align="top" height="720">
                         <rectangle align="top" height="175" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="IDENTIDADE CAINITA — CLÃ {xml_esc(clan['name'].upper())}" fontColor="{accent}" fontSize="13" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="75" text="Jogador:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="180" field="jogador" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="70" text="Crônica:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="190" field="cronica" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="70" text="Conceito:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="client" field="conceito" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <layout name="colBio1_1" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="72" text="Jogador:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="jogador" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio1_2" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="72" text="Crônica:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="cronica" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio1_3" align="client">
+                                    <label align="left" width="72" text="Conceito:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="conceito" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="75" text="Natureza:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="180" field="natureza" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="70" text="Comport.:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="left" width="190" field="comportamento" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
-                                <label align="left" width="70" text="Senhor:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit align="client" field="senhor_regente" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <layout name="colBio2_1" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="72" text="Natureza:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="natureza" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio2_2" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="72" text="Comport.:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="comportamento" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
+                                <layout name="colBio2_3" align="client">
+                                    <label align="left" width="72" text="Senhor:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit align="client" field="senhor_regente" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="95" text="Geração Base:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtGeracaoBase" align="left" width="44" field="geracao_base" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
-                                <label align="left" width="105" text="Geração Efetiva:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <label align="left" width="38" field="geracao" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
-                                <label align="left" width="85" text="Modo Ficha:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbModoFicha" align="left" width="210" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                <layout name="colBio3_1" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="95" text="Geração Base:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit name="edtGeracaoBase" align="left" width="52" field="geracao_base" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
+                                <layout name="colBio3_2" align="left" width="378" margins="{{right=10}}">
+                                    <label align="left" width="105" text="Geração Efetiva:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <label align="left" width="44" field="geracao" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
+                                <layout name="colBio3_3" align="client">
+                                    <label align="left" width="78" text="Modo Ficha:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <comboBox name="cmbModoFicha" align="client" field="modo_ficha" items="{modo_items}" values="{modo_vals}" fontColor="{TEXT_MAIN}" fontSize="11"/>
+                                </layout>
                             </layout>
                         </rectangle>
 
@@ -133,8 +152,9 @@ def build_tab1_creation(clan: dict, accent: str) -> str:
 def build_tab2_traits(clan: dict, accent: str, is_vampire: bool = True, border: str = BORDER_VAMP) -> str:
     attr_cols_xml = []
     for idx, (col_title, rows) in enumerate(ATTRIBUTES_BY_COL):
+        col_name = f"colAttr{idx + 1}"
         align_pos = "left" if idx < 2 else "client"
-        width_attr = 'width="305" margins="{right=8}"' if idx < 2 else ""
+        width_attr = 'width="378" margins="{right=10}"' if idx < 2 else ""
         r_xml = []
         for aid, aname, bkey in rows:
             min_v = 0 if (clan.get("appearanceZero") and aid == "attr_aparencia") else 1
@@ -151,7 +171,7 @@ def build_tab2_traits(clan: dict, accent: str, is_vampire: bool = True, border: 
             )
         joined_rows = "\n".join(r_xml)
         attr_cols_xml.append(
-            f"""                            <layout align="{align_pos}" {width_attr}>
+            f"""                            <layout name="{col_name}" align="{align_pos}" {width_attr}>
                                 <label align="top" height="20" text="{xml_esc(col_title)}" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
 {joined_rows}
                             </layout>"""
@@ -159,29 +179,27 @@ def build_tab2_traits(clan: dict, accent: str, is_vampire: bool = True, border: 
 
     hab_cols_xml = []
     for idx, (col_title, rows) in enumerate(ABILITIES_BY_COL):
+        col_name = f"colHab{idx + 1}"
         align_pos = "left" if idx < 2 else "client"
-        width_attr = 'width="305" margins="{right=8}"' if idx < 2 else ""
+        width_attr = 'width="378" margins="{right=10}"' if idx < 2 else ""
         r_xml = [
             trait_row_xml(hid, hname, kind="hab", max_cap_field="atributo_max_geracao", min_val=0, with_specialty=True)
             for hid, hname in rows
         ]
         joined_rows = "\n".join(r_xml)
         hab_cols_xml.append(
-            f"""                            <layout align="{align_pos}" {width_attr}>
+            f"""                            <layout name="{col_name}" align="{align_pos}" {width_attr}>
                                 <label align="top" height="20" text="{xml_esc(col_title)}" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
 {joined_rows}
                             </layout>"""
         )
 
-    extra_rows = []
-    for i in range(1, 5):
-        extra_rows.append(
-            f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
-                                <edit name="edtHabExtraNome{i}" align="left" width="190" field="hab_extra{i}_nome" textPrompt="Habilidade Extra #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit name="edtHabExtraVal{i}" align="left" width="42" field="hab_extra{i}_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <edit name="edtHabExtraEspec{i}" align="client" field="hab_extra{i}_espec" textPrompt="Especialidade / Categoria" fontColor="{TEXT_MUTED}" fontSize="10"/>
-                            </layout>"""
-        )
+    def _extra_row_xml(i: int) -> str:
+        return f"""                                <layout align="top" height="26" margins="{{bottom=3}}">
+                                    <edit name="edtHabExtraNome{i}" align="left" width="185" field="hab_extra{i}_nome" textPrompt="Habilidade Extra #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                    <edit name="edtHabExtraVal{i}" align="left" width="40" field="hab_extra{i}_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                    <edit name="edtHabExtraEspec{i}" align="client" field="hab_extra{i}_espec" textPrompt="Especialidade / Categoria" fontColor="{TEXT_MUTED}" fontSize="10"/>
+                                </layout>"""
 
     clear_buffs_btn = (
         '<button align="right" width="175" text="Encerrar Cena (Limpar Buffs)" fontSize="10">'
@@ -193,10 +211,10 @@ def build_tab2_traits(clan: dict, accent: str, is_vampire: bool = True, border: 
 
     return f"""            <tab name="tabAtributos" title="2. Atributos &amp; Habilidades">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="760">
-                        <rectangle align="top" height="158" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=10, right=10, top=8, bottom=8}}" margins="{{bottom=10}}">
+                    <layout name="layPageTab2" align="top" height="665">
+                        <rectangle align="top" height="158" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <layout align="top" height="22">
-                                <label align="left" width="380" text="ATRIBUTOS V20 (CLIQUE NO NOME PARA CARREGAR NA PARADA)" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                                <label align="left" width="420" text="ATRIBUTOS V20 (CLIQUE NO NOME PARA CARREGAR NA PARADA)" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                                 {clear_buffs_btn}
                             </layout>
                             <layout align="client" margins="{{top=4}}">
@@ -204,16 +222,25 @@ def build_tab2_traits(clan: dict, accent: str, is_vampire: bool = True, border: 
                             </layout>
                         </rectangle>
 
-                        <rectangle align="top" height="365" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=10, right=10, top=8, bottom=8}}" margins="{{bottom=10}}">
+                        <rectangle align="top" height="365" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="HABILIDADES OFICIAIS V20 (PERÍCIA 0 = +1 DIF • CONHECIMENTO 0 = BLOQUEADO)" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="client" margins="{{top=4}}">
 {chr(10).join(hab_cols_xml)}
                             </layout>
                         </rectangle>
 
-                        <rectangle align="top" height="155" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=10, right=10, top=8, bottom=8}}">
+                        <rectangle align="top" height="106" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}">
                             <label align="top" height="22" text="HABILIDADES SECUNDÁRIAS / OFÍCIOS ESPECÍFICOS" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-{chr(10).join(extra_rows)}
+                            <layout align="client" margins="{{top=4}}">
+                                <layout name="colHabExtra1" align="left" width="570" margins="{{right=14}}">
+{_extra_row_xml(1)}
+{_extra_row_xml(2)}
+                                </layout>
+                                <layout name="colHabExtra2" align="client">
+{_extra_row_xml(3)}
+{_extra_row_xml(4)}
+                                </layout>
+                            </layout>
                         </rectangle>
                     </layout>
                 </scrollBox>
@@ -232,15 +259,15 @@ def build_tab3_disciplines(accent: str) -> str:
     for i in range(1, 10):
         badge = f"CLÃ #{i}" if i <= 3 else f"EXTRA #{i - 3}"
         slot_cards.append(
-            f"""                        <rectangle align="top" height="62" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="5" yradius="5" padding="{{left=10, right=10, top=6, bottom=6}}" margins="{{bottom=6}}">
+            f"""                        <rectangle align="top" height="62" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="5" yradius="5" padding="{{left=12, right=12, top=6, bottom=6}}" margins="{{bottom=6}}">
                             <layout align="top" height="26">
                                 <label align="left" width="66" text="{badge}" fontColor="{accent}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbDiscSlotId{i}" align="left" width="185" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotId{i}" align="left" width="235" field="disc_slot{i}_id" items="{disc_items}" values="{disc_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
                                 <label align="left" width="36" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                                <edit name="edtDiscSlotNivel{i}" align="left" width="36" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <comboBox name="cmbDiscSlotCat{i}" align="left" width="140" field="disc_slot{i}_cat" items="{cat_items}" values="{cat_vals}" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbDiscSlotPwrLvl{i}" align="left" width="110" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <button name="btnDiscSlotAtivar{i}" align="right" width="118" text="Ativar / Rolar" fontSize="11" fontStyle="bold">
+                                <edit name="edtDiscSlotNivel{i}" align="left" width="38" field="disc_slot{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotCat{i}" align="left" width="175" field="disc_slot{i}_cat" items="{cat_items}" values="{cat_vals}" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbDiscSlotPwrLvl{i}" align="left" width="125" field="disc_slot{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <button name="btnDiscSlotAtivar{i}" align="right" width="130" text="Ativar / Rolar" fontSize="11" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplineSlot(sheet, {i}) end</event>
                                 </button>
                             </layout>
@@ -253,7 +280,7 @@ def build_tab3_disciplines(accent: str) -> str:
 
     return f"""            <tab name="tabDisciplinas" title="3. Disciplinas &amp; Poderes">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="860">
+                    <layout name="layPageTab3" align="top" height="860">
                         <rectangle align="top" height="72" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=8}}">
                             <layout align="top" height="26">
                                 <label align="left" width="135" text="MODIFICADORES ATIVOS:" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
@@ -276,15 +303,16 @@ def build_tab3_disciplines(accent: str) -> str:
                         <rectangle align="top" height="110" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{top=4}}">
                             <label align="top" height="20" text="PODER CUSTOMIZADO / ANCIÃO (6+) / TRILHA OU RITUAL SECUNDÁRIO" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
-                                <edit align="left" width="185" field="custom_pwr_nome" textPrompt="Nome do Poder / Ritual" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit align="left" width="245" field="custom_pwr_nome" textPrompt="Nome do Poder / Ritual" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
                                 <label align="left" width="44" text="Sangue:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit align="left" width="34" field="custom_pwr_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit align="left" width="36" field="custom_pwr_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
                                 <label align="left" width="30" text="FdV:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit align="left" width="34" field="custom_pwr_fdv" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <comboBox align="left" width="135" field="custom_pwr_attr" items="{attr_items}" values="{attr_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox align="left" width="135" field="custom_pwr_hab" items="{hab_items}" values="{hab_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit align="left" width="34" field="custom_pwr_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <button align="right" width="120" text="Ativar Custom" fontSize="11" fontStyle="bold">
+                                <edit align="left" width="36" field="custom_pwr_fdv" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox align="left" width="155" field="custom_pwr_attr" items="{attr_items}" values="{attr_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox align="left" width="165" field="custom_pwr_hab" items="{hab_items}" values="{hab_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <label align="left" width="26" text="Dif:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit align="left" width="36" field="custom_pwr_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <button align="right" width="128" text="Ativar Custom" fontSize="11" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateCustomPower(sheet) end</event>
                                 </button>
                             </layout>
@@ -300,16 +328,16 @@ def build_tab4_backgrounds(accent: str, border: str = BORDER_VAMP, is_vampire: b
         if (not is_vampire) and vamp_only and bid in ("generation", "rituals"):
             continue
         btn_xml = (
-            f'<button align="right" width="92" text="{xml_esc(act_label)}" fontSize="10">'
+            f'<button align="right" width="96" text="{xml_esc(act_label)}" fontSize="10">'
             f'<event name="onClick">if sheet ~= nil then V20Bridge.rollBackgroundAction(sheet, \'{bid}\') end</event>'
             f"</button>"
             if act_label
-            else f'<label align="right" width="92" text="(Passivo)" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("center")}"/>'
+            else f'<label align="right" width="96" text="(Passivo)" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("center")}"/>'
         )
         bg_rows.append(
             f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
-                                <label align="left" width="155" text="{xml_esc(bname)}" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtBg_{bid}" align="left" width="38" field="bg_{bid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <label align="left" width="165" text="{xml_esc(bname)}" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtBg_{bid}" align="left" width="40" field="bg_{bid}" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
                                 <edit align="client" field="bg_notes_{bid}" textPrompt="Detalhes / Esfera / Recipientes" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=8}}"/>
                                 {btn_xml}
                             </layout>"""
@@ -319,14 +347,14 @@ def build_tab4_backgrounds(accent: str, border: str = BORDER_VAMP, is_vampire: b
     for i in range(1, 5):
         ret_rows.append(
             f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
-                                <edit align="left" width="165" field="lacaio{i}_nome" textPrompt="Aliado / Lacaio #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit align="left" width="130" field="lacaio{i}_papel" textPrompt="Papel / Domitor" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
+                                <edit align="left" width="185" field="lacaio{i}_nome" textPrompt="Aliado / Lacaio #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <edit align="left" width="145" field="lacaio{i}_papel" textPrompt="Papel / Domitor" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
                                 <label align="left" width="48" text="Parada:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit align="left" width="36" field="lacaio{i}_parada" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit align="left" width="38" field="lacaio{i}_parada" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
                                 <label align="left" width="46" text="Sangue:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit align="left" width="36" field="lacaio{i}_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit align="left" width="38" field="lacaio{i}_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
                                 <edit align="client" field="lacaio{i}_notas" textPrompt="Vitalidade / Notas" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <button align="right" width="84" text="Acionar" fontSize="10">
+                                <button align="right" width="88" text="Acionar" fontSize="10">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollAllyOrRetainer(sheet, {i}) end</event>
                                 </button>
                             </layout>"""
@@ -341,20 +369,20 @@ def build_tab4_backgrounds(accent: str, border: str = BORDER_VAMP, is_vampire: b
     for i in range(1, 7):
         mf_rows.append(
             f"""                            <layout align="top" height="26" margins="{{bottom=2}}">
-                                <checkBox name="chkMfAtivo{i}" align="left" width="56" field="mf_slot{i}_ativo" text="Ativo" fontColor="{TEXT_MAIN}" fontSize="10"/>
-                                <comboBox name="cmbMfId{i}" align="left" width="255" field="mf_slot{i}_id" items="{mf_items}" values="{mf_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit name="edtMfNome{i}" align="client" field="mf_slot{i}_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbMfTipo{i}" align="left" width="95" field="mf_slot{i}_tipo" items="{tipo_items}" values="{tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <edit name="edtMfPontos{i}" align="right" width="38" field="mf_slot{i}_pontos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <checkBox name="chkMfAtivo{i}" align="left" width="58" field="mf_slot{i}_ativo" text="Ativo" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                                <comboBox name="cmbMfId{i}" align="left" width="280" field="mf_slot{i}_id" items="{mf_items}" values="{mf_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <edit name="edtMfPontos{i}" align="right" width="42" field="mf_slot{i}_pontos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}"/>
+                                <comboBox name="cmbMfTipo{i}" align="right" width="102" field="mf_slot{i}_tipo" items="{tipo_items}" values="{tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{left=6, right=6}}"/>
+                                <edit name="edtMfNome{i}" align="client" field="mf_slot{i}_nome" textPrompt="Descrição / Qualidade Customizada" fontColor="{TEXT_MUTED}" fontSize="10"/>
                             </layout>"""
         )
 
     hunt_bar = (
         f'<layout align="top" height="28" margins="{{top=4, bottom=6}}">'
         f'<label align="left" width="110" text="Faixa Recursos:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>'
-        f'<label align="left" width="245" field="recursos_faixa" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>'
+        f'<label align="left" width="260" field="recursos_faixa" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>'
         f'<label align="left" width="80" text="Recipientes:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>'
-        f'<label align="left" width="36" field="rebanho_recipientes" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>'
+        f'<label align="left" width="38" field="rebanho_recipientes" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}"/>'
         f'<button align="right" width="195" text="Caçar (Rebanho + Domínio)" fontSize="11" fontStyle="bold">'
         f'<event name="onClick">if sheet ~= nil then V20Bridge.huntWithHerdDomain(sheet) end</event>'
         f"</button>"
@@ -369,7 +397,7 @@ def build_tab4_backgrounds(accent: str, border: str = BORDER_VAMP, is_vampire: b
     bg_box_h = 440 if is_vampire else 390
     return f"""            <tab name="tabAntecedentes" title="4. Antecedentes &amp; Qualidades">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="880">
+                    <layout name="layPageTab4" align="top" height="880">
                         <rectangle align="top" height="{bg_box_h}" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="ANTECEDENTES V20 &amp; AÇÕES DE REDE" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             {hunt_bar}
@@ -421,14 +449,14 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
     for i in range(1, 5):
         weapon_rows.append(
             f"""                            <layout align="top" height="28" margins="{{bottom=3}}">
-                                <edit align="left" width="155" field="arma{i}_nome" textPrompt="Arma / Manobra #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <comboBox align="left" width="115" field="arma{i}_attr" items="{attr_items}" values="{attr_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
-                                <comboBox align="left" width="135" field="arma{i}_hab" items="{hab_items}" values="{hab_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
-                                <edit align="left" width="34" field="arma{i}_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=4}}"/>
-                                <edit align="left" width="36" field="arma{i}_dano" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=4}}"/>
-                                <comboBox align="left" width="105" field="arma{i}_tipo" items="{dmg_items}" values="{dmg_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
-                                <edit align="client" field="arma{i}_municao" textPrompt="Munição" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <button align="right" width="82" text="Atacar" fontSize="10" fontStyle="bold">
+                                <edit align="left" width="195" field="arma{i}_nome" textPrompt="Arma / Manobra #{i}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <comboBox align="left" width="122" field="arma{i}_attr" items="{attr_items}" values="{attr_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
+                                <comboBox align="left" width="148" field="arma{i}_hab" items="{hab_items}" values="{hab_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
+                                <edit align="left" width="36" field="arma{i}_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=4}}"/>
+                                <edit align="left" width="38" field="arma{i}_dano" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=4}}"/>
+                                <comboBox align="left" width="110" field="arma{i}_tipo" items="{dmg_items}" values="{dmg_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
+                                <edit align="client" field="arma{i}_municao" textPrompt="Munição / Alcance / Cadência" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
+                                <button align="right" width="88" text="Atacar" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollWeaponAttack(sheet, {i}) end</event>
                                 </button>
                             </layout>"""
@@ -436,23 +464,23 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
 
     return f"""            <tab name="tabCombate" title="5. Combate &amp; Vitalidade">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="880">
+                    <layout name="layPageTab5" align="top" height="880">
                         <rectangle align="top" height="68" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <label align="top" height="20" text="ATALHOS RÁPIDOS DE COMBATE V20" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
-                                <button align="left" width="145" text="Iniciativa (1d10+Mod)" fontSize="10" fontStyle="bold" margins="{{right=6}}">
+                                <button name="btnQuickCmb1" align="left" width="224" text="Iniciativa (1d10+Mod)" fontSize="10" fontStyle="bold" margins="{{right=8}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollInitiative(sheet) end</event>
                                 </button>
-                                <button align="left" width="115" text="Briga (Des+Bri)" fontSize="10" margins="{{right=6}}">
+                                <button name="btnQuickCmb2" align="left" width="224" text="Briga (Des+Bri)" fontSize="10" margins="{{right=8}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet, {{attrId='attr_destreza', habId='hab_briga', difficulty=6, label='Ataque de Briga'}}) end</event>
                                 </button>
-                                <button align="left" width="125" text="Esquiva (Des+Esp)" fontSize="10" margins="{{right=6}}">
+                                <button name="btnQuickCmb3" align="left" width="224" text="Esquiva (Des+Esp)" fontSize="10" margins="{{right=8}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet, {{attrId='attr_destreza', habId='hab_esportes', difficulty=6, label='Esquiva'}}) end</event>
                                 </button>
-                                <button align="left" width="135" text="Armas Brancas" fontSize="10" margins="{{right=6}}">
+                                <button name="btnQuickCmb4" align="left" width="224" text="Armas Brancas" fontSize="10" margins="{{right=8}}">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet, {{attrId='attr_destreza', habId='hab_armas_brancas', difficulty=6, label='Armas Brancas'}}) end</event>
                                 </button>
-                                <button align="left" width="135" text="Armas de Fogo" fontSize="10">
+                                <button name="btnQuickCmb5" align="client" text="Armas de Fogo" fontSize="10">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet, {{attrId='attr_destreza', habId='hab_armas_fogo', difficulty=6, label='Armas de Fogo'}}) end</event>
                                 </button>
                             </layout>
@@ -461,30 +489,33 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
                         <rectangle name="crdEstudioManobras" align="top" height="236" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <label name="lblTituloEstudioManobras" align="top" height="20" text="ESTÚDIO DE MANOBRAS V20, DIVISÃO DE PARADAS &amp; DANO ENCADEADO" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
-                                <label align="left" width="58" text="Manobra:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbCmbManobraId" align="left" width="245" field="cmb_manobra_id" items="{man_items}" values="{man_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbCmbArmaSlot" align="left" width="110" field="cmb_arma_slot" items="{slot_items}" values="{slot_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <label align="left" width="72" text="Pen. Armad.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit name="edtArmaduraPenalidade" align="left" width="34" field="armadura_penalidade" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                                <checkBox name="chkCmbEmAgarrao" align="left" width="115" field="em_agarrao" text="Em Agarrão" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold"/>
+                                <label align="left" width="60" text="Manobra:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbCmbManobraId" align="left" width="280" field="cmb_manobra_id" items="{man_items}" values="{man_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <comboBox name="cmbCmbArmaSlot" align="left" width="120" field="cmb_arma_slot" items="{slot_items}" values="{slot_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <label align="left" width="76" text="Pen. Armad.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                                <edit name="edtArmaduraPenalidade" align="left" width="38" field="armadura_penalidade" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <checkBox name="chkCmbEmAgarrao" align="left" width="120" field="em_agarrao" text="Em Agarrão" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=4}}">
                                 <label align="left" width="46" text="Ações:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbCmbAcoesNormais" align="left" width="150" field="cmb_acoes_normais" items="{act_tot_items}" values="{act_tot_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbCmbAcaoOrdem" align="left" width="88" field="cmb_acao_ordem" items="{act_ord_items}" values="{act_ord_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <label align="left" width="88" text="Menor Parada:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit name="edtCmbMenorParada" align="left" width="36" field="cmb_menor_parada" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                                <checkBox name="chkCmbAcaoRapidez" align="left" width="128" field="cmb_acao_rapidez" text="Ação de Rapidez" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
+                                <comboBox name="cmbCmbAcoesNormais" align="left" width="175" field="cmb_acoes_normais" items="{act_tot_items}" values="{act_tot_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbCmbAcaoOrdem" align="left" width="96" field="cmb_acao_ordem" items="{act_ord_items}" values="{act_ord_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <label align="left" width="88" text="Menor Parada:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                                <edit name="edtCmbMenorParada" align="left" width="38" field="cmb_menor_parada" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <checkBox name="chkCmbAcaoRapidez" align="left" width="132" field="cmb_acao_rapidez" text="Ação de Rapidez" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
                                 <label align="left" width="52" text="Extras:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <label name="lblCmbRapidezExtras" align="left" width="26" field="rapidez_acoes_extras" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                <label name="lblCmbRapidezExtras" align="left" width="28" field="rapidez_acoes_extras" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=4}}">
                                 <label align="left" width="36" text="Mira:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtCmbMiraTurnos" align="left" width="32" field="cmb_mira_turnos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=4}}"/>
-                                <checkBox name="chkCmbTemLuneta" align="left" width="68" field="cmb_tem_luneta" text="Luneta" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbCmbAlvoLocalizado" align="left" width="185" field="cmb_alvo_localizado" items="{loc_items}" values="{loc_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbCmbCobertura" align="left" width="165" field="cmb_cobertura" items="{cov_items}" values="{cov_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbCmbPosicao" align="client" field="cmb_posicao" items="{flk_items}" values="{flk_vals}" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                                <edit name="edtCmbMiraTurnos" align="left" width="34" field="cmb_mira_turnos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <checkBox name="chkCmbTemLuneta" align="left" width="68" field="cmb_tem_luneta" text="Luneta" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <label align="left" width="36" text="Alvo:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <comboBox name="cmbCmbAlvoLocalizado" align="left" width="210" field="cmb_alvo_localizado" items="{loc_items}" values="{loc_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <label align="left" width="36" text="Cob.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <comboBox name="cmbCmbCobertura" align="left" width="195" field="cmb_cobertura" items="{cov_items}" values="{cov_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <label align="left" width="34" text="Pos.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <comboBox name="cmbCmbPosicao" align="left" width="195" field="cmb_posicao" items="{flk_items}" values="{flk_vals}" fontColor="{TEXT_MAIN}" fontSize="10"/>
                             </layout>
                             <layout align="top" height="28" margins="{{top=4}}">
                                 <label align="left" width="84" text="Sucessos Def.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
@@ -653,20 +684,26 @@ def build_tab6_morality(clan: dict, accent: str) -> str:
 
     return f"""            <tab name="tabMoralidade" title="6. Moralidade &amp; Besta">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="600">
+                    <layout name="layPageTab6" align="top" height="600">
                         <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="VIRTUDES, TRILHA DE MORALIDADE &amp; MODIFICADOR DE AURA" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <comboBox name="cmbVirtude1Tipo" align="left" width="135" field="virtude1_tipo" items="{v1_items}" values="{v1_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit name="edtVirtude1Val" align="left" width="38" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
-                                <comboBox name="cmbVirtude2Tipo" align="left" width="135" field="virtude2_tipo" items="{v2_items}" values="{v2_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <edit name="edtVirtude2Val" align="left" width="38" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=14}}"/>
-                                <label align="left" width="68" text="Coragem:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <edit name="edtVirtude3Val" align="left" width="38" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                <layout name="colVirt1" align="left" width="378" margins="{{right=10}}">
+                                    <comboBox name="cmbVirtude1Tipo" align="left" width="155" field="virtude1_tipo" items="{v1_items}" values="{v1_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                    <edit name="edtVirtude1Val" align="left" width="44" field="virtude1_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
+                                <layout name="colVirt2" align="left" width="378" margins="{{right=10}}">
+                                    <comboBox name="cmbVirtude2Tipo" align="left" width="155" field="virtude2_tipo" items="{v2_items}" values="{v2_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                    <edit name="edtVirtude2Val" align="left" width="44" field="virtude2_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
+                                <layout name="colVirt3" align="client">
+                                    <label align="left" width="80" text="Coragem:" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
+                                    <edit name="edtVirtude3Val" align="left" width="44" field="virtude3_val" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                                </layout>
                             </layout>
                             <layout align="top" height="28" margins="{{top=8}}">
                                 <label align="left" width="78" text="Moralidade:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbMoralidadeTipo" align="left" width="215" field="moralidade_tipo" items="{path_items}" values="{path_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <comboBox name="cmbMoralidadeTipo" align="left" width="225" field="moralidade_tipo" items="{path_items}" values="{path_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
                                 <edit name="edtMoralidadeVal" align="left" width="42" field="moralidade_val" type="number" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=12}}"/>
                                 <label align="left" width="44" text="Aura:" fontColor="{TEXT_MUTED}" fontSize="11" horzTextAlign="{assert_align("leading")}"/>
                                 <label align="client" field="aura_resumo" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
@@ -732,7 +769,7 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
 
     return f"""            <tab name="tabExperiencia" title="7. Experiência &amp; Narrador">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="760">
+                    <layout name="layPageTab7" align="top" height="760">
 {extra_top_card}
                         <rectangle align="top" height="190" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="EVOLUÇÃO POR EXPERIÊNCIA (XP) &amp; FILA DE APROVAÇÃO DO NARRADOR" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
@@ -748,10 +785,10 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
                             </layout>
                             <layout align="top" height="28" margins="{{top=6}}">
                                 <comboBox name="cmbXpLojaTipo" align="left" width="195" field="xp_loja_tipo" items="{xp_tipo_items}" values="{xp_tipo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbXpLojaCampo" align="left" width="175" field="xp_loja_campo" items="{xp_campo_items}" values="{xp_campo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbXpLojaCatCusto" align="left" width="140" field="xp_loja_cat_custo" items="{xp_cat_items}" values="{xp_cat_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbXpLojaCampo" align="left" width="195" field="xp_loja_campo" items="{xp_campo_items}" values="{xp_campo_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbXpLojaCatCusto" align="left" width="150" field="xp_loja_cat_custo" items="{xp_cat_items}" values="{xp_cat_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
                                 <edit name="edtXpLojaDescricao" align="client" field="xp_loja_descricao" textPrompt="Rótulo p/ Auditoria" fontColor="{TEXT_MUTED}" fontSize="10" margins="{{right=6}}"/>
-                                <button name="btnSolicitarXP" align="right" width="135" text="Solicitar Evolução" fontSize="10" fontStyle="bold">
+                                <button name="btnSolicitarXP" align="right" width="138" text="Solicitar Evolução" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.submitOrApproveXP(sheet, 'submit', nil) end</event>
                                 </button>
                             </layout>
@@ -800,15 +837,15 @@ def build_tab8_blood_magic(clan: dict, accent: str) -> str:
     sec_cards = []
     for i in range(1, 5):
         sec_cards.append(
-            f"""                        <rectangle align="top" height="60" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="5" yradius="5" padding="{{left=10, right=10, top=6, bottom=6}}" margins="{{bottom=6}}">
+            f"""                        <rectangle align="top" height="60" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="5" yradius="5" padding="{{left=12, right=12, top=6, bottom=6}}" margins="{{bottom=6}}">
                             <layout align="top" height="26">
-                                <label align="left" width="56" text="SEC #{i}" fontColor="{accent}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbBmSecDisc{i}" align="left" width="115" field="bm_sec{i}_disc" items="{trad_items}" values="{trad_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <comboBox name="cmbBmSecPathId{i}" align="left" width="235" field="bm_sec{i}_path_id" items="{sec_path_items}" values="{sec_path_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <label align="left" width="38" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                                <edit name="edtBmSecNivel{i}" align="left" width="36" field="bm_sec{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <comboBox name="cmbBmSecPwrLvl{i}" align="left" width="108" field="bm_sec{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
-                                <button name="btnBmSecAtivar{i}" align="right" width="138" text="Ativar Secundária" fontSize="10" fontStyle="bold">
+                                <label align="left" width="58" text="SEC #{i}" fontColor="{accent}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbBmSecDisc{i}" align="left" width="125" field="bm_sec{i}_disc" items="{trad_items}" values="{trad_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbBmSecPathId{i}" align="left" width="265" field="bm_sec{i}_path_id" items="{sec_path_items}" values="{sec_path_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <label align="left" width="40" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                                <edit name="edtBmSecNivel{i}" align="left" width="38" field="bm_sec{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox name="cmbBmSecPwrLvl{i}" align="left" width="115" field="bm_sec{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <button name="btnBmSecAtivar{i}" align="right" width="142" text="Ativar Secundária" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activateSecondaryBloodMagic(sheet, {i}, nil) end</event>
                                 </button>
                             </layout>
@@ -818,27 +855,27 @@ def build_tab8_blood_magic(clan: dict, accent: str) -> str:
 
     return f"""            <tab name="tabMagiaSangue" title="8. Magia do Sangue &amp; Rituais" visible="{bm_visible}">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="720">
+                    <layout name="layPageTab8" align="top" height="720">
                         <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="LINHAS PRIMÁRIAS — TAUMATURGIA &amp; NECROMANCIA (SINCRONIZADAS COM A ABA 3)" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
-                                <label align="left" width="125" text="Prim. Taumaturgia:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbBmThauPrimId" align="left" width="215" field="bm_thau_prim_id" items="{thau_items}" values="{thau_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <label align="left" width="130" text="Prim. Taumaturgia:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbBmThauPrimId" align="left" width="245" field="bm_thau_prim_id" items="{thau_items}" values="{thau_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
                                 <label align="left" width="42" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                                <label align="left" width="28" field="bm_thau_prim_nivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                                <comboBox name="cmbBmThauPrimPwrLvl" align="left" width="115" field="bm_thau_prim_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
-                                <button name="btnBmThauPrimAtivar" align="right" width="190" text="Ativar Linha Taumaturgia" fontSize="10" fontStyle="bold">
+                                <label align="left" width="32" field="bm_thau_prim_nivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <comboBox name="cmbBmThauPrimPwrLvl" align="left" width="120" field="bm_thau_prim_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnBmThauPrimAtivar" align="right" width="195" text="Ativar Linha Taumaturgia" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activatePrimaryBloodMagic(sheet, 'thaumaturgy', nil) end</event>
                                 </button>
                             </layout>
                             <label align="top" height="22" field="bm_thau_prim_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=2}}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
-                                <label align="left" width="125" text="Prim. Necromancia:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
-                                <comboBox name="cmbBmNecroPrimId" align="left" width="215" field="bm_necro_prim_id" items="{necro_items}" values="{necro_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <label align="left" width="130" text="Prim. Necromancia:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbBmNecroPrimId" align="left" width="245" field="bm_necro_prim_id" items="{necro_items}" values="{necro_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
                                 <label align="left" width="42" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
-                                <label align="left" width="28" field="bm_necro_prim_nivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
-                                <comboBox name="cmbBmNecroPrimPwrLvl" align="left" width="115" field="bm_necro_prim_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
-                                <button name="btnBmNecroPrimAtivar" align="right" width="190" text="Ativar Linha Necromancia" fontSize="10" fontStyle="bold">
+                                <label align="left" width="32" field="bm_necro_prim_nivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <comboBox name="cmbBmNecroPrimPwrLvl" align="left" width="120" field="bm_necro_prim_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnBmNecroPrimAtivar" align="right" width="195" text="Ativar Linha Necromancia" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.activatePrimaryBloodMagic(sheet, 'necromancy', nil) end</event>
                                 </button>
                             </layout>
@@ -851,24 +888,24 @@ def build_tab8_blood_magic(clan: dict, accent: str) -> str:
                         <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{top=6}}">
                             <label align="top" height="22" text="GRIMÓRIO DE 20 RITUAIS CLÁSSICOS V20 &amp; CONJURAÇÃO CUSTOMIZADA (INTELIGÊNCIA + OCULTISMO)" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
-                                <comboBox name="cmbBmRitualId" align="left" width="455" field="bm_ritual_id" items="{rit_items}" values="{rit_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
-                                <button name="btnBmConjurarRitualOficial" align="right" width="195" text="Conjurar Ritual Oficial" fontSize="10" fontStyle="bold">
+                                <button name="btnBmConjurarRitualOficial" align="right" width="205" text="Conjurar Ritual Oficial" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.castCatalogRitual(sheet, nil) end</event>
                                 </button>
+                                <comboBox name="cmbBmRitualId" align="client" field="bm_ritual_id" items="{rit_items}" values="{rit_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
                             </layout>
                             <label align="top" height="24" field="bm_ritual_catalogo_resumo" fontColor="{TEXT_GOLD}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=2}}"/>
                             <layout align="top" height="28" margins="{{top=8}}">
-                                <edit name="edtRitualCustomNome" align="left" width="185" field="ritual_custom_nome" textPrompt="Nome do Ritual Customizado" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
-                                <comboBox name="cmbRitualCustomTrad" align="left" width="115" field="ritual_custom_trad" items="{trad_items}" values="{trad_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <edit name="edtRitualCustomNome" align="left" width="255" field="ritual_custom_nome" textPrompt="Nome do Ritual Customizado" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <comboBox name="cmbRitualCustomTrad" align="left" width="125" field="ritual_custom_trad" items="{trad_items}" values="{trad_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
                                 <label align="left" width="28" text="Nv:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit name="edtRitualCustomNivel" align="left" width="32" field="ritual_custom_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit name="edtRitualCustomNivel" align="left" width="34" field="ritual_custom_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
                                 <label align="left" width="46" text="Sangue:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit name="edtRitualCustomSangue" align="left" width="32" field="ritual_custom_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit name="edtRitualCustomSangue" align="left" width="34" field="ritual_custom_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
                                 <label align="left" width="30" text="FdV:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit name="edtRitualCustomFdv" align="left" width="32" field="ritual_custom_fdv" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <edit name="edtRitualCustomFdv" align="left" width="34" field="ritual_custom_fdv" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
                                 <label align="left" width="26" text="Dif:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
-                                <edit name="edtRitualCustomDif" align="left" width="32" field="ritual_custom_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
-                                <button name="btnBmConjurarRitualCustom" align="right" width="125" text="Conjurar Custom" fontSize="10" fontStyle="bold">
+                                <edit name="edtRitualCustomDif" align="left" width="34" field="ritual_custom_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <button name="btnBmConjurarRitualCustom" align="right" width="132" text="Conjurar Custom" fontSize="10" fontStyle="bold">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.castCustomRitual(sheet) end</event>
                                 </button>
                             </layout>
@@ -1044,6 +1081,7 @@ def generate_vampire_lfm(clan_id: str) -> str:
     )
 
     perms_lua = build_mode_permissions_lua(is_vampire=True)
+    resp_lua = build_responsive_layout_lua(is_vampire=True)
 
     xml_out = f"""<?xml version="1.0" encoding="UTF-8"?>
 <form name="{form_name}" formType="sheetTemplate" dataType="{data_type}" title="{xml_esc(title)}" align="client" theme="dark">
@@ -1053,14 +1091,18 @@ def generate_vampire_lfm(clan_id: str) -> str:
         local V20Bridge = _G.V20Bridge or require("Adapter.firecast_bridge")
 
 {perms_lua}
+
+{resp_lua}
         ]]>
     </script>
 
-    <rectangle align="client" color="{BG_MAIN}">
+    <rectangle name="rectRootBg" align="client" color="{BG_MAIN}">
+        <event name="onResize">ajustarLayoutResponsivo(self)</event>
 {header_bar_xml(accent, BORDER_VAMP, f"CLÃ {clan['name'].upper()} (V20)", is_vampire=True)}
 {dice_roller_footer_xml(accent, BORDER_VAMP)}
 
         <tabControl name="pgcPrincipal" align="client" margins="{{left=6, right=6, top=6, bottom=6}}">
+            <event name="onResize">ajustarLayoutResponsivo(self)</event>
 {build_tab1_creation(clan, accent)}
 {build_tab2_traits(clan, accent, is_vampire=True, border=BORDER_VAMP)}
 {build_tab3_disciplines(accent)}
@@ -1074,7 +1116,8 @@ def generate_vampire_lfm(clan_id: str) -> str:
     </rectangle>
 
 {datalinks}
-    <event name="OnShow">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
+    <event name="OnShow">ajustarLayoutResponsivo(self); if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
+    <event name="onResize">ajustarLayoutResponsivo(self)</event>
 </form>
 """
     validate_generated_lfm_xml(xml_out)

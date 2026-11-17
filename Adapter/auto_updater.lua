@@ -2,7 +2,7 @@ local V20 = require("Core.v20_init")
 
 local AutoUpdater = {
     MODULE_ID = "br.com.v20.suite",
-    BUNDLED_VERSION = "1.0.2",
+    BUNDLED_VERSION = "1.0.3",
     REPO_URL = "https://github.com/krleandro/vampire_fichas",
     MANIFEST_URL = "https://raw.githubusercontent.com/krleandro/vampire_fichas/main/module.xml",
     RPK_URL = "https://github.com/krleandro/vampire_fichas/raw/main/dist/Vampiro_V20_Suite.rpk",
