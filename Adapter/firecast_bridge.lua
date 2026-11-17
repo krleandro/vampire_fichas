@@ -291,18 +291,31 @@ function Bridge.collectMeritsFlaws(sheet, ndbApi)
         local pts = sheet["mf_slot" .. i .. "_pontos"]
         local ativo = sheet["mf_slot" .. i .. "_ativo"]
         if not isFalse(ativo) then
-            if type(itemId) == "string" and itemId ~= "" and itemId ~= "custom" then
+            local cat = (type(itemId) == "string" and itemId ~= "" and itemId ~= "custom")
+                and V20.MeritsFlawsCatalog.ITEMS[itemId] or nil
+            if cat ~= nil then
                 seenIds[itemId] = true
+                local overridePts = safeInt(pts, 0)
                 table.insert(list, {
                     item_id = itemId,
-                    tipo = sheet["mf_slot" .. i .. "_tipo"],
-                    pontos = (pts ~= nil and pts ~= "") and safeInt(pts, nil) or nil,
+                    tipo = cat.tipo,
+                    pontos = (overridePts > 0) and overridePts or cat.pontos,
                     mod_tipo = sheet["mf_slot" .. i .. "_mod"],
                     ativo = true,
                 })
-            elseif type(customName) == "string" and customName ~= "" and safeInt(pts, 0) > 0 then
+            elseif type(itemId) == "string" and itemId ~= "" and itemId ~= "custom" then
+                seenIds[itemId] = true
+                local overridePts = safeInt(pts, 0)
                 table.insert(list, {
-                    nome = customName,
+                    item_id = itemId,
+                    tipo = sheet["mf_slot" .. i .. "_tipo"],
+                    pontos = (overridePts > 0) and overridePts or nil,
+                    mod_tipo = sheet["mf_slot" .. i .. "_mod"],
+                    ativo = true,
+                })
+            elseif (itemId == "custom" or (type(customName) == "string" and customName ~= "")) and safeInt(pts, 0) > 0 then
+                table.insert(list, {
+                    nome = (type(customName) == "string" and customName ~= "") and customName or "Custom",
                     tipo = sheet["mf_slot" .. i .. "_tipo"] or "qualidade",
                     pontos = safeInt(pts, 0),
                     mod_tipo = sheet["mf_slot" .. i .. "_mod"],
@@ -447,6 +460,15 @@ function Bridge.resolvePoolTrait(sheet, traitId, combatMods)
     }
 end
 
+local SYNC_IN_PROGRESS = setmetatable({}, { __mode = "k" })
+local HUGE_FROM_MF = setmetatable({}, { __mode = "k" })
+
+local function setIfChanged(sheet, key, val)
+    if sheet[key] ~= val then
+        sheet[key] = val
+    end
+end
+
 local function updateDisciplineSummaries(sheet)
     for i = 1, 9 do
         local did = sheet["disc_slot" .. i .. "_id"]
@@ -456,12 +478,12 @@ local function updateDisciplineSummaries(sheet)
         if cat and cat.powers and cat.powers[pwrLvl] then
             local pw = cat.powers[pwrLvl]
             local lockPrefix = (dots < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
-            sheet["disc_slot" .. i .. "_resumo"] = string.format(
+            setIfChanged(sheet, "disc_slot" .. i .. "_resumo", string.format(
                 "%s%s (Nv %d) — %s | %s",
                 lockPrefix, pw.name, pw.level, pw.diffHint or "Dif 6", pw.summary or ""
-            )
+            ))
         else
-            sheet["disc_slot" .. i .. "_resumo"] = "Selecione uma Disciplina V20 para inspecionar e ativar poderes."
+            setIfChanged(sheet, "disc_slot" .. i .. "_resumo", "Selecione uma Disciplina V20 para inspecionar e ativar poderes.")
         end
     end
 
@@ -472,12 +494,11 @@ local function updateDisciplineSummaries(sheet)
         for _, pw in ipairs(cat.powers) do
             table.insert(lines, string.format("Nv %d - %s (%s): %s", pw.level, pw.name, pw.diffHint or "Dif 6", pw.summary or ""))
         end
-        sheet.disc_catalogo_resumo = table.concat(lines, " || ")
+        setIfChanged(sheet, "disc_catalogo_resumo", table.concat(lines, " || "))
     end
 end
 
-function Bridge.syncDerivedFields(sheet, ndbApi)
-    if type(sheet) ~= "table" then return end
+local function syncDerivedFieldsImpl(sheet, ndbApi)
     local ndb = ndbApi or _G.NDB
 
     local bgList = Bridge.collectBackgrounds(sheet, ndb)
@@ -488,39 +509,49 @@ function Bridge.syncDerivedFields(sheet, ndbApi)
     local isVamp = Bridge.isVampireSheet(sheet)
     if isVamp then
         local gen = tonumber(sheet.geracao_override) or mfAgg.thinBloodGenOverride or fx.effectiveGeneration
-        sheet.geracao = gen
+        setIfChanged(sheet, "geracao", gen)
         local stats = V20.Blood.deriveStats(gen)
-        sheet.sangue_max = stats.bloodMax
-        sheet.sangue_usavel_max = stats.usableBlood
-        sheet.sangue_por_turno = stats.perTurn
-        sheet.atributo_max_geracao = stats.traitMax
-        sheet.disciplina_max_geracao = stats.discMax
-        sheet.isGhoul = false
-        sheet.hasNumina = false
-        sheet.ghoulPotence = 0
+        setIfChanged(sheet, "sangue_max", stats.bloodMax)
+        setIfChanged(sheet, "sangue_usavel_max", stats.usableBlood)
+        setIfChanged(sheet, "sangue_por_turno", stats.perTurn)
+        setIfChanged(sheet, "atributo_max_geracao", stats.traitMax)
+        setIfChanged(sheet, "disciplina_max_geracao", stats.discMax)
+        setIfChanged(sheet, "isGhoul", false)
+        setIfChanged(sheet, "hasNumina", false)
+        setIfChanged(sheet, "ghoulPotence", 0)
     else
         local mSt = V20.Creation.applyMortalSupernaturalMode({}, sheet.mortal_sobrenatural_modo or "humano")
-        sheet.mortal_sobrenatural_modo = mSt.mortal_sobrenatural_modo
-        sheet.isGhoul = mSt.isGhoul
-        sheet.hasNumina = mSt.hasNumina
-        sheet.sangue_max = mSt.sangue_max or 0
-        sheet.sangue_usavel_max = mSt.sangue_max or 0
-        sheet.sangue_por_turno = mSt.sangue_por_turno or 0
-        sheet.ghoulPotence = mSt.ghoulPotence or 0
-        sheet.atributo_max_geracao = 5
-        sheet.disciplina_max_geracao = mSt.isGhoul and math.max(1, safeInt(sheet.carnical_disc_max, 1)) or 0
+        setIfChanged(sheet, "mortal_sobrenatural_modo", mSt.mortal_sobrenatural_modo)
+        setIfChanged(sheet, "isGhoul", mSt.isGhoul)
+        setIfChanged(sheet, "hasNumina", mSt.hasNumina)
+        setIfChanged(sheet, "sangue_max", mSt.sangue_max or 0)
+        setIfChanged(sheet, "sangue_usavel_max", mSt.sangue_max or 0)
+        setIfChanged(sheet, "sangue_por_turno", mSt.sangue_por_turno or 0)
+        setIfChanged(sheet, "ghoulPotence", mSt.ghoulPotence or 0)
+        setIfChanged(sheet, "atributo_max_geracao", 5)
+        setIfChanged(sheet, "disciplina_max_geracao", mSt.isGhoul and math.max(1, safeInt(sheet.carnical_disc_max, 1)) or 0)
     end
 
-    sheet.rebanho_recipientes = fx.herdVessels
-    sheet.caca_bonus_dados = fx.huntingBonusDice
-    sheet.caca_mod_dif = fx.huntingDiffMod
-    sheet.recursos_faixa = fx.resourcesLabel
-    sheet.fama_mod_dif = fx.fameSocialDiffMod
-    sheet.status_bonus_dados = fx.statusSocialBonusDice
-    sheet.qualidades_total = mfAgg.totalMeritCost
-    sheet.defeitos_bonus = mfAgg.effectiveFlawBonus
-    sheet.percepcao_mod_qualidades = mfAgg.perceptionDiffMod
-    sheet.tem_disc_adicional = mfAgg.hasAdditionalDisc
+    setIfChanged(sheet, "rebanho_recipientes", fx.herdVessels)
+    setIfChanged(sheet, "caca_bonus_dados", fx.huntingBonusDice)
+    setIfChanged(sheet, "caca_mod_dif", fx.huntingDiffMod)
+    setIfChanged(sheet, "recursos_faixa", fx.resourcesLabel)
+    setIfChanged(sheet, "fama_mod_dif", fx.fameSocialDiffMod)
+    setIfChanged(sheet, "status_bonus_dados", fx.statusSocialBonusDice)
+    setIfChanged(sheet, "qualidades_total", mfAgg.totalMeritCost)
+    setIfChanged(sheet, "defeitos_bonus", mfAgg.effectiveFlawBonus)
+    setIfChanged(sheet, "percepcao_mod_qualidades", mfAgg.perceptionDiffMod)
+    setIfChanged(sheet, "tem_disc_adicional", mfAgg.hasAdditionalDisc)
+
+    if mfAgg.hugeSize then
+        if not isTrue(sheet.tem_tamanho_grande) then
+            HUGE_FROM_MF[sheet] = true
+        end
+        setIfChanged(sheet, "tem_tamanho_grande", true)
+    elseif HUGE_FROM_MF[sheet] then
+        HUGE_FROM_MF[sheet] = nil
+        setIfChanged(sheet, "tem_tamanho_grande", false)
+    end
 
     local huge = isTrue(sheet.tem_tamanho_grande) or mfAgg.hugeSize
     local hStatus = V20.Health.getStatus({
@@ -530,50 +561,61 @@ function Bridge.syncDerivedFields(sheet, ndbApi)
         lethal = sheet.dano_letal,
         aggravated = sheet.dano_aggravado,
     })
-    sheet.vitalidade_resumo = hStatus.currentLevelName
-    sheet.vitalidade_label = hStatus.currentLevelName
-    sheet.penalidade_ferimento = hStatus.penalty
-    sheet.incapacitado = hStatus.incapacitated
-    sheet.vitalidade_alerta = hStatus.torporOrDeath or ""
+    setIfChanged(sheet, "vitalidade_resumo", hStatus.currentLevelName)
+    setIfChanged(sheet, "vitalidade_label", hStatus.currentLevelName)
+    setIfChanged(sheet, "penalidade_ferimento", hStatus.penalty)
+    setIfChanged(sheet, "incapacitado", hStatus.incapacitated)
+    setIfChanged(sheet, "vitalidade_alerta", hStatus.torporOrDeath or "")
+
+    local function fmtBox(sym)
+        if sym == nil then return "-" end
+        if sym == "" then return "[ ]" end
+        return "[" .. sym .. "]"
+    end
 
     local boxTokens = {}
-    for i = 1, 8 do
-        local sym = hStatus.boxes[i]
-        if sym == nil then
-            sheet["health_box_" .. i] = "-"
-        elseif sym == "" then
-            sheet["health_box_" .. i] = "[ ]"
-            table.insert(boxTokens, "[ ]")
-        else
-            sheet["health_box_" .. i] = "[" .. sym .. "]"
-            table.insert(boxTokens, "[" .. sym .. "]")
+    if huge then
+        local b0 = fmtBox(hStatus.boxes[1])
+        setIfChanged(sheet, "health_box_0", b0)
+        table.insert(boxTokens, b0)
+        for i = 1, 7 do
+            local bi = fmtBox(hStatus.boxes[i + 1])
+            setIfChanged(sheet, "health_box_" .. i, bi)
+            table.insert(boxTokens, bi)
+        end
+    else
+        setIfChanged(sheet, "health_box_0", "-")
+        for i = 1, 7 do
+            local bi = fmtBox(hStatus.boxes[i])
+            setIfChanged(sheet, "health_box_" .. i, bi)
+            table.insert(boxTokens, bi)
         end
     end
-    sheet.vitalidade_trilha_visual = table.concat(boxTokens, " ")
+    setIfChanged(sheet, "vitalidade_trilha_visual", table.concat(boxTokens, " "))
 
     if type(sheet.moralidade_tipo) == "string" then
         for _, p in ipairs(V20.MoralityCatalog.PATHS) do
             if p.id == sheet.moralidade_tipo then
-                sheet.moralidade_nome = p.name
+                setIfChanged(sheet, "moralidade_nome", p.name)
                 break
             end
         end
     end
 
     local aura = V20.WillpowerMorality.getAuraModifier(sheet.moralidade_val or 7)
-    sheet.aura_resumo = aura.label
-    sheet.aura_label = aura.label
-    sheet.aura_mod_dif = aura.diffMod
+    setIfChanged(sheet, "aura_resumo", aura.label)
+    setIfChanged(sheet, "aura_label", aura.label)
+    setIfChanged(sheet, "aura_mod_dif", aura.diffMod)
 
-    sheet.xp_disponivel = safeNum(sheet.xp_total, 0) - safeNum(sheet.xp_gasto, 0)
+    setIfChanged(sheet, "xp_disponivel", safeNum(sheet.xp_total, 0) - safeNum(sheet.xp_gasto, 0))
 
     local discList = Bridge.collectDisciplines(sheet, ndb)
     local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), discList)
-    sheet.fortitude_absorcao_dados = cMods.fortitudeSoak
-    sheet.potencia_dados_passivos = cMods.passivePotenceDice
-    sheet.potencia_sucessos_ativos = cMods.activePotenceAuto
-    sheet.rapidez_dados_passivos = cMods.passiveCelerityDice
-    sheet.rapidez_acoes_extras = cMods.activeCelerityActions
+    setIfChanged(sheet, "fortitude_absorcao_dados", cMods.fortitudeSoak)
+    setIfChanged(sheet, "potencia_dados_passivos", cMods.passivePotenceDice)
+    setIfChanged(sheet, "potencia_sucessos_ativos", cMods.activePotenceAuto)
+    setIfChanged(sheet, "rapidez_dados_passivos", cMods.passiveCelerityDice)
+    setIfChanged(sheet, "rapidez_acoes_extras", cMods.activeCelerityActions)
 
     local activeIds = {}
     for k, _ in pairs(Bridge.deserializeBuffs(sheet)) do
@@ -586,7 +628,7 @@ function Bridge.syncDerivedFields(sheet, ndbApi)
     if safeInt(sheet.rapidez_acoes_ativas, 0) > 0 then
         table.insert(activeIds, 1, "celerity_x" .. tostring(safeInt(sheet.rapidez_acoes_ativas, 0)))
     end
-    sheet.buffs_cena_resumo = (#activeIds > 0) and table.concat(activeIds, ", ") or "Nenhum buff ativo"
+    setIfChanged(sheet, "buffs_cena_resumo", (#activeIds > 0) and table.concat(activeIds, ", ") or "Nenhum buff ativo")
 
     updateDisciplineSummaries(sheet)
 
@@ -600,7 +642,7 @@ function Bridge.syncDerivedFields(sheet, ndbApi)
     if isTrue(sheet.roll_usar_status) then extra = extra + safeInt(sheet.status_bonus_dados, 0) end
     local previewPool = math.max(0, rAttr.val + rHab.val + extra - wPen)
     local habPart = rHab.label and string.format(" + %s (%d)", rHab.label, rHab.val) or ""
-    sheet.roll_equacao_resumo = string.format(
+    setIfChanged(sheet, "roll_equacao_resumo", string.format(
         "%s (%d)%s + Bônus (%d) - Ferim. (%d) = %dd10 | Dif %d",
         rAttr.label or "Atributo",
         rAttr.val,
@@ -609,7 +651,18 @@ function Bridge.syncDerivedFields(sheet, ndbApi)
         wPen,
         previewPool,
         safeInt(sheet.roll_diff, 6)
-    )
+    ))
+end
+
+function Bridge.syncDerivedFields(sheet, ndbApi)
+    if type(sheet) ~= "table" then return end
+    if SYNC_IN_PROGRESS[sheet] then return end
+    SYNC_IN_PROGRESS[sheet] = true
+    local ok, err = pcall(syncDerivedFieldsImpl, sheet, ndbApi)
+    SYNC_IN_PROGRESS[sheet] = nil
+    if not ok then
+        error(err, 0)
+    end
 end
 
 function Bridge.selectRollTrait(sheet, kind, traitId)
@@ -1374,6 +1427,23 @@ function Bridge.logAudit(sheet, ndbApi, firecastApi, eventType, description, cos
     return entry
 end
 
+local function peelFreebiesFromGroups(groups, targets, freebieDots)
+    local s = { groups[1] or 0, groups[2] or 0, groups[3] or 0 }
+    table.sort(s, function(a, b) return a > b end)
+    local rem = math.max(0, safeInt(freebieDots, 0))
+    for i = 1, 3 do
+        local tgt = targets[i] or 0
+        local excess = math.max(0, s[i] - tgt)
+        local take = math.min(rem, excess)
+        s[i] = s[i] - take
+        rem = rem - take
+    end
+    if rem > 0 then
+        s[3] = s[3] - rem
+    end
+    return s
+end
+
 function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, lockIfValid)
     local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
     Bridge.syncDerivedFields(sheet, ndbApi)
@@ -1383,6 +1453,7 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
     if not isVamp then
         profile = (sheet.mortal_perfil == "heroico_753") and "mortal_heroic_753" or "mortal_standard_643"
     end
+    local profSpec = V20.Creation.PROFILES[profile] or V20.Creation.PROFILES.vampire_neonate
 
     local phys = math.max(0, safeInt(sheet.attr_forca, 1) - 1)
         + math.max(0, safeInt(sheet.attr_destreza, 1) - 1)
@@ -1397,11 +1468,12 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
         + math.max(0, safeInt(sheet.attr_inteligencia, 1) - 1)
         + math.max(0, safeInt(sheet.attr_raciocinio, 1) - 1)
 
-    local talents, skills, knowledges, maxHab = 0, 0, 0, 0
+    local talents, skills, knowledges, maxHab, excessAbove3 = 0, 0, 0, 0, 0
     for _, hid in ipairs(V20.Traits.ABILITY_ORDER) do
         local meta = V20.Traits.ABILITIES[hid]
         local v = math.max(0, safeInt(sheet[hid], 0))
         if v > maxHab then maxHab = v end
+        if v > 3 then excessAbove3 = excessAbove3 + (v - 3) end
         if meta.category == "talents" then
             talents = talents + v
         elseif meta.category == "skills" then
@@ -1410,6 +1482,12 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
             knowledges = knowledges + v
         end
     end
+
+    local freebieAttr = safeInt(sheet.freebie_attributes, 0)
+    local freebieHab = safeInt(sheet.freebie_abilities, 0)
+    local baseAttrGroups = peelFreebiesFromGroups({ phys, soc, ment }, profSpec.attr, freebieAttr)
+    local baseHabGroups = peelFreebiesFromGroups({ talents, skills, knowledges }, profSpec.abilities, freebieHab)
+    local effMaxBaseHab = (excessAbove3 <= math.max(0, freebieHab)) and math.min(maxHab, 3) or maxHab
 
     local discDots = 0
     for _, d in ipairs(Bridge.collectDisciplines(sheet, ndbApi)) do
@@ -1431,16 +1509,16 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
         profile = profile,
         cla_id = sheet.cla_id,
         attr_aparencia = (sheet.cla_id == "nosferatu") and safeInt(sheet.attr_aparencia, 0) or safeInt(sheet.attr_aparencia, 1),
-        attrGroups = { phys, soc, ment },
-        abilityGroups = { talents, skills, knowledges },
-        maxBaseAbility = maxHab,
+        attrGroups = baseAttrGroups,
+        abilityGroups = baseHabGroups,
+        maxBaseAbility = effMaxBaseHab,
         baseDisciplines = discDots - safeInt(sheet.freebie_disciplines, 0),
         baseBackgrounds = bgDots - safeInt(sheet.freebie_backgrounds, 0),
         baseVirtues = virtDots - safeInt(sheet.freebie_virtues, 0),
         flawsBonus = mfAgg.effectiveFlawBonus,
         freebiePurchases = {
-            attributes = safeInt(sheet.freebie_attributes, 0),
-            abilities = safeInt(sheet.freebie_abilities, 0),
+            attributes = freebieAttr,
+            abilities = freebieHab,
             disciplines = safeInt(sheet.freebie_disciplines, 0),
             backgrounds = safeInt(sheet.freebie_backgrounds, 0),
             virtues = safeInt(sheet.freebie_virtues, 0),

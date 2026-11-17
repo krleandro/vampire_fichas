@@ -155,8 +155,12 @@ def main() -> None:
         "auditoria_xp_log",
         "roll_attr_id",
         "roll_diff",
+        "health_box_0",
+        "health_box_1",
+        "health_box_7",
     ):
         assert req_field in brujah_fields, f"Campo obrigatório '{req_field}' ausente em frmBrujah.lfm"
+    assert "health_box_8" not in brujah_fields, "health_box_8 não deve existir; caixa extra de Tamanho Grande fica no topo (health_box_0)"
 
     # Verificar campos estruturais obrigatórios em frmMortal.lfm
     mortal_tabs = list(mortal_root.iter("tab"))
@@ -168,8 +172,12 @@ def main() -> None:
         "mortal_sobrenatural_modo",
         "auditoria_xp_log",
         "roll_attr_id",
+        "health_box_0",
+        "health_box_1",
+        "health_box_7",
     ):
         assert req_field in mortal_fields, f"Campo obrigatório '{req_field}' ausente em frmMortal.lfm"
+    assert "health_box_8" not in mortal_fields, "health_box_8 não deve existir em frmMortal.lfm"
 
     # Validar sintaxe Lua 5.4 de Adapter/firecast_bridge.lua
     bridge_path = os.path.join(ROOT, "Adapter", "firecast_bridge.lua")
@@ -494,6 +502,144 @@ local facadeXpRes = Bridge.submitOrApproveXP(
     mockDialogs
 )
 assert(facadeXpRes.ok == true and mockNodeFacade.fdv_perm == 6 and mockNodeFacade.xp_gasto == 5)
+
+-- 2.11 Fix Round 1 #1: validateCreationOnSheet com Pontos de Bônus em Atributos e Habilidades (incluindo Habilidade 3 -> 4)
+local neonateCreation = {
+    nome = "[TESTE_E2E] Neófito Completo Brujah",
+    cla_id = "brujah",
+    is_vampire = true,
+    modo_ficha = "criacao",
+    -- Físicos: base 7 + 1 bônus = 8 (4+3+4 = 11 pontos totais -> 11 - 3 = 8 acima da base)
+    attr_forca = 4,
+    attr_destreza = 3,
+    attr_vigor = 4,
+    -- Sociais: base 3 (2+2+2 -> 3 acima da base)
+    attr_carisma = 2,
+    attr_manipulacao = 2,
+    attr_aparencia = 2,
+    -- Mentais: base 5 (3+2+3 -> 5 acima da base)
+    attr_percepcao = 3,
+    attr_inteligencia = 2,
+    attr_raciocinio = 3,
+    -- Talentos: base 13 + 2 bônus = 15 (hab_briga elevada de 3 p/ 4 via bônus!)
+    hab_briga = 4,
+    hab_prontidao = 3,
+    hab_esportes = 3,
+    hab_intimidacao = 3,
+    hab_manha = 2,
+    -- Perícias: base 9
+    hab_armas_brancas = 3,
+    hab_armas_fogo = 3,
+    hab_furtividade = 3,
+    -- Conhecimentos: base 5
+    hab_investigacao = 2,
+    hab_ocultismo = 3,
+    -- Disciplinas: 3 base
+    disc_slot1_id = "celerity",
+    disc_slot1_nivel = 1,
+    disc_slot2_id = "potence",
+    disc_slot2_nivel = 1,
+    disc_slot3_id = "presence",
+    disc_slot3_nivel = 1,
+    -- Antecedentes: 5 base
+    bg_resources = 2,
+    bg_herd = 2,
+    bg_domain = 1,
+    -- Virtudes: 7 base (1+3, 1+2, 1+2)
+    virtude1_val = 4,
+    virtude2_val = 3,
+    virtude3_val = 3,
+    -- Compras de Bônus: 1 Atributo (5) + 2 Habilidades (4) + 6 FdV (6) = 15 pontos exatos
+    freebie_attributes = 1,
+    freebie_abilities = 2,
+    freebie_willpower = 6,
+}
+local okCreation = Bridge.validateCreationOnSheet(neonateCreation, nil, mockFirecast, mockDialogs, true)
+assert(okCreation.valid == true, "Criação Neófito c/ bônus em Atrib/Hab deveria ser válida: " .. table.concat(okCreation.errors or {}, "; "))
+assert(neonateCreation.modo_ficha == "jogo", "Criação válida com lockIfValid=true deve entrar em modo_ficha='jogo'")
+
+-- Contra-prova: Habilidade 4 sem declarar freebie_abilities deve falhar na trava pré-bônus
+neonateCreation.modo_ficha = "criacao"
+neonateCreation.freebie_abilities = 0
+local badCreation = Bridge.validateCreationOnSheet(neonateCreation, nil, mockFirecast, mockDialogs, false)
+assert(badCreation.valid == false, "Habilidade 4 sem freebie_abilities deve ser rejeitada")
+
+-- 2.12 Fix Round 1 #2: mf_slot1..6 de catálogo preservam cat.tipo e cat.pontos mesmo com defaults de <dataLink>
+local mfSlotSheet = {
+    nome = "[TESTE_E2E] Sangue-Fraco Gigante",
+    cla_id = "brujah",
+    is_vampire = true,
+    geracao_base = 13,
+    mf_slot1_ativo = "true",
+    mf_slot1_id = "gen_14th",
+    mf_slot1_tipo = "qualidade",
+    mf_slot1_pontos = "0",
+    mf_slot2_ativo = "true",
+    mf_slot2_id = "huge_size",
+    mf_slot2_tipo = "qualidade",
+    mf_slot2_pontos = "0",
+}
+Bridge.syncDerivedFields(mfSlotSheet)
+assert(mfSlotSheet.defeitos_bonus == 2, "gen_14th deve conceder +2 de bônus de defeitos mesmo com mf_slot1_tipo='qualidade' e pontos='0', obteve: " .. tostring(mfSlotSheet.defeitos_bonus))
+assert(mfSlotSheet.qualidades_total == 4, "huge_size deve custar 4 de qualidades mesmo com mf_slot2_pontos='0', obteve: " .. tostring(mfSlotSheet.qualidades_total))
+assert(mfSlotSheet.geracao == 14, "gen_14th deve forçar 14ª geração, obteve: " .. tostring(mfSlotSheet.geracao))
+assert(mfSlotSheet.tem_tamanho_grande == true, "huge_size deve sincronizar tem_tamanho_grande == true")
+
+-- 2.13 Fix Round 1 #3: Guarda anti-reentrância e setIfChanged em syncDerivedFields
+local proxyStore = {
+    nome = "[TESTE_E2E] Proxy Guard",
+    cla_id = "brujah",
+    is_vampire = true,
+    geracao_base = 13,
+}
+local writeCount = 0
+local reentrantDepth = 0
+local maxReentrantDepth = 0
+local proxySheet
+proxySheet = setmetatable({}, {
+    __index = function(_, k) return proxyStore[k] end,
+    __newindex = function(_, k, v)
+        proxyStore[k] = v
+        writeCount = writeCount + 1
+        reentrantDepth = reentrantDepth + 1
+        if reentrantDepth > maxReentrantDepth then maxReentrantDepth = reentrantDepth end
+        -- Simula <dataLink> onChange disparando syncDerivedFields reentrantemente a cada escrita
+        Bridge.syncDerivedFields(proxySheet)
+        reentrantDepth = reentrantDepth - 1
+    end,
+})
+Bridge.syncDerivedFields(proxySheet)
+assert(maxReentrantDepth == 1, "Guarda anti-reentrância deve impedir recursão em onChange, profundidade: " .. tostring(maxReentrantDepth))
+writeCount = 0
+Bridge.syncDerivedFields(proxySheet)
+assert(writeCount == 0, "Segunda chamada sem alterações não deve regravar campos no NDB, escritas: " .. tostring(writeCount))
+
+-- 2.14 Fix Round 1 #4: Alinhamento de health_box_0..7 com e sem Tamanho Grande
+local healthTest = {
+    nome = "[TESTE_E2E] Trilha Vitalidade",
+    cla_id = "brujah",
+    is_vampire = true,
+    dano_contundente = 1,
+    dano_letal = 0,
+    dano_aggravado = 0,
+    tem_tamanho_grande = false,
+}
+Bridge.syncDerivedFields(healthTest)
+assert(healthTest.health_box_0 == "-", "Sem Tamanho Grande, health_box_0 deve ser '-', obteve: " .. tostring(healthTest.health_box_0))
+assert(healthTest.health_box_1 == "[/]", "Sem Tamanho Grande, 1 contundente marca Escoriado em health_box_1")
+assert(healthTest.health_box_7 == "[ ]", "Incapacitado (health_box_7) deve estar vazio")
+
+healthTest.tem_tamanho_grande = true
+Bridge.syncDerivedFields(healthTest)
+assert(healthTest.health_box_0 == "[/]", "Com Tamanho Grande, 1 contundente marca Escoriado Extra em health_box_0")
+assert(healthTest.health_box_1 == "[ ]", "Com Tamanho Grande e 1 dano, Escoriado padrão (health_box_1) deve estar vazio")
+assert(healthTest.health_box_7 == "[ ]", "Incapacitado continua mapeado em health_box_7")
+
+healthTest.dano_contundente = 0
+healthTest.dano_letal = 8
+Bridge.syncDerivedFields(healthTest)
+assert(healthTest.vitalidade_resumo == "Incapacitado")
+assert(healthTest.health_box_0 == "[X]" and healthTest.health_box_7 == "[X]", "Com 8 níveis letais em Tamanho Grande, health_box_0..7 ficam todos [X]")
 ''')
         run_lua_file(lua_probe)
     finally:

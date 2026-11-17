@@ -540,14 +540,14 @@ def health_track_xml(accent_color: str, border_color: str, is_vampire: bool = Tr
         else f'<label align="left" width="320" text="Regra Mortal: Armas de Fogo causam dano Letal; Absorção Letal exige Armadura." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>'
     )
     levels = [
-        ("1. Escoriado (0) / Extra", "health_box_1"),
+        ("0. Escoriado Extra (Tam. Grande)", "health_box_0"),
+        ("1. Escoriado (0)", "health_box_1"),
         ("2. Machucado (-1)", "health_box_2"),
         ("3. Ferido (-1)", "health_box_3"),
         ("4. Ferido Gravemente (-2)", "health_box_4"),
         ("5. Espancado (-2)", "health_box_5"),
         ("6. Aleijado (-5)", "health_box_6"),
         ("7. Incapacitado (Imóvel)", "health_box_7"),
-        ("8. Caixa Extra (Tam. Grande)", "health_box_8"),
     ]
     rows_xml = "\n".join(
         f'                    <layout align="top" height="22">'
