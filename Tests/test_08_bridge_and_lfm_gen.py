@@ -1425,11 +1425,368 @@ bmBrujah.bm_sec2_path_id = "lure_of_flames"
 bmBrujah.bm_sec2_nivel = 0
 local dupXpRes = Bridge.submitOrApproveXP(bmBrujah, "submit", { field = "bm_sec2_nivel" }, nil, mockFirecast, mockDialogs)
 assert(dupXpRes.ok == false and bmBrujah.bm_sec2_nivel == 0, "Loja de XP deve rejeitar compra de Linha Secundária duplicada em outro slot!")
+
+-- 2.27 Subprojeto 3 Task 3: Estúdio de Manobras V20 (Divisão, Rapidez, Agarrão -> Mordida -> Dano + Potência, Guardas PF3-3)
+assert(type(Bridge.executeCombatManeuver) == "function", "executeCombatManeuver ausente em V20Bridge")
+assert(type(Bridge.rollPendingCombatDamage) == "function", "rollPendingCombatDamage ausente em V20Bridge")
+
+local combatSheet = {
+    nome = "[TESTE_E2E] Theo Bell Combate",
+    cla_id = "brujah",
+    is_vampire = true,
+    geracao_base = 10,
+    sangue_atual = 10,
+    sangue_gasto_turno = 0,
+    fdv_perm = 6,
+    fdv_temp = 6,
+    attr_forca = 3,
+    attr_destreza = 4,
+    attr_vigor = 3,
+    attr_percepcao = 3,
+    attr_raciocinio = 3,
+    hab_briga = 3,
+    hab_esportes = 3,
+    hab_armas_brancas = 3,
+    hab_armas_fogo = 3,
+    disc_slot1_id = "celerity",
+    disc_slot1_nivel = 2,
+    disc_slot2_id = "potence",
+    disc_slot2_nivel = 2,
+    cmb_manobra_id = "strike",
+    cmb_acoes_normais = 2,
+    cmb_acao_ordem = 1,
+    cmb_menor_parada = 5,
+    cmb_acao_rapidez = false,
+    cmb_defesa_alvo_sucessos = 0,
+    cmb_forca_alvo = 2,
+    cmb_defesas_feitas_turno = 0,
+    em_agarrao = false,
+}
+Bridge.syncDerivedFields(combatSheet)
+-- Destreza(4) + Rapidez passiva(2) + Briga(3) = 9; menor parada = 5; 2 ações normais -> 1ª = 5-2 = 3d10, 2ª = 5-3 = 2d10
+sentMessages = {}
+nextFaces = { 8, 7, 3 }
+local splitAct1 = Bridge.executeCombatManeuver(combatSheet, {}, captureFirecast, mockDialogs)
+assert(splitAct1.ok == true and lastRolledExpr == "3d10", "1ª ação dividida (base 5, 2 ações) deve rolar 3d10, obteve: " .. tostring(lastRolledExpr))
+
+combatSheet.cmb_acao_ordem = 2
+nextFaces = { 8, 4 }
+local splitAct2 = Bridge.executeCombatManeuver(combatSheet, {}, captureFirecast, mockDialogs)
+assert(splitAct2.ok == true and lastRolledExpr == "2d10", "2ª ação dividida (base 5, 2 ações) deve rolar 2d10, obteve: " .. tostring(lastRolledExpr))
+
+-- Ativando 1 ação extra de Rapidez: rapidez_acoes_extras = 1, rapidez_dados_passivos cai de 2 p/ 1 -> Des(4)+RapPass(1)+Briga(3) = 8d10 sem divisão!
+Bridge.newTurn(combatSheet, captureFirecast, mockDialogs)
+local actCel1 = Bridge.activateDisciplinePower(combatSheet, "celerity", "cel_1", captureFirecast, mockDialogs)
+assert(actCel1.ok == true and combatSheet.rapidez_acoes_extras == 1)
+combatSheet.cmb_acao_rapidez = true
+combatSheet.cmb_acoes_normais = 3
+combatSheet.cmb_acao_ordem = 3
+combatSheet.cmb_menor_parada = 4
+nextFaces = { 9, 8, 7, 6, 5, 4, 3, 2 }
+local celStrike = Bridge.executeCombatManeuver(combatSheet, {}, captureFirecast, mockDialogs)
+assert(celStrike.ok == true and lastRolledExpr == "8d10", "Ação de Rapidez deve ignorar divisão de paradas e rolar 8d10, obteve: " .. tostring(lastRolledExpr))
+assert(combatSheet.rapidez_acoes_extras == 0, "Ação de Rapidez deve consumir 1 de rapidez_acoes_extras")
+
+-- Segunda tentativa de Rapidez sem ações extras restantes deve falhar
+dialogMessages = {}
+local celEmpty = Bridge.executeCombatManeuver(combatSheet, {}, captureFirecast, mockDialogs)
+assert(celEmpty.ok == false and #dialogMessages >= 1, "Sem rapidez_acoes_extras deve bloquear ação extra de Rapidez")
+combatSheet.cmb_acao_rapidez = false
+combatSheet.cmb_acoes_normais = 1
+combatSheet.cmb_acao_ordem = 1
+combatSheet.cmb_menor_parada = 0
+
+-- PF3-3 #3: Rolagem bloqueada (Incapacitado ou luz forte Setita zerando parada) NÃO desperdiça Rapidez nem incrementa defesas!
+Bridge.newTurn(combatSheet, captureFirecast, mockDialogs)
+Bridge.activateDisciplinePower(combatSheet, "celerity", "cel_1", captureFirecast, mockDialogs)
+assert(combatSheet.rapidez_acoes_extras == 1)
+combatSheet.dano_letal = 7 -- Incapacitado
+Bridge.syncDerivedFields(combatSheet)
+assert(combatSheet.incapacitado == true)
+local incapCel = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "strike", isCelerityAction = true }, captureFirecast, mockDialogs)
+assert(incapCel.ok == false and combatSheet.rapidez_acoes_extras == 1, "Rolagem bloqueada por Incapacitado NÃO pode gastar rapidez_acoes_extras!")
+local incapDef = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "dodge" }, captureFirecast, mockDialogs)
+assert(incapDef.ok == false and combatSheet.cmb_defesas_feitas_turno == 0, "Defesa bloqueada por Incapacitado NÃO pode incrementar cmb_defesas_feitas_turno!")
+combatSheet.dano_letal = 0
+Bridge.syncDerivedFields(combatSheet)
+
+local setiteFragile = {
+    nome = "[TESTE_E2E] Setita Ofuscado",
+    cla_id = "setite",
+    is_vampire = true,
+    attr_destreza = 1,
+    hab_esportes = 0,
+    hab_briga = 0,
+    setita_luz_forte = true,
+    rapidez_acoes_extras = 1,
+    cmb_defesas_feitas_turno = 0,
+}
+local setiteBlockedCel = Bridge.executeCombatManeuver(setiteFragile, { maneuverId = "strike", isCelerityAction = true }, captureFirecast, mockDialogs)
+assert(setiteBlockedCel.ok == false and setiteFragile.rapidez_acoes_extras == 1, "Luz forte Setita reduzindo parada de 1 p/ 0 não pode gastar rapidez_acoes_extras!")
+local setiteBlockedDef = Bridge.executeCombatManeuver(setiteFragile, { maneuverId = "dodge" }, captureFirecast, mockDialogs)
+assert(setiteBlockedDef.ok == false and setiteFragile.cmb_defesas_feitas_turno == 0, "Luz forte Setita reduzindo defesa p/ 0 não pode incrementar cmb_defesas_feitas_turno!")
+
+-- Defesas ativas cumulativas (-1 dado por defesa prévia no turno) + reset em newTurn
+Bridge.newTurn(combatSheet, captureFirecast, mockDialogs)
+-- combatSheet: Des(4) + RapPassiva(2) + Esportes(3) = 9d10 na 1ª esquiva, 8d10 na 2ª esquiva
+nextFaces = { 8, 8, 8, 8, 8, 8, 8, 8, 8 }
+local d1 = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "dodge" }, captureFirecast, mockDialogs)
+assert(d1.ok == true and lastRolledExpr == "9d10" and combatSheet.cmb_defesas_feitas_turno == 1)
+nextFaces = { 8, 8, 8, 8, 8, 8, 8, 8 }
+local d2 = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "dodge" }, captureFirecast, mockDialogs)
+assert(d2.ok == true and lastRolledExpr == "8d10" and combatSheet.cmb_defesas_feitas_turno == 2)
+Bridge.newTurn(combatSheet, captureFirecast, mockDialogs)
+assert(combatSheet.cmb_defesas_feitas_turno == 0, "newTurn deve zerar cmb_defesas_feitas_turno")
+
+-- Encadeamento Clinch (c/ Potência Automática no ataque Força + dano!) -> em_agarrao = true -> Bite Agravado -> rollPendingCombatDamage
+local biteBeforeGrapple = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "bite" }, captureFirecast, mockDialogs)
+assert(biteBeforeGrapple.ok == false, "Mordida deve falhar antes de estar em agarrão")
+
+-- Ativa Potência por sangue (Potência 2 -> activePotenceAuto = 2, passivePotenceDice = 0)
+local actPotAuto = Bridge.activateDisciplinePower(combatSheet, "potence", "pot_2", captureFirecast, mockDialogs)
+assert(actPotAuto.ok == true and combatSheet.potencia_ativa_turno == true and combatSheet.potencia_sucessos_ativos == 2)
+
+-- Clinch usa Força(3) + Briga(3) = 6d10 + 2 autoSuccesses de Potência no ataque (V20, p. 192 / PF3-3 #1)!
+-- Com dados todos baixos {2,3,2,3,4,5} (0 nos dados) + 2 autoSuccesses de Potência - 1 defesa = 1 sucesso líquido!
+combatSheet.cmb_defesa_alvo_sucessos = 1
+sentMessages = {}
+nextFaces = { 2, 3, 2, 3, 4, 5 }
+local clinchRes = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "clinch" }, captureFirecast, mockDialogs)
+assert(clinchRes.ok == true and lastRolledExpr == "6d10", "Clinch com Potência ativa deve rolar For(3)+Briga(3)=6d10")
+assert(combatSheet.em_agarrao == true, "Clinch bem-sucedido (graças aos 2 auto-sucessos de Potência) deve ligar em_agarrao = true!")
+assert(combatSheet.cmb_dano_pendente_ativo == true and combatSheet.cmb_dano_pendente_parada == 3 and combatSheet.cmb_dano_pendente_auto == 2)
+
+-- Agora em Agarrão, Mordida Vampírica: Des(4) + RapPassiva(2) + Briga(3) + 1 (precisão mordida) = 10d10, Dif 6
+combatSheet.cmb_defesa_alvo_sucessos = 1
+sentMessages = {}
+nextFaces = { 9, 8, 7, 6, 2, 2, 2, 2, 2, 2 } -- 4 sucessos de ataque - 1 defesa = 3 líquidos (carryOver = 2)
+local biteRes = Bridge.executeCombatManeuver(combatSheet, { maneuverId = "bite" }, captureFirecast, mockDialogs)
+assert(biteRes.ok == true and lastRolledExpr == "10d10", "Mordida vampírica deve rolar 10d10, obteve: " .. tostring(lastRolledExpr))
+-- Dano base Mordida = Força(3) + 1 = 4; carryOver = 2 -> parada = 6d10 + 2 auto (Potência) Agravado!
+assert(combatSheet.cmb_dano_pendente_ativo == true)
+assert(combatSheet.cmb_dano_pendente_tipo == "aggravated")
+assert(combatSheet.cmb_dano_pendente_parada == 6, "Esperado 6 dados de dano na mordida, obteve: " .. tostring(combatSheet.cmb_dano_pendente_parada))
+assert(combatSheet.cmb_dano_pendente_auto == 2, "Esperado 2 auto-sucessos de Potência no dano, obteve: " .. tostring(combatSheet.cmb_dano_pendente_auto))
+assert(sentMessages[#sentMessages]:find("6d10") ~= nil and sentMessages[#sentMessages]:find("Agravado") ~= nil)
+
+-- Rolar dano pendente: ignora penalidade de ferimento e fraqueza de clã (testando ferimento -5 + Tzimisce/Setita simulados)
+combatSheet.dano_letal = 6 -- Aleijado (-5)
+Bridge.syncDerivedFields(combatSheet)
+sentMessages = {}
+nextFaces = { 9, 8, 7, 2, 2, 2 } -- 3 sucessos rolados + 2 autoSuccesses de Potência = 5 níveis Agravados!
+local dmgRollRes = Bridge.rollPendingCombatDamage(combatSheet, captureFirecast, mockDialogs)
+assert(dmgRollRes.ok == true and lastRolledExpr == "6d10", "Dano encadeado deve ignorar penalidade de ferimento (-5) e rolar 6d10!")
+assert(combatSheet.cmb_dano_pendente_ativo == false, "rollPendingCombatDamage deve limpar cmb_dano_pendente_ativo")
+assert(sentMessages[#sentMessages]:find("Dano Bruto %(aggravated%): 5") ~= nil, "Esperado 5 níveis agravados (3 rolados + 2 auto): " .. tostring(sentMessages[#sentMessages]))
+
+-- Caso extremo: parada rolada 0 + autoSuccesses > 0 em rollPendingCombatDamage (allowZeroPoolWithAuto)
+combatSheet.cmb_dano_pendente_ativo = true
+combatSheet.cmb_dano_pendente_parada = 0
+combatSheet.cmb_dano_pendente_auto = 2
+combatSheet.cmb_dano_pendente_tipo = "bashing"
+combatSheet.cmb_dano_pendente_estaca = false
+sentMessages = {}
+local zeroPoolAutoDmg = Bridge.rollPendingCombatDamage(combatSheet, captureFirecast, mockDialogs)
+assert(zeroPoolAutoDmg.ok == true and combatSheet.cmb_dano_pendente_ativo == false)
+assert(sentMessages[#sentMessages]:find("Dano Bruto %(bashing%): 2") ~= nil)
+
+-- Sem dano pendente ativo, rollPendingCombatDamage avisa via showMessage
+dialogMessages = {}
+local noPendingDmg = Bridge.rollPendingCombatDamage(combatSheet, captureFirecast, mockDialogs)
+assert(noPendingDmg.ok == false and #dialogMessages >= 1)
+
+-- clearSceneBuffs limpa em_agarrao, cmb_defesas_feitas_turno e cmb_dano_pendente_ativo
+combatSheet.cmb_defesas_feitas_turno = 2
+combatSheet.cmb_dano_pendente_ativo = true
+Bridge.clearSceneBuffs(combatSheet, captureFirecast, mockDialogs)
+assert(combatSheet.em_agarrao == false and combatSheet.cmb_defesas_feitas_turno == 0 and combatSheet.cmb_dano_pendente_ativo == false)
+
+-- PF3-3 #2: Buffs de garras/língua agravadas (prot_claws) e Carícia de Baal (quie_baal) na arma equipada
+local buffCombatSheet = {
+    nome = "[TESTE_E2E] Assamita Metamorfose",
+    cla_id = "assamite",
+    is_vampire = true,
+    geracao_base = 10,
+    sangue_atual = 10,
+    attr_forca = 3,
+    attr_destreza = 4,
+    hab_briga = 3,
+    hab_armas_brancas = 4,
+    disc_slot1_id = "protean",
+    disc_slot1_nivel = 2,
+    disc_slot2_id = "quietus",
+    disc_slot2_nivel = 4,
+    arma1_nome = "[TESTE_E2E] Khopesh",
+    arma1_attr = "attr_destreza",
+    arma1_hab = "hab_armas_brancas",
+    arma1_dif = 6,
+    arma1_dano = 3,
+    arma1_tipo = "lethal",
+}
+Bridge.activateDisciplinePower(buffCombatSheet, "protean", "prot_2", captureFirecast, mockDialogs)
+Bridge.newTurn(buffCombatSheet, captureFirecast, mockDialogs)
+Bridge.activateDisciplinePower(buffCombatSheet, "quietus", "quie_4", captureFirecast, mockDialogs)
+nextFaces = { 8, 8, 2, 2, 2, 2, 2 }
+Bridge.executeCombatManeuver(buffCombatSheet, { maneuverId = "claw" }, captureFirecast, mockDialogs)
+assert(buffCombatSheet.cmb_dano_pendente_tipo == "aggravated", "Garras com prot_claws ativo devem gerar dano agravado")
+nextFaces = { 8, 8, 2, 2, 2, 2, 2, 2 }
+Bridge.executeCombatManeuver(buffCombatSheet, { maneuverId = "weapon_strike", weaponSlot = 1 }, captureFirecast, mockDialogs)
+assert(buffCombatSheet.cmb_dano_pendente_tipo == "aggravated", "Golpe de lâmina com quie_baal ativo deve gerar dano agravado")
+
+-- 2.28 Estaca no Coração (stake_heart): dif mínima 9 e alerta de paralisia/torpor com >= 3 níveis de dano
+local stakeSheet = {
+    nome = "[TESTE_E2E] Caçador Estacador",
+    is_vampire = false,
+    mortal_sobrenatural_modo = "humano",
+    attr_forca = 3,
+    attr_destreza = 4,
+    hab_armas_brancas = 4,
+    arma1_nome = "[TESTE_E2E] Estaca de Freixo",
+    arma1_dano = 1,
+    arma1_dif = 6,
+    arma1_tipo = "lethal",
+    cmb_manobra_id = "stake_heart",
+    cmb_posicao = "retaguarda",
+    cmb_defesa_alvo_sucessos = 0,
+}
+sentMessages = {}
+nextFaces = { 9, 9, 4, 3, 2, 2, 2, 2 } -- Dif 9 -> 2 sucessos líquidos -> baseDamage(3+1=4) + carryOver(1) = 5d10
+local stakeAtk = Bridge.executeCombatManeuver(stakeSheet, {}, captureFirecast, mockDialogs)
+assert(stakeAtk.ok == true and sentMessages[#sentMessages]:find("Dif 9") ~= nil, "stake_heart deve manter dificuldade mínima 9 mesmo pela retaguarda")
+assert(stakeSheet.cmb_dano_pendente_ativo == true and stakeSheet.cmb_dano_pendente_estaca == true and stakeSheet.cmb_dano_pendente_parada == 5)
+
+sentMessages = {}
+nextFaces = { 8, 7, 6, 3, 2 } -- 3 sucessos na Dif 6 -> dispara alerta de Estaca no Coração!
+local stakeDmg = Bridge.rollPendingCombatDamage(stakeSheet, captureFirecast, mockDialogs)
+assert(stakeDmg.ok == true and stakeSheet.cmb_dano_pendente_ativo == false)
+assert(sentMessages[#sentMessages]:find("ESTACA NO CORAÇÃO") ~= nil, "3+ níveis com estaca devem emitir alerta de paralisia/torpor: " .. tostring(sentMessages[#sentMessages]))
+
+-- 2.29 Gancho de Iniciativa para Task 4 (V20CoterieDockBridge.recordSheetInitiative online e offline)
+local recordedInits = {}
+_G.V20CoterieDockBridge = {
+    recordSheetInitiative = function(sh, d10Face, initMod, totalInit, fcArg)
+        table.insert(recordedInits, { nome = sh.nome, d10 = d10Face, mod = initMod, total = totalInit, hasFc = (fcArg ~= nil) })
+    end,
+}
+nextFaces = { 8 }
+Bridge.rollInitiative(stakeSheet, captureFirecast, mockDialogs)
+nextFaces = { 6 }
+Bridge.rollInitiative(stakeSheet, offlineFirecast, mockDialogs)
+_G.V20CoterieDockBridge = nil
+assert(#recordedInits == 2, "recordSheetInitiative deve ser chamado tanto online quanto no fallback local")
+assert(recordedInits[1].d10 == 8 and recordedInits[1].total == 8 + recordedInits[1].mod and recordedInits[1].hasFc == true)
+assert(recordedInits[2].d10 == 6 and recordedInits[2].total == 6 + recordedInits[2].mod and recordedInits[2].hasFc == true)
+
+-- 2.30 Unificação Aba 3 <-> Aba 8 (Taumaturgia e Necromancia delegando resumo e ativação p/ Linha Primária)
+local thauCohesion = {
+    nome = "[TESTE_E2E] Magus Tremere Coesão",
+    cla_id = "tremere",
+    is_vampire = true,
+    geracao_base = 11,
+    sangue_atual = 10,
+    fdv_perm = 7,
+    fdv_temp = 7,
+    disc_slot3_id = "thaumaturgy",
+    disc_slot3_nivel = 3,
+    disc_slot3_pwr_lvl = 2,
+    bm_thau_prim_id = "lure_of_flames",
+    disc_slot4_id = "necromancy",
+    disc_slot4_nivel = 2,
+    disc_slot4_pwr_lvl = 1,
+    bm_necro_prim_id = "bone_path",
+}
+Bridge.syncDerivedFields(thauCohesion)
+assert((thauCohesion.disc_slot3_resumo or ""):find("Sedutor das Chamas") ~= nil,
+    "disc_slot3_resumo na Aba 3 deve refletir a Linha Primária 'Sedutor das Chamas' da Aba 8: " .. tostring(thauCohesion.disc_slot3_resumo))
+assert((thauCohesion.disc_slot3_resumo or ""):find("Punhado de Chamas") ~= nil,
+    "disc_slot3_resumo deve exibir o poder Nv 2 de Sedutor das Chamas: " .. tostring(thauCohesion.disc_slot3_resumo))
+assert((thauCohesion.disc_slot4_resumo or ""):find("Linha dos Ossos") ~= nil,
+    "disc_slot4_resumo na Aba 3 deve refletir a Linha Primária 'Linha dos Ossos' de Necromancia: " .. tostring(thauCohesion.disc_slot4_resumo))
+
+-- Ativar Slot 3 na Aba 3 delega para activatePrimaryBloodMagic (Sedutor das Chamas) e emite alerta de falha crítica taumatúrgica em botch!
+sentMessages = {}
+nextFaces = { 1, 2, 3, 2, 2, 2, 2 } -- Botch!
+local slotBotchRes = Bridge.activateDisciplineSlot(thauCohesion, 3, captureFirecast, mockDialogs)
+assert(slotBotchRes.ok == true and thauCohesion.sangue_atual == 9)
+assert(sentMessages[#sentMessages]:find("Sedutor das Chamas") ~= nil,
+    "activateDisciplineSlot(3) deve rolar Sedutor das Chamas: " .. tostring(sentMessages[#sentMessages]))
+assert(sentMessages[#sentMessages]:find("Falha Crítica Taumatúrgica") ~= nil,
+    "activateDisciplineSlot(3) em Taumaturgia deve preservar o alerta de Falha Crítica Taumatúrgica (-1 FdV Perm): " .. tostring(sentMessages[#sentMessages]))
 ''' )
         run_lua_file(lua_probe)
     finally:
         if os.path.exists(lua_probe):
             os.remove(lua_probe)
+
+    # 2b. Verificar controles do Estúdio de Manobras V20 (Aba 5) e <dataLink>s nas 15 fichas (14 vampíricas + 1 mortal)
+    all_15_roots = [(f"Sheets/{CLAN_F}.lfm", vampire_roots[cid]) for cid, _, _, CLAN_F, _ in expected_vampire_sheets] + [
+        ("Sheets/frmMortal.lfm", mortal_root)
+    ]
+    req_combat_studio_ctrls = (
+        "crdEstudioManobras",
+        "cmbCmbManobraId",
+        "cmbCmbArmaSlot",
+        "cmbCmbAcoesNormais",
+        "cmbCmbAcaoOrdem",
+        "edtCmbMenorParada",
+        "chkCmbAcaoRapidez",
+        "edtCmbMiraTurnos",
+        "chkCmbTemLuneta",
+        "cmbCmbAlvoLocalizado",
+        "cmbCmbCobertura",
+        "cmbCmbPosicao",
+        "edtCmbDefesaAlvo",
+        "edtCmbForcaAlvo",
+        "edtCmbDefesasTurno",
+        "chkCmbEmAgarrao",
+        "edtArmaduraPenalidade",
+        "btnCmbExecutarManobra",
+        "lblCmbDanoPendenteResumo",
+        "btnCmbRolarDanoPendente",
+    )
+    req_combat_dl_fields = (
+        "cmb_manobra_id",
+        "cmb_arma_slot",
+        "cmb_acoes_normais",
+        "cmb_acao_ordem",
+        "cmb_menor_parada",
+        "cmb_acao_rapidez",
+        "cmb_mira_turnos",
+        "cmb_tem_luneta",
+        "cmb_alvo_localizado",
+        "cmb_cobertura",
+        "cmb_posicao",
+        "cmb_defesa_alvo_sucessos",
+        "cmb_forca_alvo",
+        "cmb_defesas_feitas_turno",
+        "em_agarrao",
+        "armadura_penalidade",
+        "cmb_dano_pendente_ativo",
+        "cmb_dano_pendente_parada",
+        "cmb_dano_pendente_auto",
+        "cmb_dano_pendente_tipo",
+        "cmb_dano_pendente_estaca",
+        "cmb_dano_pendente_cabeca",
+        "cmb_dano_pendente_resumo",
+    )
+    expected_20_maneuvers = (
+        "strike", "kick", "bite", "claw", "clinch", "hold", "tackle", "sweep_brawl", "disarm_brawl",
+        "weapon_strike", "stake_heart", "disarm_melee", "sweep_melee",
+        "single_shot", "double_tap", "three_round_burst", "full_auto",
+        "dodge", "block", "parry",
+    )
+    for rel_15, root_15 in all_15_roots:
+        names_15 = {el.attrib.get("name") for el in root_15.iter() if "name" in el.attrib}
+        for c_nm in req_combat_studio_ctrls:
+            assert c_nm in names_15, f"Controle do Estúdio de Manobras '{c_nm}' ausente em {rel_15}"
+        man_combos = [el for el in root_15.iter("comboBox") if el.attrib.get("name") == "cmbCmbManobraId"]
+        assert len(man_combos) == 1
+        man_vals_str = man_combos[0].attrib.get("values", "")
+        for m_id in expected_20_maneuvers:
+            assert f"'{m_id}'" in man_vals_str, f"Manobra '{m_id}' ausente em cmbCmbManobraId ({rel_15})"
+        dl_15_blob = "\n".join(el.attrib.get("fields", "") for el in root_15.findall("dataLink"))
+        for c_fld in req_combat_dl_fields:
+            assert f"'{c_fld}'" in dl_15_blob, f"Campo '{c_fld}' ausente nos <dataLink> raiz de {rel_15}"
 
     # 3. Instanciar e exercitar em runtime na lua54x64.dll TODAS as 15 fichas compiladas (.lfm.lua)
     sandbox_lfm_dir = os.path.join(ROOT, "output", "probe_test_e2e_15_forms")
@@ -1600,6 +1957,34 @@ for _, entry in ipairs(FORMS) do
             inst:setNodeObject(mockNode)
             assert(inst.tabMagiaSangue._props.setVisible == false, "tabMagiaSangue deve ocultar ao zerar acesso em " .. entry.formName)
             assert(inst.pgcPrincipal:getTabIndex() == 0, "pgcPrincipal deve voltar ao índice 0 ao ocultar Aba 8 ativa em " .. entry.formName)
+
+            -- Em modo_ficha='jogo', cmbBmThauPrimId e cmbBmNecroPrimId só travam quando bm_*_prim_nivel > 0
+            mockNode.modo_ficha = "jogo"
+            inst:setNodeObject(mockNode)
+            assert(inst.cmbBmThauPrimId._props.setEnabled == true,
+                "cmbBmThauPrimId deve permanecer habilitado em modo_ficha='jogo' quando bm_thau_prim_nivel == 0 em " .. entry.formName)
+            assert(inst.cmbBmNecroPrimId._props.setEnabled == true,
+                "cmbBmNecroPrimId deve permanecer habilitado em modo_ficha='jogo' quando bm_necro_prim_nivel == 0 em " .. entry.formName)
+            mockNode.disc_slot4_id = "thaumaturgy"
+            mockNode.disc_slot4_nivel = 1
+            inst:setNodeObject(mockNode)
+            assert(inst.cmbBmThauPrimId._props.setEnabled == false,
+                "cmbBmThauPrimId deve travar em modo_ficha='jogo' quando bm_thau_prim_nivel > 0 em " .. entry.formName)
+            mockNode.disc_slot4_id = ""
+            mockNode.disc_slot4_nivel = 0
+            mockNode.modo_ficha = "criacao"
+            inst:setNodeObject(mockNode)
+        else
+            -- Tremere (Taumaturgia >= 1) ou Giovanni (Necromancia >= 1): trava o primário já adquirido (>0), libera o outro (=0)
+            mockNode.modo_ficha = "jogo"
+            inst:setNodeObject(mockNode)
+            if entry.cid == "tremere" then
+                assert(inst.cmbBmThauPrimId._props.setEnabled == false and inst.cmbBmNecroPrimId._props.setEnabled == true)
+            elseif entry.cid == "giovanni" then
+                assert(inst.cmbBmNecroPrimId._props.setEnabled == false and inst.cmbBmThauPrimId._props.setEnabled == true)
+            end
+            mockNode.modo_ficha = "criacao"
+            inst:setNodeObject(mockNode)
         end
     end
 

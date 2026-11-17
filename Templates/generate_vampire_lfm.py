@@ -20,11 +20,16 @@ from Templates.theme_gothic import (  # noqa: E402
     BORDER_VAMP,
     CLAN_ORDER,
     CLANS,
+    COMBAT_MANEUVER_FIELD_DEFAULTS,
+    COMBAT_MANEUVER_OPTIONS,
+    COVER_LEVEL_OPTIONS,
     DISCIPLINES_LIST,
+    FLANK_MODE_OPTIONS,
     MERITS_FLAWS_OPTIONS,
     MORALITY_PATHS,
     NECROMANCY_PATHS_LIST,
     RITUALS_LIST,
+    TARGET_LOCATION_OPTIONS,
     TEXT_ALERT,
     TEXT_GOLD,
     TEXT_MAIN,
@@ -390,6 +395,27 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
     dmg_items = lua_str_list(["Contundente", "Letal", "Agravado"])
     dmg_vals = lua_str_list(["bashing", "lethal", "aggravated"])
 
+    man_items = lua_str_list([lbl for _, lbl in COMBAT_MANEUVER_OPTIONS])
+    man_vals = lua_str_list([mid for mid, _ in COMBAT_MANEUVER_OPTIONS])
+    slot_items = lua_str_list(["Slot Arma #1", "Slot Arma #2", "Slot Arma #3", "Slot Arma #4"])
+    slot_vals = lua_str_list(["1", "2", "3", "4"])
+    act_tot_items = lua_str_list([
+        "1 Ação (Sem Divisão)",
+        "2 Ações (-2 / -3)",
+        "3 Ações (-3 / -4 / -5)",
+        "4 Ações (-4..-7)",
+        "5 Ações (-5..-9)",
+    ])
+    act_tot_vals = lua_str_list(["1", "2", "3", "4", "5"])
+    act_ord_items = lua_str_list(["1ª Ação", "2ª Ação", "3ª Ação", "4ª Ação", "5ª Ação"])
+    act_ord_vals = lua_str_list(["1", "2", "3", "4", "5"])
+    loc_items = lua_str_list([lbl for _, lbl in TARGET_LOCATION_OPTIONS])
+    loc_vals = lua_str_list([lid for lid, _ in TARGET_LOCATION_OPTIONS])
+    cov_items = lua_str_list([lbl for _, lbl in COVER_LEVEL_OPTIONS])
+    cov_vals = lua_str_list([cid for cid, _ in COVER_LEVEL_OPTIONS])
+    flk_items = lua_str_list([lbl for _, lbl in FLANK_MODE_OPTIONS])
+    flk_vals = lua_str_list([fid for fid, _ in FLANK_MODE_OPTIONS])
+
     weapon_rows = []
     for i in range(1, 5):
         weapon_rows.append(
@@ -409,7 +435,7 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
 
     return f"""            <tab name="tabCombate" title="5. Combate &amp; Vitalidade">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="640">
+                    <layout align="top" height="880">
                         <rectangle align="top" height="68" color="{BG_PANEL}" strokeColor="{border}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
                             <label align="top" height="20" text="ATALHOS RÁPIDOS DE COMBATE V20" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=4}}">
@@ -427,6 +453,55 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
                                 </button>
                                 <button align="left" width="135" text="Armas de Fogo" fontSize="10">
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollFromSheet(sheet, {{attrId='attr_destreza', habId='hab_armas_fogo', difficulty=6, label='Armas de Fogo'}}) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+
+                        <rectangle name="crdEstudioManobras" align="top" height="236" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
+                            <label name="lblTituloEstudioManobras" align="top" height="20" text="ESTÚDIO DE MANOBRAS V20, DIVISÃO DE PARADAS &amp; DANO ENCADEADO" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <label align="left" width="58" text="Manobra:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbCmbManobraId" align="left" width="245" field="cmb_manobra_id" items="{man_items}" values="{man_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbCmbArmaSlot" align="left" width="110" field="cmb_arma_slot" items="{slot_items}" values="{slot_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <label align="left" width="72" text="Pen. Armad.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtArmaduraPenalidade" align="left" width="34" field="armadura_penalidade" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <checkBox name="chkCmbEmAgarrao" align="left" width="115" field="em_agarrao" text="Em Agarrão" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold"/>
+                            </layout>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <label align="left" width="46" text="Ações:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbCmbAcoesNormais" align="left" width="150" field="cmb_acoes_normais" items="{act_tot_items}" values="{act_tot_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbCmbAcaoOrdem" align="left" width="88" field="cmb_acao_ordem" items="{act_ord_items}" values="{act_ord_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <label align="left" width="88" text="Menor Parada:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtCmbMenorParada" align="left" width="36" field="cmb_menor_parada" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <checkBox name="chkCmbAcaoRapidez" align="left" width="128" field="cmb_acao_rapidez" text="Ação de Rapidez" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=4}}"/>
+                                <label align="left" width="52" text="Extras:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <label name="lblCmbRapidezExtras" align="left" width="26" field="rapidez_acoes_extras" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
+                            </layout>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <label align="left" width="36" text="Mira:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtCmbMiraTurnos" align="left" width="32" field="cmb_mira_turnos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=4}}"/>
+                                <checkBox name="chkCmbTemLuneta" align="left" width="68" field="cmb_tem_luneta" text="Luneta" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbCmbAlvoLocalizado" align="left" width="185" field="cmb_alvo_localizado" items="{loc_items}" values="{loc_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbCmbCobertura" align="left" width="165" field="cmb_cobertura" items="{cov_items}" values="{cov_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbCmbPosicao" align="client" field="cmb_posicao" items="{flk_items}" values="{flk_vals}" fontColor="{TEXT_MAIN}" fontSize="10"/>
+                            </layout>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <label align="left" width="84" text="Sucessos Def.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtCmbDefesaAlvo" align="left" width="34" field="cmb_defesa_alvo_sucessos" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <label align="left" width="68" text="Força Alvo:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtCmbForcaAlvo" align="left" width="34" field="cmb_forca_alvo" type="number" fontColor="{TEXT_MAIN}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <label align="left" width="92" text="Defesas Turno:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtCmbDefesasTurno" align="left" width="34" field="cmb_defesas_feitas_turno" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <button name="btnCmbExecutarManobra" align="right" width="175" text="Executar Manobra V20" fontSize="11" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.executeCombatManeuver(sheet, nil) end</event>
+                                </button>
+                            </layout>
+                            <label name="lblCmbManobraResumo" align="top" height="20" field="cmb_manobra_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=4}}"/>
+                            <layout align="top" height="30" margins="{{top=4}}">
+                                <label align="left" width="98" text="Dano Encadeado:" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                                <label name="lblCmbDanoPendenteResumo" align="client" field="cmb_dano_pendente_resumo" fontColor="{TEXT_MAIN}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{right=8}}"/>
+                                <button name="btnCmbRolarDanoPendente" align="right" width="175" text="Rolar Dano Encadeado" fontSize="11" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.rollPendingCombatDamage(sheet) end</event>
                                 </button>
                             </layout>
                         </rectangle>
@@ -958,6 +1033,8 @@ def generate_vampire_lfm(clan_id: str) -> str:
             (f"mf_slot{i}_tipo", "qualidade"),
             (f"mf_slot{i}_pontos", "0"),
         ])
+
+    defaults.extend(COMBAT_MANEUVER_FIELD_DEFAULTS)
 
     datalinks = root_datalinks_xml(
         defaults,

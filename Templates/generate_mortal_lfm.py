@@ -24,6 +24,7 @@ from Templates.theme_gothic import (  # noqa: E402
     BG_MAIN,
     BG_PANEL,
     BORDER_MORTAL,
+    COMBAT_MANEUVER_FIELD_DEFAULTS,
     DISCIPLINES_LIST,
     NUMINA_LIST,
     TEXT_ALERT,
@@ -324,6 +325,8 @@ def generate_mortal_lfm() -> str:
             (f"mf_slot{i}_tipo", "qualidade"),
             (f"mf_slot{i}_pontos", "0"),
         ])
+
+    defaults.extend(COMBAT_MANEUVER_FIELD_DEFAULTS)
 
     datalinks = root_datalinks_xml(
         defaults,

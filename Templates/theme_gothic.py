@@ -381,6 +381,77 @@ RITUALS_LIST: list[tuple[str, str]] = [
     ("necro_rit_5_dark_exile", "[Necro Nv 5] Exílio Sombrio"),
 ]
 
+COMBAT_MANEUVER_OPTIONS: list[tuple[str, str]] = [
+    ("strike", "Soco (Des+Briga, Dif 6)"),
+    ("kick", "Chute (Des+Briga, Dif 7, For+1)"),
+    ("bite", "Mordida Vampírica (Agarrão, Agrav.)"),
+    ("claw", "Garras (Des+Briga, For+1)"),
+    ("clinch", "Agarrão / Clinch (For+Briga)"),
+    ("hold", "Segurar / Hold (For+Briga, s/ Dano)"),
+    ("tackle", "Encontrão / Tackle (For+Briga, Dif 7)"),
+    ("sweep_brawl", "Rasteira — Briga (Dif 7)"),
+    ("disarm_brawl", "Desarmar — Briga (Dif 7)"),
+    ("weapon_strike", "Golpe com Arma Equipada (Slot)"),
+    ("stake_heart", "Estacar Coração (Dif 9, Letal)"),
+    ("disarm_melee", "Desarmar com Arma (+1 Dif)"),
+    ("sweep_melee", "Rasteira com Arma (+1 Dif)"),
+    ("single_shot", "Tiro Único (Slot Arma de Fogo)"),
+    ("double_tap", "Tiro Duplo Rápido (+1d, +1 Dif)"),
+    ("three_round_burst", "Rajada Curta 3 Tiros (+2d, +1 Dif)"),
+    ("full_auto", "Rajada Completa (+10d, +2 Dif)"),
+    ("dodge", "Defesa: Esquiva Ativa (Des+Esp)"),
+    ("block", "Defesa: Bloqueio (Des+Briga)"),
+    ("parry", "Defesa: Aparar (Des+Arm. Brancas)"),
+]
+
+TARGET_LOCATION_OPTIONS: list[tuple[str, str]] = [
+    ("nenhum", "Sem Alvo Específico"),
+    ("membro", "Membro / Arma (+1 Dif)"),
+    ("cabeca", "Cabeça / Vital (+2 Dif, +1d)"),
+]
+
+COVER_LEVEL_OPTIONS: list[tuple[str, str]] = [
+    ("nenhuma", "Sem Cobertura"),
+    ("leve", "Cobertura Leve (+1 Dif)"),
+    ("boa", "Boa Cobertura (+2 Dif)"),
+    ("superior", "Cobertura Superior (+3 Dif)"),
+]
+
+FLANK_MODE_OPTIONS: list[tuple[str, str]] = [
+    ("frontal", "Frontal (+0 Dif)"),
+    ("flanco", "Flanco (-1 Dif)"),
+    ("retaguarda", "Retaguarda (-2 Dif)"),
+]
+
+COMBAT_MANEUVER_FIELD_DEFAULTS: list[tuple[str, str]] = [
+    ("cmb_manobra_id", "strike"),
+    ("cmb_arma_slot", "1"),
+    ("cmb_acoes_normais", "1"),
+    ("cmb_acao_ordem", "1"),
+    ("cmb_menor_parada", "0"),
+    ("cmb_acao_rapidez", "false"),
+    ("cmb_mira_turnos", "0"),
+    ("cmb_tem_luneta", "false"),
+    ("cmb_alvo_localizado", "nenhum"),
+    ("cmb_cobertura", "nenhuma"),
+    ("cmb_posicao", "frontal"),
+    ("cmb_defesa_alvo_sucessos", "0"),
+    ("cmb_forca_alvo", "2"),
+    ("cmb_defesas_feitas_turno", "0"),
+    ("em_agarrao", "false"),
+    ("armadura_penalidade", "0"),
+    ("rapidez_acoes_extras", "0"),
+    ("cmb_manobra_resumo", "Soco (V20, p. 276) — Manobra padrão desarmada (Força Contundente; V20, p. 276)."),
+    ("cmb_dano_pendente_ativo", "false"),
+    ("cmb_dano_pendente_parada", "0"),
+    ("cmb_dano_pendente_auto", "0"),
+    ("cmb_dano_pendente_tipo", "bashing"),
+    ("cmb_dano_pendente_estaca", "false"),
+    ("cmb_dano_pendente_cabeca", "false"),
+    ("cmb_dano_pendente_manobra", ""),
+    ("cmb_dano_pendente_resumo", "Nenhum dano encadeado pendente."),
+]
+
 
 def xml_esc(val: str) -> str:
     return (
@@ -542,8 +613,6 @@ def build_mode_permissions_lua(is_vampire: bool = True) -> str:
             "cmbVirtude1Tipo",
             "cmbVirtude2Tipo",
             "cmbMoralidadeTipo",
-            "cmbBmThauPrimId",
-            "cmbBmNecroPrimId",
             "cmbAssamitaMaldicaoModo",
         ])
         perm_edits.extend([
@@ -570,6 +639,10 @@ def build_mode_permissions_lua(is_vampire: bool = True) -> str:
 
     mode_tail = (
         """
+            local lockThauPrim = lockPerm and ((tonumber(sheet.bm_thau_prim_nivel) or 0) > 0)
+            if self.cmbBmThauPrimId ~= nil then self.cmbBmThauPrimId:setEnabled(not lockThauPrim) end
+            local lockNecroPrim = lockPerm and ((tonumber(sheet.bm_necro_prim_nivel) or 0) > 0)
+            if self.cmbBmNecroPrimId ~= nil then self.cmbBmNecroPrimId:setEnabled(not lockNecroPrim) end
             for secIdx = 1, 4 do
                 local secOwned = (tonumber(sheet["bm_sec" .. secIdx .. "_nivel"]) or 0) > 0
                 local lockSecChoice = lockPerm and secOwned

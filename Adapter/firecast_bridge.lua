@@ -562,6 +562,7 @@ local function resolveMirroredAggravated(sheet)
 end
 
 local function updateDisciplineSummaries(sheet)
+    local isVamp = Bridge.isVampireSheet(sheet)
     for i = 1, 9 do
         local did = sheet["disc_slot" .. i .. "_id"]
         local dots = safeInt(sheet["disc_slot" .. i .. "_nivel"], 0)
@@ -569,16 +570,34 @@ local function updateDisciplineSummaries(sheet)
             dots = math.max(dots, safeInt(sheet.ghoulPotence, 0))
         end
         local pwrLvl = math.max(1, math.min(5, safeInt(sheet["disc_slot" .. i .. "_pwr_lvl"], 1)))
-        local cat = (type(did) == "string") and V20.DisciplinesCatalog.DISCIPLINES[did] or nil
-        if cat and cat.powers and cat.powers[pwrLvl] then
-            local pw = cat.powers[pwrLvl]
-            local lockPrefix = (dots < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
-            setIfChanged(sheet, "disc_slot" .. i .. "_resumo", string.format(
-                "%s%s (Nv %d) — %s | %s",
-                lockPrefix, pw.name, pw.level, pw.diffHint or "Dif 6", pw.summary or ""
-            ))
+        if isVamp and (did == "thaumaturgy" or did == "necromancy") then
+            local primId = (did == "necromancy")
+                and ((type(sheet.bm_necro_prim_id) == "string" and sheet.bm_necro_prim_id ~= "") and sheet.bm_necro_prim_id or "sepulchre_path")
+                or ((type(sheet.bm_thau_prim_id) == "string" and sheet.bm_thau_prim_id ~= "") and sheet.bm_thau_prim_id or "path_of_blood")
+            local effDots = math.max(dots, V20.BloodMagicEngine.derivePrimaryPathLevel(getDisciplineDots(sheet, did)))
+            local pathTbl = V20.BloodMagicEngine.getPathTable(did, primId)
+            if pathTbl and pathTbl.powers and pathTbl.powers[pwrLvl] then
+                local pw = pathTbl.powers[pwrLvl]
+                local lockPrefix = (effDots < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
+                setIfChanged(sheet, "disc_slot" .. i .. "_resumo", string.format(
+                    "%s%s — %s (Nv %d) — %s | %s",
+                    lockPrefix, pathTbl.name, pw.name, pw.level, pw.diffHint or "Dif 6", pw.summary or ""
+                ))
+            else
+                setIfChanged(sheet, "disc_slot" .. i .. "_resumo", "Selecione uma Disciplina V20 para inspecionar e ativar poderes.")
+            end
         else
-            setIfChanged(sheet, "disc_slot" .. i .. "_resumo", "Selecione uma Disciplina V20 para inspecionar e ativar poderes.")
+            local cat = (type(did) == "string") and V20.DisciplinesCatalog.DISCIPLINES[did] or nil
+            if cat and cat.powers and cat.powers[pwrLvl] then
+                local pw = cat.powers[pwrLvl]
+                local lockPrefix = (dots < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
+                setIfChanged(sheet, "disc_slot" .. i .. "_resumo", string.format(
+                    "%s%s (Nv %d) — %s | %s",
+                    lockPrefix, pw.name, pw.level, pw.diffHint or "Dif 6", pw.summary or ""
+                ))
+            else
+                setIfChanged(sheet, "disc_slot" .. i .. "_resumo", "Selecione uma Disciplina V20 para inspecionar e ativar poderes.")
+            end
         end
     end
 
@@ -771,7 +790,17 @@ local function syncDerivedFieldsImpl(sheet, ndbApi)
     setIfChanged(sheet, "potencia_dados_passivos", cMods.passivePotenceDice)
     setIfChanged(sheet, "potencia_sucessos_ativos", cMods.activePotenceAuto)
     setIfChanged(sheet, "rapidez_dados_passivos", cMods.passiveCelerityDice)
-    setIfChanged(sheet, "rapidez_acoes_extras", cMods.activeCelerityActions)
+    if sheet.rapidez_acoes_extras == nil then
+        setIfChanged(sheet, "rapidez_acoes_extras", cMods.activeCelerityActions)
+    else
+        setIfChanged(sheet, "rapidez_acoes_extras", safeNonNegInt(sheet.rapidez_acoes_extras, 0))
+    end
+
+    local mId = (type(sheet.cmb_manobra_id) == "string" and sheet.cmb_manobra_id ~= "") and sheet.cmb_manobra_id or "strike"
+    local mSpec = V20.CombatManeuversCatalog.MANEUVERS[mId]
+    if mSpec then
+        setIfChanged(sheet, "cmb_manobra_resumo", string.format("%s (%s) — %s", mSpec.name, mSpec.page, mSpec.summary))
+    end
 
     local activeIds = {}
     for k, _ in pairs(Bridge.deserializeBuffs(sheet)) do
@@ -1091,6 +1120,9 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
         habVal = 0
         bonusDice = safeInt(opts.bonusDice, 0)
         label = label or "Teste V20"
+        resolvedAttrId = opts.resolvedAttrId or opts.attrId
+        resolvedHabId = opts.resolvedHabId or opts.habId
+        if resolvedHabId == "" or resolvedHabId == "none" then resolvedHabId = nil end
     else
         local attrId = opts.attrId or sheet.roll_attr_id or "attr_percepcao"
         local habId = (opts.habId ~= nil) and opts.habId or (opts.attrId == nil and sheet.roll_hab_id or nil)
@@ -1172,7 +1204,7 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
         bonusDice = bonusDice,
         difficulty = safeInt(opts.difficulty ~= nil and opts.difficulty or sheet.roll_diff, 6),
         difficultyMod = diffMod,
-        woundPenalty = sheet.penalidade_ferimento or 0,
+        woundPenalty = isTrue(opts.woundPenaltyAlreadyApplied) and 0 or (sheet.penalidade_ferimento or 0),
         incapacitated = isTrue(sheet.incapacitado),
         ignoreWoundPenalty = ignoreWound,
         spendWillpower = spendWP,
@@ -1183,6 +1215,12 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
     if not poolInfo.canRoll then
         dlg.showMessage(poolInfo.blockReason or "Rolagem bloqueada pelas regras V20.")
         return { ok = false, error = poolInfo.blockReason }
+    end
+
+    if isTrue(opts.forbidZeroPool) and poolInfo.pool <= 0 and not stOverride then
+        local zeroMsg = "Parada reduzida a zero ou menos pelas penalidades."
+        dlg.showMessage(zeroMsg)
+        return { ok = false, error = zeroMsg }
     end
 
     if cwMods ~= nil then
@@ -1278,7 +1316,14 @@ local function applyEngineStateToSheet(sheet, st)
     sheet.sangue_fraco_usado = st.thinBloodUsed
     sheet.fdv_temp = st.fdv_temp
     sheet.potencia_ativa_turno = (st.activePotenceAuto == true)
-    sheet.rapidez_acoes_ativas = st.activeCelerityActions or 0
+    local prevAtivas = safeNonNegInt(sheet.rapidez_acoes_ativas, 0)
+    local newAtivas = safeNonNegInt(st.activeCelerityActions, 0)
+    sheet.rapidez_acoes_ativas = newAtivas
+    if newAtivas == 0 and prevAtivas > 0 then
+        sheet.rapidez_acoes_extras = 0
+    elseif newAtivas > prevAtivas then
+        sheet.rapidez_acoes_extras = safeNonNegInt(sheet.rapidez_acoes_extras, 0) + (newAtivas - prevAtivas)
+    end
     sheet.buff_forca = safeInt(st.buff_forca, safeInt(sheet.buff_forca, 0))
     sheet.buff_destreza = safeInt(st.buff_destreza, safeInt(sheet.buff_destreza, 0))
     sheet.buff_vigor = safeInt(st.buff_vigor, safeInt(sheet.buff_vigor, 0))
@@ -1413,6 +1458,10 @@ end
 
 function Bridge.activateDisciplineSlot(sheet, slotIndex, firecastApi, dialogsApi)
     local pwrLvl = math.max(1, math.min(5, safeInt(sheet and sheet["disc_slot" .. slotIndex .. "_pwr_lvl"], 1)))
+    local discId = (type(sheet) == "table") and sheet["disc_slot" .. slotIndex .. "_id"] or nil
+    if Bridge.isVampireSheet(sheet) and (discId == "thaumaturgy" or discId == "necromancy") then
+        return Bridge.activatePrimaryBloodMagic(sheet, discId, pwrLvl, firecastApi, dialogsApi)
+    end
     return Bridge.activateDisciplinePower(sheet, slotIndex, pwrLvl, firecastApi, dialogsApi)
 end
 
@@ -1577,6 +1626,8 @@ function Bridge.newTurn(sheet, firecastApi, dialogsApi)
     if type(sheet) ~= "table" then return end
     local st = V20.DisciplinesEngine.clearTurnEffects(Bridge.sheetToEngineState(sheet))
     st = V20.Blood.newTurn(st)
+    setIfChanged(sheet, "cmb_defesas_feitas_turno", 0)
+    setIfChanged(sheet, "rapidez_acoes_extras", 0)
     applyEngineStateToSheet(sheet, st)
     return st
 end
@@ -1628,6 +1679,10 @@ function Bridge.clearSceneBuffs(sheet, firecastApi, dialogsApi)
     st = V20.DisciplinesEngine.clearSceneBuffs(st)
     setIfChanged(sheet, "malkav_suprimida_cena", false)
     setIfChanged(sheet, "toreador_fascinado_cena", false)
+    setIfChanged(sheet, "em_agarrao", false)
+    setIfChanged(sheet, "cmb_defesas_feitas_turno", 0)
+    setIfChanged(sheet, "cmb_dano_pendente_ativo", false)
+    setIfChanged(sheet, "rapidez_acoes_extras", 0)
     applyEngineStateToSheet(sheet, st)
     Bridge.notify(sheet, string.format("🧹 [%s] Buffs de cena encerrados.", sheet.nome or "Personagem"), fc, dlg)
     return st
@@ -1717,6 +1772,14 @@ function Bridge.rollInitiative(sheet, firecastApi, dialogsApi)
     local function formatInit(d10Val)
         local faceInt = safeInt(d10Val, 1)
         local total = faceInt + mod
+        local dockBridge = rawget(_G, "V20CoterieDockBridge")
+        if dockBridge == nil then
+            local okDock, modDock = pcall(require, "Adapter.coterie_dock_bridge")
+            if okDock and type(modDock) == "table" then dockBridge = modDock end
+        end
+        if dockBridge and type(dockBridge.recordSheetInitiative) == "function" then
+            dockBridge.recordSheetInitiative(sheet, faceInt, mod, faceInt + mod, fc)
+        end
         return string.format("⚡ [%s] Iniciativa V20: 1d10 (%d) + Mod (%d) = %d", sheet.nome or "Personagem", faceInt, mod, total)
     end
 
@@ -1851,6 +1914,244 @@ function Bridge.rollWeaponAttack(sheet, slotIdx, firecastApi, dialogsApi)
         difficulty = diff,
         label = string.format("Ataque: %s (Dano base %d %s)", wName, dmg, dtype),
     }, firecastApi, dialogsApi)
+end
+
+function Bridge.executeCombatManeuver(sheet, opts, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false, error = "Ficha inválida." } end
+    opts, firecastApi, dialogsApi = normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local discList = Bridge.collectDisciplines(sheet)
+    local cMods = V20.DisciplinesEngine.computeCombatModifiers(Bridge.sheetToEngineState(sheet), discList)
+    local activeBuffs = Bridge.deserializeBuffs(sheet)
+
+    local rawManId = opts.maneuverId or opts.cmb_manobra_id or sheet.cmb_manobra_id
+    local maneuverId = (type(rawManId) == "string" and rawManId:match("%S")) and rawManId or "strike"
+    local weaponSlot = math.max(1, math.min(4, safeInt(opts.weaponSlot or opts.cmb_arma_slot or sheet.cmb_arma_slot, 1)))
+    local totalNormalActions = math.max(1, math.min(5, safeInt(opts.totalNormalActions or opts.cmb_acoes_normais or sheet.cmb_acoes_normais, 1)))
+    local actionNumber = math.max(1, math.min(5, safeInt(opts.actionNumber or opts.cmb_acao_ordem or sheet.cmb_acao_ordem, 1)))
+    local rawLowest = (opts.lowestBasePool ~= nil) and opts.lowestBasePool
+        or ((opts.cmb_menor_parada ~= nil) and opts.cmb_menor_parada or sheet.cmb_menor_parada)
+    local lowestBasePool = safeNonNegInt(rawLowest, 0)
+    local isCelerityAction = (opts.isCelerityAction ~= nil) and isTrue(opts.isCelerityAction)
+        or ((opts.cmb_acao_rapidez ~= nil) and isTrue(opts.cmb_acao_rapidez) or isTrue(sheet.cmb_acao_rapidez))
+    local rawAim = (opts.aimTurns ~= nil) and opts.aimTurns
+        or ((opts.cmb_mira_turnos ~= nil) and opts.cmb_mira_turnos or sheet.cmb_mira_turnos)
+    local aimTurns = safeNonNegInt(rawAim, 0)
+    local hasScope = (opts.hasScope ~= nil) and isTrue(opts.hasScope)
+        or ((opts.cmb_tem_luneta ~= nil) and isTrue(opts.cmb_tem_luneta) or isTrue(sheet.cmb_tem_luneta))
+    local rawLoc = opts.targetLocation or opts.cmb_alvo_localizado or sheet.cmb_alvo_localizado
+    local targetLocation = (type(rawLoc) == "string" and rawLoc:match("%S")) and rawLoc or "nenhum"
+    local rawCover = opts.coverLevel or opts.cmb_cobertura or sheet.cmb_cobertura
+    local coverLevel = (type(rawCover) == "string" and rawCover:match("%S")) and rawCover or "nenhuma"
+    local rawFlank = opts.flankMode or opts.cmb_posicao or sheet.cmb_posicao
+    local flankMode = (type(rawFlank) == "string" and rawFlank:match("%S")) and rawFlank or "frontal"
+    local rawDefSucc = (opts.defenseSuccesses ~= nil) and opts.defenseSuccesses
+        or ((opts.cmb_defesa_alvo_sucessos ~= nil) and opts.cmb_defesa_alvo_sucessos or sheet.cmb_defesa_alvo_sucessos)
+    local defenseSuccesses = safeNonNegInt(rawDefSucc, 0)
+    local rawTgtStr = (opts.targetStrength ~= nil) and opts.targetStrength
+        or ((opts.cmb_forca_alvo ~= nil) and opts.cmb_forca_alvo or sheet.cmb_forca_alvo)
+    local targetStrength = safeNonNegInt(rawTgtStr, 2)
+    local rawPriorDef = (opts.priorDefensesThisTurn ~= nil) and opts.priorDefensesThisTurn
+        or ((opts.cmb_defesas_feitas_turno ~= nil) and opts.cmb_defesas_feitas_turno or sheet.cmb_defesas_feitas_turno)
+    local priorDefensesThisTurn = safeNonNegInt(rawPriorDef, 0)
+    local inGrapple = (opts.inGrapple ~= nil) and isTrue(opts.inGrapple)
+        or ((opts.em_agarrao ~= nil) and isTrue(opts.em_agarrao) or isTrue(sheet.em_agarrao))
+
+    local weapon = opts.weapon
+    if type(weapon) ~= "table" then
+        weapon = {
+            nome = sheet["arma" .. weaponSlot .. "_nome"],
+            attr = sheet["arma" .. weaponSlot .. "_attr"],
+            hab = sheet["arma" .. weaponSlot .. "_hab"],
+            dif = tonumber(sheet["arma" .. weaponSlot .. "_dif"]),
+            dano = tonumber(sheet["arma" .. weaponSlot .. "_dano"]),
+            tipo = sheet["arma" .. weaponSlot .. "_tipo"],
+            municao = sheet["arma" .. weaponSlot .. "_municao"],
+        }
+    end
+
+    local attrs = {}
+    for _, aid in ipairs(V20.Traits.ATTRIBUTE_ORDER) do
+        attrs[aid] = Bridge.resolvePoolTrait(sheet, aid, cMods).val
+    end
+    attrs.attr_destreza = safeNonNegInt(attrs.attr_destreza, 0) + safeNonNegInt(cMods.passiveCelerityDice, 0)
+
+    local habs = {}
+    for _, hid in ipairs(V20.Traits.ABILITY_ORDER) do
+        habs[hid] = Bridge.resolvePoolTrait(sheet, hid, cMods).val
+    end
+    for i = 1, 4 do
+        habs["hab_extra" .. i .. "_val"] = safeNonNegInt(sheet["hab_extra" .. i .. "_val"], 0)
+    end
+
+    local mSpec = V20.CombatManeuversCatalog.MANEUVERS[maneuverId]
+    local previewAttrId = mSpec and mSpec.defaultAttr or "attr_destreza"
+    if mSpec and mSpec.usesSlotTraits and type(weapon.attr) == "string" and weapon.attr:match("%S") then
+        previewAttrId = weapon.attr
+    end
+    if type(opts.attrId) == "string" and opts.attrId:match("%S") then
+        previewAttrId = opts.attrId
+    end
+    local potenceAttackBonus = (previewAttrId == "attr_forca") and safeNonNegInt(cMods.passivePotenceDice, 0) or 0
+
+    local naturalAgg = (opts.naturalAggravated ~= nil)
+        and isTrue(opts.naturalAggravated)
+        or ((activeBuffs.prot_claws ~= nil) or (activeBuffs.prot_beast ~= nil) or (activeBuffs.serp_tongue ~= nil))
+    local weaponAgg = (opts.weaponAggravated ~= nil)
+        and isTrue(opts.weaponAggravated)
+        or (activeBuffs.quie_baal ~= nil)
+
+    local stOverride = (opts.storytellerOverride ~= nil and isTrue(opts.storytellerOverride))
+        or (isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc))
+    local ignoreWound = (opts.ignoreWoundPenalty ~= nil and isTrue(opts.ignoreWoundPenalty))
+        or isTrue(sheet.roll_ignorar_ferimento)
+        or isTrue(sheet.em_frenesi)
+    local celerityLeft = safeNonNegInt(
+        opts.celerityActionsLeft ~= nil and opts.celerityActionsLeft or sheet.rapidez_acoes_extras,
+        0
+    )
+
+    local prep = V20.CombatManeuvers.prepareManeuverRoll({
+        actorName = sheet.nome,
+        isVampire = Bridge.isVampireSheet(sheet),
+        maneuverId = maneuverId,
+        attrId = opts.attrId,
+        habId = opts.habId,
+        attrs = attrs,
+        habs = habs,
+        weapon = weapon,
+        inGrapple = inGrapple,
+        isCelerityAction = isCelerityAction,
+        celerityActionsLeft = celerityLeft,
+        totalNormalActions = totalNormalActions,
+        actionNumber = actionNumber,
+        lowestBasePool = lowestBasePool,
+        aimTurns = aimTurns,
+        hasScope = hasScope,
+        targetLocation = targetLocation,
+        coverLevel = coverLevel,
+        flankMode = flankMode,
+        priorDefensesThisTurn = priorDefensesThisTurn,
+        bonusDice = safeInt(opts.bonusDice ~= nil and opts.bonusDice or sheet.cmb_bonus_dados, 0) + potenceAttackBonus,
+        extraDiffMod = safeInt(opts.extraDiffMod, 0),
+        woundPenalty = safeInt(sheet.penalidade_ferimento, 0),
+        armorDexPenalty = safeInt(opts.armorDexPenalty ~= nil and opts.armorDexPenalty or sheet.armadura_penalidade, 0),
+        clanDiceMod = 0,
+        naturalAggravated = naturalAgg,
+        weaponAggravated = weaponAgg,
+        emFrenesi = isTrue(sheet.em_frenesi),
+        ignoreWoundPenalty = ignoreWound,
+        storytellerOverride = stOverride,
+    })
+
+    if not prep.canRoll then
+        dlg.showMessage(prep.reason or "Manobra bloqueada pelas regras V20.")
+        return { ok = false, error = prep.reason, prep = prep }
+    end
+
+    local atkAutoPot = (prep.attrUsed == "attr_forca" and safeNonNegInt(cMods.activePotenceAuto, 0) > 0)
+        and safeNonNegInt(cMods.activePotenceAuto, 0) or 0
+    local lastPost = nil
+
+    local res = Bridge.rollFromSheet(sheet, {
+        rawPool = prep.poolBeforeClanDivisor,
+        difficulty = prep.difficulty,
+        resolvedAttrId = prep.attrUsed,
+        resolvedHabId = prep.habUsed,
+        woundPenaltyAlreadyApplied = true,
+        ignoreWoundPenalty = ignoreWound,
+        forbidZeroPool = (not isTrue(opts.spendWillpower)),
+        autoSuccesses = atkAutoPot,
+        spendWillpower = opts.spendWillpower,
+        specialty = opts.specialty,
+        extraNotes = prep.notes,
+        label = opts.label or ("Manobra: " .. tostring(prep.maneuverName)),
+        onEvaluated = function(evalRes)
+            if prep.isDefense then
+                return nil
+            end
+            local post = V20.CombatManeuvers.computePostAttackDamage({
+                maneuver = prep,
+                attackSuccesses = evalRes.totalSuccesses,
+                attackOutcome = evalRes.outcome,
+                defenseSuccesses = defenseSuccesses,
+                targetStrength = targetStrength,
+                passivePotenceDice = safeNonNegInt(cMods.passivePotenceDice, 0),
+                autoPotenceSuccesses = safeNonNegInt(cMods.activePotenceAuto, 0),
+            })
+            lastPost = post
+            if post.setsGrapple then
+                sheet.em_agarrao = true
+            end
+            if post.hit and not post.noDamage then
+                sheet.cmb_dano_pendente_ativo = true
+                sheet.cmb_dano_pendente_parada = post.damageDicePool
+                sheet.cmb_dano_pendente_auto = post.autoSuccesses
+                sheet.cmb_dano_pendente_tipo = post.damageType
+                sheet.cmb_dano_pendente_estaca = post.isStaking
+                sheet.cmb_dano_pendente_cabeca = post.isHeadshot
+                sheet.cmb_dano_pendente_manobra = prep.maneuverName
+                sheet.cmb_dano_pendente_resumo = post.summary
+            else
+                sheet.cmb_dano_pendente_ativo = false
+                sheet.cmb_dano_pendente_resumo = post.summary
+            end
+            return post.summary
+        end,
+    }, fc, dlg)
+
+    if res and res.ok ~= false then
+        if prep.consumeCelerityAction then
+            sheet.rapidez_acoes_extras = math.max(0, safeNonNegInt(sheet.rapidez_acoes_extras, 0) - 1)
+        end
+        if prep.isDefense then
+            sheet.cmb_defesas_feitas_turno = safeNonNegInt(sheet.cmb_defesas_feitas_turno, 0) + 1
+        end
+        res.prep = prep
+        res.post = lastPost
+    end
+
+    return res
+end
+
+function Bridge.rollPendingCombatDamage(sheet, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    if type(sheet) ~= "table" or not isTrue(sheet.cmb_dano_pendente_ativo) then
+        local err = "Não há parada de dano encadeado pendente. Execute e acerte uma manobra de ataque primeiro."
+        dlg.showMessage(err)
+        return { ok = false, error = err }
+    end
+
+    Bridge.syncDerivedFields(sheet)
+    local dmgPool = safeNonNegInt(sheet.cmb_dano_pendente_parada, 0)
+    local dmgAuto = safeNonNegInt(sheet.cmb_dano_pendente_auto, 0)
+    local dtype = (type(sheet.cmb_dano_pendente_tipo) == "string" and sheet.cmb_dano_pendente_tipo ~= "")
+        and sheet.cmb_dano_pendente_tipo or "bashing"
+    local isStaking = isTrue(sheet.cmb_dano_pendente_estaca)
+    local mName = (type(sheet.cmb_dano_pendente_manobra) == "string" and sheet.cmb_dano_pendente_manobra ~= "")
+        and sheet.cmb_dano_pendente_manobra or "Ataque"
+
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = dmgPool,
+        autoSuccesses = dmgAuto,
+        difficulty = 6,
+        ignoreWoundPenalty = true,
+        forbidWillpower = true,
+        skipClanWeakness = true,
+        allowZeroPoolWithAuto = true,
+        label = string.format("Dano Encadeado (%s — %s)", mName, dtype),
+        onEvaluated = function(evalRes)
+            sheet.cmb_dano_pendente_ativo = false
+            local out = "Dano Bruto (" .. tostring(dtype) .. "): " .. tostring(evalRes.totalSuccesses) .. " nível(is)"
+            if isStaking and evalRes.totalSuccesses >= 3 then
+                out = out .. " | 🪵 ESTACA NO CORAÇÃO: 3+ níveis (se restarem >= 3 após Absorção, vampiro entra em Paralisia/Torpor!)"
+            end
+            sheet.cmb_dano_pendente_resumo = out
+            return out
+        end,
+    }, fc, dlg)
 end
 
 local AUDIT_CACHE = setmetatable({}, { __mode = "k" })
