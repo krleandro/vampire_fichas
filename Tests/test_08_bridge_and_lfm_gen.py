@@ -1363,6 +1363,68 @@ nextFaces = { 8, 7, 6, 5, 4, 3 }
 local g15BmAct = Bridge.activatePrimaryBloodMagic(gen15Bm, "thaumaturgy", 1, mockFirecast, mockDialogs)
 assert(g15BmAct.ok == true and gen15Bm.sangue_atual == 6 and gen15Bm.sangue_gasto_turno == 2)
 assert(sentMessages[1]:find("(15ª Geração: 2 pts de vitae canalizados em 2 turnos)", 1, true) ~= nil)
+
+-- 2.26 Fix Round 1: bm_sec1..4 contabilizados em discDots na criação + bloqueio de Linhas Secundárias duplicadas
+local tremereCreation = {
+    nome = "[TESTE_E2E] Tremere Neófito Linhas",
+    cla_id = "tremere",
+    is_vampire = true,
+    modo_ficha = "criacao",
+    -- Mentais: 7 (4+4+2 -> 3+3+1 = 7)
+    attr_percepcao = 4, attr_inteligencia = 4, attr_raciocinio = 2,
+    -- Sociais: 5 (3+3+2 -> 2+2+1 = 5)
+    attr_carisma = 3, attr_manipulacao = 3, attr_aparencia = 2,
+    -- Físicos: 3 (2+2+2 -> 1+1+1 = 3)
+    attr_forca = 2, attr_destreza = 2, attr_vigor = 2,
+    -- Habilidades: 13 Conhecimentos / 9 Talentos / 5 Perícias
+    hab_ocultismo = 3, hab_academicos = 3, hab_investigacao = 3, hab_ciencias = 2, hab_medicina = 2,
+    hab_prontidao = 3, hab_consciencia = 3, hab_empatia = 3,
+    hab_etiqueta = 3, hab_furtividade = 2,
+    -- Disciplinas iniciais = 3 pontos totais: Taumaturgia 2 + Linha Secundária (Sedutor das Chamas) 1!
+    disc_slot1_id = "auspex",      disc_slot1_nivel = 0,
+    disc_slot2_id = "dominate",    disc_slot2_nivel = 0,
+    disc_slot3_id = "thaumaturgy", disc_slot3_nivel = 2,
+    bm_thau_prim_id = "path_of_blood",
+    bm_sec1_disc = "thaumaturgy",
+    bm_sec1_path_id = "lure_of_flames",
+    bm_sec1_nivel = 1,
+    -- Antecedentes = 5
+    bg_mentor = 2, bg_resources = 2, bg_rituals = 1,
+    -- Virtudes = 7 (3+4+3 -> 2+3+2 = 7)
+    virtude1_val = 3, virtude2_val = 4, virtude3_val = 3,
+    -- 15 pontos de bônus gastos em Força de Vontade/Antecedentes? 15 em FdV/Moralidade -> vamos gastar 5 FdV (5) + 3 Antec extras? Não: 5 FdV = 5 restantes 10 (permitido <= 15, ou exato 7 Disc + 8 FdV abaixo!)
+    freebie_disciplines = 0,
+    freebie_willpower = 5,
+}
+-- (a) Taumaturgia 2 + bm_sec1_nivel 1 = 3 pontos iniciais de Disciplina -> VÁLIDO!
+local trSecValid = Bridge.validateCreationOnSheet(tremereCreation, nil, mockFirecast, mockDialogs, false)
+assert(trSecValid.valid == true, "Criação Tremere (Taumaturgia 2 + Secundária 1 = 3 Disciplinas) deve ser válida: " .. table.concat(trSecValid.errors or {}, "; "))
+
+-- (b) Taumaturgia 3 + bm_sec1_nivel 1 (= 4 pontos) com freebie_disciplines = 0 -> REJEITADO (sem ponto grátis!)
+tremereCreation.disc_slot3_nivel = 3
+local trUnpaidSec = Bridge.validateCreationOnSheet(tremereCreation, nil, mockFirecast, mockDialogs, false)
+assert(trUnpaidSec.valid == false, "bm_sec1_nivel=1 acima dos 3 pontos base sem freebie_disciplines deve ser rejeitado!")
+
+-- Pagando freebie_disciplines = 1 (7 pts + 5 FdV = 12/15) -> VÁLIDO!
+tremereCreation.freebie_disciplines = 1
+local trPaidSec = Bridge.validateCreationOnSheet(tremereCreation, nil, mockFirecast, mockDialogs, false)
+assert(trPaidSec.valid == true, "Com freebie_disciplines=1, Taumaturgia 3 + Secundária 1 deve ser válida: " .. table.concat(trPaidSec.errors or {}, "; "))
+
+-- (c) Linhas Secundárias duplicadas em dois slots (bm_sec1 e bm_sec2 com 'lure_of_flames') -> REJEITADO na criação e na Loja de XP!
+tremereCreation.bm_sec2_disc = "thaumaturgy"
+tremereCreation.bm_sec2_path_id = "lure_of_flames"
+tremereCreation.bm_sec2_nivel = 1
+tremereCreation.freebie_disciplines = 2
+tremereCreation.freebie_willpower = 1
+local trDupCreation = Bridge.validateCreationOnSheet(tremereCreation, nil, mockFirecast, mockDialogs, false)
+assert(trDupCreation.valid == false, "Linha Secundária duplicada entre bm_sec1 e bm_sec2 deve ser rejeitada na criação!")
+
+bmBrujah.xp_total = 50
+bmBrujah.bm_sec2_disc = "thaumaturgy"
+bmBrujah.bm_sec2_path_id = "lure_of_flames"
+bmBrujah.bm_sec2_nivel = 0
+local dupXpRes = Bridge.submitOrApproveXP(bmBrujah, "submit", { field = "bm_sec2_nivel" }, nil, mockFirecast, mockDialogs)
+assert(dupXpRes.ok == false and bmBrujah.bm_sec2_nivel == 0, "Loja de XP deve rejeitar compra de Linha Secundária duplicada em outro slot!")
 ''' )
         run_lua_file(lua_probe)
     finally:

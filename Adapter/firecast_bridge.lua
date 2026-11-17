@@ -1972,6 +1972,11 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
         end
         discDots = discDots + n
     end
+    if isVamp then
+        for secIdx = 1, 4 do
+            discDots = discDots + safeNonNegInt(sheet["bm_sec" .. secIdx .. "_nivel"], 0)
+        end
+    end
 
     local bgDots = 0
     for _, b in ipairs(Bridge.collectBackgrounds(sheet, ndbApi)) do
@@ -2024,11 +2029,18 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
             res.valid = false
         end
 
+        local seenSecPaths = {}
         for secIdx = 1, 4 do
             local secLvl = safeNonNegInt(sheet["bm_sec" .. secIdx .. "_nivel"], 0)
             if secLvl > 0 then
                 local trad = resolveSecondaryTradition(sheet, secIdx)
                 local secPathId = sheet["bm_sec" .. secIdx .. "_path_id"] or ""
+                if secPathId ~= "" and seenSecPaths[secPathId] ~= nil then
+                    table.insert(res.errors, string.format("Linha Secundária '%s' duplicada nos slots #%d e #%d.", secPathId, seenSecPaths[secPathId], secIdx))
+                    res.valid = false
+                elseif secPathId ~= "" then
+                    seenSecPaths[secPathId] = secIdx
+                end
                 if secPathId ~= "" and V20.BloodMagicEngine.getPathTable(trad, secPathId) == nil then
                     table.insert(res.errors, string.format("Linha Secundária #%d incompatível com a tradição escolhida.", secIdx))
                     res.valid = false
@@ -2175,6 +2187,16 @@ local function validateBmSecFieldUpgrade(sheet, campo, targetVal, ndbApi)
     if not secIdx then return true, nil end
     local trad = resolveSecondaryTradition(sheet, secIdx)
     local secPathId = sheet["bm_sec" .. secIdx .. "_path_id"] or ""
+    if secPathId ~= "" then
+        for otherIdx = 1, 4 do
+            if otherIdx ~= secIdx
+                and safeNonNegInt(sheet["bm_sec" .. otherIdx .. "_nivel"], 0) > 0
+                and (sheet["bm_sec" .. otherIdx .. "_path_id"] or "") == secPathId
+            then
+                return false, string.format("A Linha Secundária '%s' já está adquirida no slot secundário #%d.", secPathId, otherIdx)
+            end
+        end
+    end
     if secPathId ~= "" and V20.BloodMagicEngine.getPathTable(trad, secPathId) == nil then
         return false, "A Linha Secundária selecionada não pertence à tradição escolhida."
     end
