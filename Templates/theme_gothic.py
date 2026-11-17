@@ -320,6 +320,67 @@ NUMINA_LIST: list[tuple[str, str]] = [
     ("psychic", "Fenômeno Psíquico (Percepção Dif 7)"),
 ]
 
+CLAN_ORDER: list[str] = [
+    "brujah",
+    "gangrel",
+    "malkavian",
+    "nosferatu",
+    "toreador",
+    "tremere",
+    "ventrue",
+    "assamite",
+    "setite",
+    "giovanni",
+    "lasombra",
+    "ravnos",
+    "tzimisce",
+    "caitiff",
+]
+
+THAUMATURGY_PATHS_LIST: list[tuple[str, str]] = [
+    ("path_of_blood", "Linha do Sangue"),
+    ("lure_of_flames", "Sedutor das Chamas"),
+    ("movement_of_the_mind", "Movimento da Mente"),
+    ("path_of_conjuring", "Linha da Conjuração"),
+    ("hands_of_destruction", "Mãos da Destruição"),
+    ("weather_control", "Controle do Clima"),
+]
+
+NECROMANCY_PATHS_LIST: list[tuple[str, str]] = [
+    ("sepulchre_path", "Linha do Sepulcro"),
+    ("bone_path", "Linha dos Ossos"),
+    ("ash_path", "Linha das Cinzas"),
+]
+
+ALL_BLOOD_MAGIC_PATHS_LIST: list[tuple[str, str]] = (
+    [("", "— Selecionar Linha Secundária —")]
+    + [(pid, f"[Taum] {pname}") for pid, pname in THAUMATURGY_PATHS_LIST]
+    + [(pid, f"[Necro] {pname}") for pid, pname in NECROMANCY_PATHS_LIST]
+)
+
+RITUALS_LIST: list[tuple[str, str]] = [
+    ("thau_rit_1_sacred_haven", "[Taum Nv 1] Defesa do Refúgio Sagrado"),
+    ("thau_rit_1_wake_fresheness", "[Taum Nv 1] Despertar com o Frescor da Tarde"),
+    ("thau_rit_2_vitae_infusion", "[Taum Nv 2] Foco Principal de Infusão de Vitae"),
+    ("thau_rit_2_ward_ghouls", "[Taum Nv 2] Proteção Contra Carniçais"),
+    ("thau_rit_3_incorporeal_passage", "[Taum Nv 3] Passagem Incorpórea"),
+    ("thau_rit_3_ward_kindred", "[Taum Nv 3] Proteção Contra Membros"),
+    ("thau_rit_4_heart_stone", "[Taum Nv 4] Coração de Pedra"),
+    ("thau_rit_4_ward_spirits", "[Taum Nv 4] Proteção Contra Espíritos"),
+    ("thau_rit_5_abandon_fetters", "[Taum Nv 5] Abandonar os Grilhões"),
+    ("thau_rit_5_blood_contract", "[Taum Nv 5] Contrato de Sangue"),
+    ("necro_rit_1_call_hungry", "[Necro Nv 1] Chamado dos Mortos Famintos"),
+    ("necro_rit_1_eyes_grave", "[Necro Nv 1] Olhos da Sepultura"),
+    ("necro_rit_2_hand_glory", "[Necro Nv 2] Mão da Glória"),
+    ("necro_rit_2_sight_shroud", "[Necro Nv 2] Olhar Além da Mortalha"),
+    ("necro_rit_3_unearthly_chain", "[Necro Nv 3] Ritual da Corrente Desenterrada"),
+    ("necro_rit_3_skull_chalice", "[Necro Nv 3] Cálice de Crânio"),
+    ("necro_rit_4_charon_kiss", "[Necro Nv 4] Ósculo de Caronte"),
+    ("necro_rit_4_rend_shroud", "[Necro Nv 4] Rasgar a Mortalha"),
+    ("necro_rit_5_grasp_ghostly", "[Necro Nv 5] Aperto Fantasmagórico"),
+    ("necro_rit_5_dark_exile", "[Necro Nv 5] Exílio Sombrio"),
+]
+
 
 def xml_esc(val: str) -> str:
     return (
@@ -375,7 +436,7 @@ def all_hab_options(include_none: bool = True, include_backgrounds: bool = True)
     return lua_str_list(items), lua_str_list(values)
 
 
-def all_xp_upgradable_field_options() -> tuple[str, str]:
+def all_xp_upgradable_field_options(is_vampire: bool = True) -> tuple[str, str]:
     items: list[str] = []
     values: list[str] = []
     for _, rows in ATTRIBUTES_BY_COL:
@@ -392,6 +453,10 @@ def all_xp_upgradable_field_options() -> tuple[str, str]:
     for i in range(1, 10):
         items.append(f"Disciplina Slot #{i}")
         values.append(f"disc_slot{i}_nivel")
+    if is_vampire:
+        for i in range(1, 5):
+            items.append(f"Linha Secundária #{i}")
+            values.append(f"bm_sec{i}_nivel")
     items.extend([
         "Virtude 1 (Consciência/Convicção)",
         "Virtude 2 (Autocontrole/Instinto)",
@@ -473,7 +538,26 @@ def build_mode_permissions_lua(is_vampire: bool = True) -> str:
 
     perm_edits.extend(["edtVirtude1Val", "edtVirtude2Val", "edtVirtude3Val", "edtMoralidadeVal", "edtFdvPerm"])
     if is_vampire:
-        perm_ctrls.extend(["cmbVirtude1Tipo", "cmbVirtude2Tipo", "cmbMoralidadeTipo"])
+        perm_ctrls.extend([
+            "cmbVirtude1Tipo",
+            "cmbVirtude2Tipo",
+            "cmbMoralidadeTipo",
+            "cmbBmThauPrimId",
+            "cmbBmNecroPrimId",
+            "cmbAssamitaMaldicaoModo",
+        ])
+        perm_edits.extend([
+            "edtBmSecNivel1",
+            "edtBmSecNivel2",
+            "edtBmSecNivel3",
+            "edtBmSecNivel4",
+            "edtGangrelTracosQtd",
+            "edtMalkavPerturbacao",
+            "edtVentruePresaRestrita",
+            "edtRavnosVicio",
+            "edtTzimisceOrigemTerra",
+            "edtToreadorFocoArte",
+        ])
 
     mestre_edits = ["edtXpTotal", "edtXpGasto"]
     mestre_ctrls = ["cmbModoFicha", "chkXpExigeAprovacao", "chkNarradorOverride", "btnAprovarXP", "btnRecusarXP"]
@@ -484,11 +568,28 @@ def build_mode_permissions_lua(is_vampire: bool = True) -> str:
     def _lua_arr(names: list[str]) -> str:
         return "{ " + ", ".join(f'"{n}"' for n in names) + " }"
 
-    mortal_tail = (
-        '\n            local modoSob = sheet.mortal_sobrenatural_modo or "humano"\n'
+    mode_tail = (
+        """
+            for secIdx = 1, 4 do
+                local secOwned = (tonumber(sheet["bm_sec" .. secIdx .. "_nivel"]) or 0) > 0
+                local lockSecChoice = lockPerm and secOwned
+                local cDisc = self["cmbBmSecDisc" .. secIdx]
+                local cPath = self["cmbBmSecPathId" .. secIdx]
+                if cDisc ~= nil then cDisc:setEnabled(not lockSecChoice) end
+                if cPath ~= nil then cPath:setEnabled(not lockSecChoice) end
+            end
+            if self.tabMagiaSangue ~= nil then
+                local mostrarBM = (V20Bridge ~= nil and V20Bridge.hasBloodMagicAccess ~= nil and V20Bridge.hasBloodMagicAccess(sheet)) or false
+                if (not mostrarBM) and self.pgcPrincipal ~= nil and self.pgcPrincipal.getTabIndex ~= nil and self.pgcPrincipal:getTabIndex() == 7 then
+                    if self.pgcPrincipal.setTabIndex ~= nil then
+                        self.pgcPrincipal:setTabIndex(0)
+                    end
+                end
+                self.tabMagiaSangue:setVisible(mostrarBM)
+            end"""
+        if is_vampire
+        else '\n            local modoSob = sheet.mortal_sobrenatural_modo or "humano"\n'
         '            if self.btnFrenesiCarnical ~= nil then self.btnFrenesiCarnical:setVisible(modoSob == "carnical") end'
-        if not is_vampire
-        else ""
     )
 
     return f"""        local PERM_EDITS = {_lua_arr(perm_edits)}
@@ -518,7 +619,7 @@ def build_mode_permissions_lua(is_vampire: bool = True) -> str:
             end
             for _, nm in ipairs(MESTRE_CTRLS) do
                 if self[nm] ~= nil then self[nm]:setEnabled(isMestre) end
-            end{mortal_tail}
+            end{mode_tail}
         end"""
 
 
@@ -683,6 +784,7 @@ def health_track_xml(accent_color: str, border_color: str, is_vampire: bool = Tr
         f'<checkBox align="left" width="150" field="dano_arma_fogo" text="Arma de Fogo (-> Cont.)" fontColor="{TEXT_MAIN}" fontSize="10"/>'
         f'<checkBox align="left" width="135" field="dano_tiro_cabeca" text="Tiro na Cabeça (Letal)" fontColor="{TEXT_ALERT}" fontSize="10"/>'
         f'<checkBox align="left" width="155" field="dano_dividir_contundente" text="Dividir Contundente / 2" fontColor="{TEXT_MAIN}" fontSize="10"/>'
+        f'<checkBox align="left" width="115" field="dano_fonte_solar" text="Luz Solar" fontColor="{TEXT_GOLD}" fontSize="10"/>'
         if is_vampire
         else f'<label align="left" width="320" text="Regra Mortal: Armas de Fogo causam dano Letal; Absorção Letal exige Armadura." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>'
     )

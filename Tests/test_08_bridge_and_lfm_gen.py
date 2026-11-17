@@ -118,7 +118,11 @@ def main() -> None:
         with open(REF_GUI_LUA, "r", encoding="utf-8", errors="ignore") as f:
             gui_sdk = f.read()
 
-    # 1. Gerar os LFMs Brujah e Mortal
+    # 1. Gerar os 14 LFMs vampíricos (--all-clans + compatibilidade --clan) e o LFM Mortal
+    subprocess.run(
+        [sys.executable, os.path.join(ROOT, "Templates", "generate_vampire_lfm.py"), "--all-clans"],
+        check=True,
+    )
     subprocess.run(
         [sys.executable, os.path.join(ROOT, "Templates", "generate_vampire_lfm.py"), "--clan", "brujah"],
         check=True,
@@ -128,16 +132,77 @@ def main() -> None:
         check=True,
     )
 
-    brujah_root = verify_lfm_xml_and_compile(
-        compiler, gui_sdk, "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah"
-    )
+    expected_vampire_sheets = [
+        ("brujah", "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah", "Vampiro V20 - Brujah"),
+        ("gangrel", "Sheets/frmGangrel.lfm", "br.com.v20.Gangrel", "frmGangrel", "Vampiro V20 - Gangrel"),
+        ("malkavian", "Sheets/frmMalkavian.lfm", "br.com.v20.Malkavian", "frmMalkavian", "Vampiro V20 - Malkaviano"),
+        ("nosferatu", "Sheets/frmNosferatu.lfm", "br.com.v20.Nosferatu", "frmNosferatu", "Vampiro V20 - Nosferatu"),
+        ("toreador", "Sheets/frmToreador.lfm", "br.com.v20.Toreador", "frmToreador", "Vampiro V20 - Toreador"),
+        ("tremere", "Sheets/frmTremere.lfm", "br.com.v20.Tremere", "frmTremere", "Vampiro V20 - Tremere"),
+        ("ventrue", "Sheets/frmVentrue.lfm", "br.com.v20.Ventrue", "frmVentrue", "Vampiro V20 - Ventrue"),
+        ("assamite", "Sheets/frmAssamite.lfm", "br.com.v20.Assamite", "frmAssamite", "Vampiro V20 - Assamita"),
+        ("setite", "Sheets/frmSetite.lfm", "br.com.v20.Setite", "frmSetite", "Vampiro V20 - Seguidores de Set"),
+        ("giovanni", "Sheets/frmGiovanni.lfm", "br.com.v20.Giovanni", "frmGiovanni", "Vampiro V20 - Giovanni"),
+        ("lasombra", "Sheets/frmLasombra.lfm", "br.com.v20.Lasombra", "frmLasombra", "Vampiro V20 - Lasombra"),
+        ("ravnos", "Sheets/frmRavnos.lfm", "br.com.v20.Ravnos", "frmRavnos", "Vampiro V20 - Ravnos"),
+        ("tzimisce", "Sheets/frmTzimisce.lfm", "br.com.v20.Tzimisce", "frmTzimisce", "Vampiro V20 - Tzimisce"),
+        ("caitiff", "Sheets/frmCaitiff.lfm", "br.com.v20.Caitiff", "frmCaitiff", "Vampiro V20 - Caitiff"),
+    ]
+
+    vampire_roots: dict[str, ET.Element] = {}
+    for cid, rel_p, exp_dt, exp_form, exp_title in expected_vampire_sheets:
+        r_el = verify_lfm_xml_and_compile(compiler, gui_sdk, rel_p, exp_dt, exp_form)
+        assert r_el.attrib.get("title") == exp_title, f"Título inesperado em {rel_p}: {r_el.attrib.get('title')}"
+        seen_ctrl_names: set[str] = set()
+        for el in r_el.iter():
+            if el is not r_el and el.tag != "event" and "name" in el.attrib:
+                nm = el.attrib["name"]
+                assert nm not in seen_ctrl_names, f"Controle duplicado '{nm}' em {rel_p}"
+                seen_ctrl_names.add(nm)
+        tabs = list(r_el.iter("tab"))
+        assert len(tabs) == 8, f"{rel_p} deve possuir 8 abas (incluindo tabMagiaSangue), encontrou {len(tabs)}"
+        bm_tabs = [t for t in tabs if t.attrib.get("name") == "tabMagiaSangue"]
+        assert len(bm_tabs) == 1, f"tabMagiaSangue ausente em {rel_p}"
+        expected_vis = "true" if cid in ("tremere", "giovanni") else "false"
+        assert bm_tabs[0].attrib.get("visible") == expected_vis, (
+            f"tabMagiaSangue em {rel_p} deve iniciar visible='{expected_vis}', obteve '{bm_tabs[0].attrib.get('visible')}'"
+        )
+        script_txt = "\n".join((sc.text or "") for sc in r_el.iter("script"))
+        assert "hasBloodMagicAccess" in script_txt and "setTabIndex(0)" in script_txt, (
+            f"Script de {rel_p} deve alternar tabMagiaSangue dinamicamente via V20Bridge.hasBloodMagicAccess e setTabIndex(0)"
+        )
+        fields_set = {el.attrib.get("field") for el in r_el.iter() if "field" in el.attrib}
+        for req_bm_f in (
+            "dano_fonte_solar",
+            "bm_thau_prim_id",
+            "bm_thau_prim_nivel",
+            "bm_necro_prim_id",
+            "bm_necro_prim_nivel",
+            "bm_sec1_nivel",
+            "bm_sec4_nivel",
+            "bm_ritual_id",
+            "ritual_custom_nome",
+        ):
+            assert req_bm_f in fields_set, f"Campo '{req_bm_f}' ausente em {rel_p}"
+        xp_combos = [el for el in r_el.iter("comboBox") if el.attrib.get("field") == "xp_loja_campo"]
+        assert len(xp_combos) == 1
+        for sec_i in range(1, 5):
+            assert f"'bm_sec{sec_i}_nivel'" in xp_combos[0].attrib.get("values", ""), (
+                f"bm_sec{sec_i}_nivel deve constar em xp_loja_campo ({rel_p})"
+            )
+        dl_blob_v = "\n".join(el.attrib.get("fields", "") for el in r_el.findall("dataLink"))
+        assert "'dano_fonte_solar'" in dl_blob_v, f"dano_fonte_solar deve estar registrado em <dataLink> ({rel_p})"
+        vampire_roots[cid] = r_el
+
+    brujah_root = vampire_roots["brujah"]
     mortal_root = verify_lfm_xml_and_compile(
         compiler, gui_sdk, "Sheets/frmMortal.lfm", "br.com.v20.Mortal", "frmMortal"
     )
+    assert mortal_root.attrib.get("title") == "Vampiro V20 - Mortal"
 
-    # Verificar abas e campos estruturais obrigatórios em frmBrujah.lfm
+    # Verificar campos estruturais obrigatórios em frmBrujah.lfm
     brujah_tabs = list(brujah_root.iter("tab"))
-    assert len(brujah_tabs) == 7, f"frmBrujah.lfm deve possuir 7 abas, encontrou {len(brujah_tabs)}"
+    assert len(brujah_tabs) == 8, f"frmBrujah.lfm deve possuir 8 abas, encontrou {len(brujah_tabs)}"
     brujah_fields = {el.attrib.get("field") for el in brujah_root.iter() if "field" in el.attrib}
     for req_field in (
         "nome",
@@ -218,6 +283,7 @@ def main() -> None:
         ):
             assert req_ctrl in named_ctrls, f"Controle nomeado '{req_ctrl}' ausente em {label_lfm}"
         if is_mortal:
+            assert "'bm_sec1_nivel'" not in vals_str, "Ficha Mortal não deve listar bm_sec1_nivel na Loja de XP"
             for m_ctrl in ("cmbMortalSobrenaturalModo", "edtCarnicalDiscMax", "btnFrenesiCarnical"):
                 assert m_ctrl in named_ctrls, f"Controle mortal '{m_ctrl}' ausente em {label_lfm}"
 
@@ -940,11 +1006,560 @@ assert(aggMirrorSheet.dano_agravado == 3, "Alterar dano_aggravado deve espelhar 
 aggMirrorSheet.dano_agravado = 1
 Bridge.syncDerivedFields(aggMirrorSheet)
 assert(aggMirrorSheet.dano_aggravado == 1, "Alterar dano_agravado deve espelhar em dano_aggravado")
+
+-- 2.21 Subprojeto 2: Nosferatu 7/5/3 na criação + falha automática em Aparência + desbloqueio via obf_mask
+local nosfCreation = {
+    nome = "[TESTE_E2E] Nosferatu 7/5/3",
+    cla_id = "nosferatu",
+    is_vampire = true,
+    modo_ficha = "criacao",
+    -- Físicos: 7 (4+2+4 -> 3+1+3 = 7)
+    attr_forca = 4, attr_destreza = 2, attr_vigor = 4,
+    -- Mentais: 5 (3+3+2 -> 2+2+1 = 5)
+    attr_percepcao = 3, attr_inteligencia = 3, attr_raciocinio = 2,
+    -- Sociais Nosferatu (base gratuita = 2, Aparência = 0): Carisma 3 + Manipulação 2 + Aparência 0 -> (3-1)+(2-1)+0 = 3!
+    attr_carisma = 3, attr_manipulacao = 2, attr_aparencia = 0,
+    -- Habilidades 13 / 9 / 5
+    hab_prontidao = 3, hab_esportes = 2, hab_briga = 3, hab_intimidacao = 3, hab_manha = 2,
+    hab_furtividade = 3, hab_empatia_animais = 3, hab_sobrevivencia = 3,
+    hab_computador = 3, hab_investigacao = 2,
+    -- Disciplinas: 3
+    disc_slot1_id = "animalism", disc_slot1_nivel = 1,
+    disc_slot2_id = "obfuscate", disc_slot2_nivel = 3,
+    disc_slot3_id = "potence",   disc_slot3_nivel = 0,
+    -- Antecedentes: 5
+    bg_contacts = 2, bg_herd = 2, bg_resources = 1,
+    -- Virtudes: 7 (3+3+4 -> 2+2+3 = 7)
+    virtude1_val = 3, virtude2_val = 3, virtude3_val = 4,
+    -- 1 ponto bônus de disciplina (7) + 8 FdV (8) = 15
+    freebie_disciplines = 1, freebie_willpower = 8,
+    sangue_atual = 10, fdv_perm = 6, fdv_temp = 6,
+}
+local nosfOk = Bridge.validateCreationOnSheet(nosfCreation, nil, mockFirecast, mockDialogs, false)
+assert(nosfOk.valid == true, "Criação Nosferatu 7/5/3 com Aparência 0 deve ser válida: " .. table.concat(nosfOk.errors or {}, "; "))
+
+nosfCreation.attr_aparencia = 1
+local nosfBad = Bridge.validateCreationOnSheet(nosfCreation, nil, mockFirecast, mockDialogs, false)
+assert(nosfBad.valid == false, "Nosferatu com Aparência 1 deve falhar na criação")
+nosfCreation.attr_aparencia = 0
+
+dialogMessages = {}
+local nosfAppBlocked = Bridge.rollFromSheet(nosfCreation, { attrId = "attr_aparencia", habId = "hab_intimidacao", difficulty = 6 }, mockFirecast, mockDialogs)
+assert(nosfAppBlocked.ok == false and tostring(nosfAppBlocked.error):find("Nosferatu") ~= nil, "Nosferatu sem obf_mask deve falhar automaticamente em Aparência")
+
+-- Ativar Máscara das Mil Faces (obf_3) desbloqueia testes de Aparência (inclusive Aparência pura!)
+nextFaces = { 8, 7, 6, 5, 4 }
+local maskAct = Bridge.activateDisciplinePower(nosfCreation, 2, "obf_3", mockFirecast, mockDialogs)
+assert(maskAct.ok == true, "obf_3 deveria ativar")
+sentMessages = {}
+nextFaces = { 9 }
+local nosfAppMasked = Bridge.rollFromSheet(nosfCreation, { attrId = "attr_aparencia", difficulty = 6 }, mockFirecast, mockDialogs)
+assert(nosfAppMasked.ok == true and #sentMessages == 1 and sentMessages[1]:find("1 Sucesso") ~= nil, "Nosferatu com obf_mask ativo deve rolar Aparência com sucesso")
+
+-- 2.22 Tzimisce: parada dividida por 2^dias (8 -> 2 com 2 dias) e resetTzimisceSoil
+local lastRolledExpr = nil
+local captureFirecast = {
+    interpretarRolagem = function(expr)
+        lastRolledExpr = expr
+        return mockFirecast.interpretarRolagem(expr)
+    end,
+    getMesaDe = mockFirecast.getMesaDe,
+}
+local tzimSheet = {
+    nome = "[TESTE_E2E] Voivode Tzimisce",
+    cla_id = "tzimisce",
+    is_vampire = true,
+    attr_inteligencia = 4,
+    hab_medicina = 4,
+    tzimisce_dias_sem_terra = 2,
+    tzimisce_origem_terra = "Cárpatos",
+}
+sentMessages = {}
+nextFaces = { 8, 9 }
+local tzRoll = Bridge.rollFromSheet(tzimSheet, { attrId = "attr_inteligencia", habId = "hab_medicina", difficulty = 6 }, captureFirecast, mockDialogs)
+assert(tzRoll.ok == true and lastRolledExpr == "2d10", "Tzimisce com 2 dias sem terra deve dividir 8 dados por 4 -> 2d10, obteve: " .. tostring(lastRolledExpr))
+assert(sentMessages[1]:find("Fraqueza Tzimisce") ~= nil)
+
+Bridge.resetTzimisceSoil(tzimSheet, captureFirecast, mockDialogs)
+assert(tzimSheet.tzimisce_dias_sem_terra == 0)
+nextFaces = { 8, 8, 8, 8, 8, 8, 8, 8 }
+Bridge.rollFromSheet(tzimSheet, { attrId = "attr_inteligencia", habId = "hab_medicina", difficulty = 6 }, captureFirecast, mockDialogs)
+assert(lastRolledExpr == "8d10", "Após resetTzimisceSoil, parada deve voltar para 8d10, obteve: " .. tostring(lastRolledExpr))
+
+-- 2.23 Setita (-1 dado sob luz forte + +2 Agravado solar) e Lasombra (+1 dif espelhos + +1 Agravado solar)
+local setiteSheet = {
+    nome = "[TESTE_E2E] Hesha Setita",
+    cla_id = "setite",
+    is_vampire = true,
+    attr_manipulacao = 3,
+    hab_labia = 2,
+    setita_luz_forte = true,
+    dano_fonte_solar = true,
+}
+nextFaces = { 7, 7, 7, 7 }
+Bridge.rollFromSheet(setiteSheet, { attrId = "attr_manipulacao", habId = "hab_labia", difficulty = 6 }, captureFirecast, mockDialogs)
+assert(lastRolledExpr == "4d10", "Setita sob luz forte deve perder 1 dado (5 -> 4d10), obteve: " .. tostring(lastRolledExpr))
+
+Bridge.applyDamage(setiteSheet, 2, "aggravated", {}, mockFirecast, mockDialogs)
+assert(setiteSheet.dano_aggravado == 4, "Setita recebendo 2 de dano com dano_fonte_solar=true deve sofrer 4 níveis Agravados, obteve: " .. tostring(setiteSheet.dano_aggravado))
+
+local lasombraSheet = {
+    nome = "[TESTE_E2E] Lucita Lasombra",
+    cla_id = "lasombra",
+    is_vampire = true,
+    attr_manipulacao = 3,
+    hab_furtividade = 2,
+    lasombra_vigiado_espelhos = true,
+    dano_fonte_solar = true,
+}
+sentMessages = {}
+nextFaces = { 8, 7, 6, 5, 4 }
+Bridge.rollFromSheet(lasombraSheet, { attrId = "attr_manipulacao", habId = "hab_furtividade", difficulty = 6 }, captureFirecast, mockDialogs)
+assert(sentMessages[1]:find("Dif 7") ~= nil, "Lasombra vigiado por espelhos deve receber +1 dif (6 -> 7): " .. tostring(sentMessages[1]))
+
+Bridge.applyDamage(lasombraSheet, 2, "bashing", {}, mockFirecast, mockDialogs)
+assert(lasombraSheet.dano_aggravado == 3, "Lasombra recebendo 2 de dano solar deve converter e somar +1 Agravado (= 3), obteve: " .. tostring(lasombraSheet.dano_aggravado))
+
+-- 2.24 Brujah endBrujahFrenzy, Gangrel 5º traço + logAudit, Malkavian, Toreador, Tremere, Ventrue, Assamita, Giovanni, Ravnos e Caitiff
+local brujahFrenzySheet = {
+    nome = "[TESTE_E2E] Brujah Frenético",
+    cla_id = "brujah",
+    is_vampire = true,
+    em_frenesi = true,
+    fdv_perm = 5,
+    fdv_temp = 4,
+}
+local endFr = Bridge.endBrujahFrenzy(brujahFrenzySheet, mockFirecast, mockDialogs)
+assert(endFr.ok == true and brujahFrenzySheet.em_frenesi == false and brujahFrenzySheet.fdv_temp == 3)
+
+local gangrelSheet = {
+    nome = "[TESTE_E2E] Ramona Gangrel",
+    cla_id = "gangrel",
+    is_vampire = true,
+    gangrel_tracos_qtd = 4,
+    gangrel_attr_penalizado = "attr_carisma",
+    attr_carisma = 3,
+}
+local gfRes = Bridge.recordGangrelFrenzy(gangrelSheet, mockFirecast, mockDialogs)
+assert(gfRes.ok == true and gangrelSheet.gangrel_tracos_qtd == 5 and gangrelSheet.attr_carisma == 2)
+assert((gangrelSheet.auditoria_xp_log or ""):find("Carisma") ~= nil, "5º traço Gangrel deve gravar perda permanente em logAudit")
+
+-- Malkaviano: trava de criação + supressão por FdV + limpeza em clearSceneBuffs
+local malkSheet = {
+    nome = "[TESTE_E2E] Anatole Malkav",
+    cla_id = "malkavian",
+    is_vampire = true,
+    malkav_perturbacao = "",
+    fdv_perm = 5,
+    fdv_temp = 3,
+}
+local malkInvalid = Bridge.validateCreationOnSheet(malkSheet, nil, mockFirecast, mockDialogs, false)
+assert(malkInvalid.valid == false and table.concat(malkInvalid.errors, " "):find("Perturbação") ~= nil)
+local supMalk = Bridge.suppressMalkavianDerangement(malkSheet, mockFirecast, mockDialogs)
+assert(supMalk.ok == true and malkSheet.malkav_suprimida_cena == true and malkSheet.fdv_temp == 2)
+
+-- Toreador: falha marca toreador_fascinado_cena = true; clearSceneBuffs limpa Malkav e Toreador
+local torSheet = {
+    nome = "[TESTE_E2E] Victoria Toreador",
+    cla_id = "toreador",
+    is_vampire = true,
+    virtude2_val = 2,
+}
+nextFaces = { 2, 3 }
+Bridge.rollToreadorFascination(torSheet, mockFirecast, mockDialogs)
+assert(torSheet.toreador_fascinado_cena == true, "Falha em Fascínio Toreador deve marcar toreador_fascinado_cena=true")
+Bridge.clearSceneBuffs(torSheet, mockFirecast, mockDialogs)
+Bridge.clearSceneBuffs(malkSheet, mockFirecast, mockDialogs)
+assert(torSheet.toreador_fascinado_cena == false and malkSheet.malkav_suprimida_cena == false, "clearSceneBuffs deve limpar malkav_suprimida_cena e toreador_fascinado_cena")
+
+-- Tremere: 2 goles = Laço de Sangue Completo (2/2)
+local tremSheet = {
+    nome = "[TESTE_E2E] Aisling Tremere",
+    cla_id = "tremere",
+    is_vampire = true,
+    tremere_laco_goles = 0,
+    tremere_regente_nome = "Etrius",
+}
+local tr1 = Bridge.recordTremereDrink(tremSheet, mockFirecast, mockDialogs)
+assert(tr1.step == 1 and tr1.fullBond == false)
+local tr2 = Bridge.recordTremereDrink(tremSheet, mockFirecast, mockDialogs)
+assert(tr2.step == 2 and tr2.fullBond == true and tostring(tremSheet.tremere_laco_status):find("2/2") ~= nil)
+
+-- Ventrue: trava de criação + bloqueio de caça incompatível
+local ventSheet = {
+    nome = "[TESTE_E2E] Jan Pieterzoon",
+    cla_id = "ventrue",
+    is_vampire = true,
+    sangue_atual = 4,
+    ventrue_presa_restrita = "",
+    ventrue_presa_compativel = false,
+}
+local ventInvalid = Bridge.validateCreationOnSheet(ventSheet, nil, mockFirecast, mockDialogs, false)
+assert(ventInvalid.valid == false and table.concat(ventInvalid.errors, " "):find("Ventrue") ~= nil)
+nextFaces = { 9, 9, 9 }
+local ventHuntBlocked = Bridge.huntWithHerdDomain(ventSheet, {}, mockFirecast, mockDialogs)
+assert(ventHuntBlocked.ok == false and ventSheet.sangue_atual == 4, "Ventrue com presa incompatível não deve ganhar sangue")
+
+-- Assamita: Ur-Shulgi vs Tremere Clássica
+local assamSheet = {
+    nome = "[TESTE_E2E] Tariq Assamita",
+    cla_id = "assamite",
+    is_vampire = true,
+    geracao_base = 12,
+    sangue_atual = 4,
+    virtude2_val = 2,
+    assamita_maldicao_modo = "ur_shulgi",
+}
+nextFaces = { 2, 3 } -- falha no teste de vício dif 5
+local urRes = Bridge.ingestAssamiteVitae(assamSheet, 2, mockFirecast, mockDialogs)
+assert(urRes.ok == true and assamSheet.dano_letal == 2 and assamSheet.sangue_atual == 6 and assamSheet.assamita_vicio_ativo == true)
+
+assamSheet.assamita_maldicao_modo = "tremere_classica"
+local trCurseRes = Bridge.ingestAssamiteVitae(assamSheet, 1, mockFirecast, mockDialogs)
+assert(trCurseRes.ok == true and assamSheet.dano_letal == 3 and assamSheet.sangue_atual == 6, "Tremere clássica causa dano letal sem ganhar sangue")
+
+-- Giovanni: 2x dano letal no Beijo (direto e na caça)
+local gioSheet = {
+    nome = "[TESTE_E2E] Isabel Giovanni",
+    cla_id = "giovanni",
+    is_vampire = true,
+    sangue_atual = 3,
+}
+sentMessages = {}
+local kissRes = Bridge.applyGiovanniKiss(gioSheet, 4, mockFirecast, mockDialogs)
+assert(kissRes.ok == true and kissRes.lethalToVessel == 8 and kissRes.fatalRisk == true and gioSheet.sangue_atual == 7)
+assert(#sentMessages >= 1 and sentMessages[#sentMessages]:find("8") ~= nil)
+
+sentMessages = {}
+nextFaces = { 8, 8, 8 }
+Bridge.huntWithHerdDomain(gioSheet, { difficulty = 6 }, mockFirecast, mockDialogs)
+assert(sentMessages[#sentMessages]:find("6 níveis Letais") ~= nil, "Caça Giovanni com 3 sucessos deve anunciar 6 níveis letais no recipiente")
+
+-- Ravnos: trava de criação + compulsão ativa em falha
+local ravSheet = {
+    nome = "[TESTE_E2E] Khalil Ravnos",
+    cla_id = "ravnos",
+    is_vampire = true,
+    ravnos_vicio_descricao = "",
+    virtude2_val = 2,
+}
+local ravInvalid = Bridge.validateCreationOnSheet(ravSheet, nil, mockFirecast, mockDialogs, false)
+assert(ravInvalid.valid == false and table.concat(ravInvalid.errors, " "):find("Ravnos") ~= nil)
+nextFaces = { 2, 2 }
+Bridge.rollRavnosVice(ravSheet, mockFirecast, mockDialogs)
+assert(ravSheet.ravnos_compulsao_ativa == true)
+
+-- Caitiff: +2 dif Social em rollFromSheet com caitiff_estigma_ativo = true
+local caitSocial = {
+    nome = "[TESTE_E2E] Pária Caitiff",
+    cla_id = "caitiff",
+    is_vampire = true,
+    attr_carisma = 3,
+    hab_labia = 2,
+    caitiff_estigma_ativo = true,
+}
+sentMessages = {}
+nextFaces = { 9, 8, 7, 6, 5 }
+Bridge.rollFromSheet(caitSocial, { attrId = "attr_carisma", habId = "hab_labia", difficulty = 6 }, mockFirecast, mockDialogs)
+assert(sentMessages[1]:find("Dif 8") ~= nil, "Caitiff com estigma ativo deve sofrer +2 dif Social (6 -> 8): " .. tostring(sentMessages[1]))
+
+-- 2.25 Magia do Sangue, Acesso Dinâmico (Aba 8), Linhas Secundárias na Loja de XP e Rituais
+assert(Bridge.hasBloodMagicAccess({ cla_id = "tremere", is_vampire = true }) == true)
+assert(Bridge.hasBloodMagicAccess({ cla_id = "giovanni", is_vampire = true }) == true)
+
+local bmBrujah = {
+    nome = "[TESTE_E2E] Brujah Ocultista",
+    cla_id = "brujah",
+    is_vampire = true,
+    geracao_base = 12,
+    sangue_atual = 10,
+    fdv_perm = 6,
+    fdv_temp = 6,
+    attr_inteligencia = 3,
+    hab_ocultismo = 3,
+    xp_total = 30,
+    xp_gasto = 0,
+    xp_exige_aprovacao = false,
+    bm_thau_prim_id = "path_of_blood",
+    bm_sec1_disc = "thaumaturgy",
+    bm_sec1_path_id = "lure_of_flames",
+    bm_sec1_nivel = 0,
+}
+assert(Bridge.hasBloodMagicAccess(bmBrujah) == false, "Brujah sem Taumaturgia/Necromancia/Rituais não tem acesso inicial")
+
+-- Selecionar Taumaturgia mesmo em nível 0 (criação) já libera Aba 8
+bmBrujah.disc_slot4_id = "thaumaturgy"
+bmBrujah.disc_slot4_nivel = 0
+assert(Bridge.hasBloodMagicAccess(bmBrujah) == true, "Selecionar Taumaturgia no slot já deve liberar Aba 8")
+
+-- Taumaturgia Nv 2 -> compra Linha Secundária 0 -> 1 por 7 XP, e bloqueia 1 -> 2 enquanto Primária for 2
+bmBrujah.disc_slot4_nivel = 2
+Bridge.syncDerivedFields(bmBrujah)
+assert(bmBrujah.bm_thau_prim_nivel == 2)
+
+isMestreFlag = false
+local secBuy1 = Bridge.submitOrApproveXP(bmBrujah, "submit", { field = "bm_sec1_nivel" }, nil, mockFirecast, mockDialogs)
+assert(secBuy1.ok == true and bmBrujah.bm_sec1_nivel == 1 and bmBrujah.xp_gasto == 7, "Compra de Linha Secundária 0->1 deve custar 7 XP")
+
+local secBlocked2 = Bridge.submitOrApproveXP(bmBrujah, "submit", { field = "bm_sec1_nivel" }, nil, mockFirecast, mockDialogs)
+assert(secBlocked2.ok == false and bmBrujah.bm_sec1_nivel == 1, "Deve bloquear Linha Secundária 1->2 enquanto Taumaturgia Primária estiver em 2")
+
+bmBrujah.disc_slot4_nivel = 3
+local secBuy2 = Bridge.submitOrApproveXP(bmBrujah, "submit", { field = "bm_sec1_nivel" }, nil, mockFirecast, mockDialogs)
+assert(secBuy2.ok == true and bmBrujah.bm_sec1_nivel == 2 and bmBrujah.xp_gasto == 11, "Com Primária 3, Linha Secundária 1->2 deve custar 4 XP (total 11)")
+
+-- Ativar poder da Linha Primária e da Linha Secundária + Conjurar Ritual Oficial e Customizado
+sentMessages = {}
+nextFaces = { 8, 7, 6, 5, 4, 3 }
+local actPrim = Bridge.activatePrimaryBloodMagic(bmBrujah, "thaumaturgy", 2, mockFirecast, mockDialogs)
+assert(actPrim.ok == true and bmBrujah.sangue_atual == 9 and sentMessages[1]:find("Dif 5") ~= nil)
+
+Bridge.newTurn(bmBrujah, mockFirecast, mockDialogs)
+sentMessages = {}
+local actSec = Bridge.activateSecondaryBloodMagic(bmBrujah, 1, 2, mockFirecast, mockDialogs)
+assert(actSec.ok == true and bmBrujah.sangue_atual == 8 and sentMessages[1]:find("Punhado de Chamas") ~= nil)
+
+-- Ritual Nv 4 bloqueado com Taumaturgia 3; Ritual Nv 2 aprovado
+local ritFail = Bridge.castCatalogRitual(bmBrujah, "thau_rit_4_heart_stone", mockFirecast, mockDialogs)
+assert(ritFail.ok == false, "Ritual Nv 4 deve ser bloqueado com Taumaturgia 3")
+
+sentMessages = {}
+local ritOk = Bridge.castCatalogRitual(bmBrujah, "thau_rit_2_ward_ghouls", mockFirecast, mockDialogs)
+assert(ritOk.ok == true and bmBrujah.sangue_atual == 7 and sentMessages[1]:find("Proteção Contra Carniçais") ~= nil)
+
+bmBrujah.ritual_custom_nome = "[TESTE_E2E] Selo Carmesim"
+bmBrujah.ritual_custom_trad = "thaumaturgy"
+bmBrujah.ritual_custom_nivel = 2
+bmBrujah.ritual_custom_sangue = 1
+bmBrujah.ritual_custom_fdv = 0
+bmBrujah.ritual_custom_dif = 5
+sentMessages = {}
+local ritCustomOk = Bridge.castCustomRitual(bmBrujah, mockFirecast, mockDialogs)
+assert(ritCustomOk.ok == true and bmBrujah.sangue_atual == 6 and sentMessages[1]:find("Selo Carmesim") ~= nil)
+
+-- Canalização 15ª Geração em Magia do Sangue (2 vitae em 2 turnos) e trava de Linha Secundária em validateCreationOnSheet
+local gen15Bm = {
+    nome = "[TESTE_E2E] ThinBlood Taumaturgo",
+    cla_id = "caitiff",
+    is_vampire = true,
+    mf_gen_15th = true,
+    sangue_atual = 8,
+    sangue_gasto_turno = 0,
+    sangue_fraco_usado = 0,
+    fdv_perm = 6,
+    fdv_temp = 6,
+    disc_slot1_id = "thaumaturgy",
+    disc_slot1_nivel = 1,
+    bm_thau_prim_id = "path_of_blood",
+    bm_sec1_disc = "thaumaturgy",
+    bm_sec1_path_id = "lure_of_flames",
+    bm_sec1_nivel = 1,
+}
+local badSecCreation = Bridge.validateCreationOnSheet(gen15Bm, nil, mockFirecast, mockDialogs, false)
+assert(badSecCreation.valid == false, "Linha Secundária Nv 1 com Taumaturgia Nv 1 deve ser rejeitada na criação")
+
+sentMessages = {}
+nextFaces = { 8, 7, 6, 5, 4, 3 }
+local g15BmAct = Bridge.activatePrimaryBloodMagic(gen15Bm, "thaumaturgy", 1, mockFirecast, mockDialogs)
+assert(g15BmAct.ok == true and gen15Bm.sangue_atual == 6 and gen15Bm.sangue_gasto_turno == 2)
+assert(sentMessages[1]:find("(15ª Geração: 2 pts de vitae canalizados em 2 turnos)", 1, true) ~= nil)
 ''' )
         run_lua_file(lua_probe)
     finally:
         if os.path.exists(lua_probe):
             os.remove(lua_probe)
+
+    # 3. Instanciar e exercitar em runtime na lua54x64.dll TODAS as 15 fichas compiladas (.lfm.lua)
+    sandbox_lfm_dir = os.path.join(ROOT, "output", "probe_test_e2e_15_forms")
+    os.makedirs(sandbox_lfm_dir, exist_ok=True)
+    probe_forms_lua = os.path.join(sandbox_lfm_dir, "run_15_forms.lua")
+    all_15_specs = expected_vampire_sheets + [
+        ("mortal", "Sheets/frmMortal.lfm", "br.com.v20.Mortal", "frmMortal", "Vampiro V20 - Mortal")
+    ]
+    try:
+        compiled_paths: list[tuple[str, str, str]] = []
+        for cid, rel_lfm, _, form_name, _ in all_15_specs:
+            lua_src = compiler.compile_lfm_to_lua(os.path.join(ROOT, rel_lfm))
+            out_file = os.path.join(sandbox_lfm_dir, f"{form_name}.lfm.lua")
+            with open(out_file, "w", encoding="utf-8", newline="\n") as f:
+                f.write(lua_src)
+            compiled_paths.append((cid, form_name, out_file.replace("\\", "/")))
+
+        lua_entries = ",\n".join(
+            f'    {{ cid = "{cid}", formName = "{fn}", path = "{p}" }}'
+            for cid, fn, p in compiled_paths
+        )
+        with open(probe_forms_lua, "w", encoding="utf-8", newline="\n") as f:
+            f.write(f'''
+local Bridge = require("Adapter.firecast_bridge")
+local FORMS = {{
+{lua_entries}
+}}
+
+local allControls = {{}}
+local activeListeners = {{}}
+local nextHandle = 100
+local nextListenerId = 1
+
+local ctrlProto = {{}}
+local ctrlMeta = {{ __index = ctrlProto }}
+local ALLOWED_SETTERS = {{
+    "setAlign", "setWidth", "setHeight", "setLeft", "setTop",
+    "setColor", "setStrokeColor", "setStrokeSize", "setXradius", "setYradius",
+    "setMargins", "setPadding", "setText", "setFontColor", "setFontSize",
+    "setHorzTextAlign", "setVertTextAlign", "setWordWrap", "setField", "setType",
+    "setTransparent", "setTextPrompt", "setItems", "setValues", "setValue",
+    "setTitle", "setSRC", "setStyle", "setOptimize", "setFields", "setDefaultValues",
+    "setReadOnly", "setHitTest", "setCursor", "setHint", "setVisible", "setEnabled",
+    "setName", "setFormType", "setDataType", "setTheme"
+}}
+for _, mName in ipairs(ALLOWED_SETTERS) do
+    ctrlProto[mName] = function(self, val) self._props[mName] = val end
+end
+function ctrlProto:getTabIndex() return self._tabIdx or 0 end
+function ctrlProto:setTabIndex(idx) self._tabIdx = idx end
+function ctrlProto:beginUpdate() end
+function ctrlProto:endUpdate() end
+function ctrlProto:setParent(p) table.insert(p._children, self) end
+function ctrlProto:addEventListener(evName, fn, ctx)
+    local id = nextListenerId
+    nextListenerId = nextListenerId + 1
+    local rec = {{ id = id, ctrl = self, evName = evName, fn = fn, ctx = ctx }}
+    activeListeners[id] = rec
+    table.insert(self._listeners, rec)
+    return id
+end
+function ctrlProto:setNodeObject(nodeObject)
+    self._nodeObject = nodeObject
+    if nodeObject ~= nil then
+        for _, child in ipairs(self._children) do
+            if child._tag == "dataLink" then
+                local fields = child._props.setFields
+                local defaults = child._props.setDefaultValues
+                if type(fields) == "table" and type(defaults) == "table" then
+                    for i, fName in ipairs(fields) do
+                        if nodeObject[fName] == nil and defaults[i] ~= nil then
+                            nodeObject[fName] = defaults[i]
+                        end
+                    end
+                end
+                for _, lRec in ipairs(child._listeners) do
+                    if lRec.evName == "onChange" and activeListeners[lRec.id] ~= nil then
+                        lRec.fn(child)
+                    end
+                end
+            end
+        end
+    end
+end
+function ctrlProto:setNodeDatabase(nodeObject) self:setNodeObject(nodeObject) end
+function ctrlProto:destroy()
+    assert(not self._destroyed)
+    for _, ch in ipairs(self._children) do assert(ch._destroyed == true) end
+    self._destroyed = true
+end
+
+_G._obj_newObject = function(tag)
+    nextHandle = nextHandle + 1
+    local h = nextHandle
+    allControls[h] = setmetatable({{ handle = h, _tag = tag, _props = {{}}, _children = {{}}, _listeners = {{}}, _destroyed = false, _tabIdx = 0 }}, ctrlMeta)
+    return h
+end
+_G.GUI = {{ fromHandle = function(h) return assert(allControls[h]) end }}
+_G.gui = _G.GUI
+_G._gui_assignInitialParentForForm = function(_) end
+_G.lfm_setPropAsString = function(ctrl, prop, val) ctrl._props[prop] = tostring(val) end
+_G.showMessage = function(_) end
+_G.Dialogs = {{ showMessage = _G.showMessage }}
+_G.Firecast = {{
+    registrarForm = function(_) end,
+    registrarDataType = function(_) end,
+    interpretarRolagem = function(expr)
+        return {{ expr = expr, ops = {{ {{ tipo = "dado", resultados = {{ 8, 7, 6 }} }} }}, rolarLocalmente = function() end }}
+    end,
+    getMesaDe = function(_)
+        return {{
+            meuJogador = {{ isMestre = false, login = "test_e2e_15forms" }},
+            activeChat = {{
+                rolarDados = function(_, _, _, cb) cb({{ ops = {{ {{ tipo = "dado", resultados = {{ 8, 7, 6 }} }} }} }}) end,
+                enviarMensagem = function(_, _) end,
+            }},
+        }}
+    end,
+}}
+_G.RRPG = _G.Firecast
+_G.rrpg = _G.Firecast
+_G.NDB = {{ getChildNodes = function(_) return {{}} end }}
+
+package.preload["firecast.lua"] = function() return _G.Firecast end
+package.preload["rrpgObjs.lua"] = function()
+    return {{
+        beginObjectsLoading = function() end,
+        endObjectsLoading = function() end,
+        removeEventListenerById = function(id) activeListeners[id] = nil end,
+    }}
+end
+package.preload["rrpgGUI.lua"] = function() return _G.GUI end
+package.preload["rrpgDialogs.lua"] = function() return _G.Dialogs end
+package.preload["rrpgLFM.lua"] = function() return true end
+package.preload["ndb.lua"] = function() return _G.NDB end
+package.preload["locale.lua"] = function() return true end
+package.preload["utils.lua"] = function()
+    return {{
+        tryFinally = function(t, f)
+            local ok, err = pcall(t)
+            f()
+            if not ok then error(err, 0) end
+        end
+    }}
+end
+
+for _, entry in ipairs(FORMS) do
+    local spec = dofile(entry.path)
+    assert(type(spec) == "table" and spec.name == entry.formName)
+    local inst = spec.new()
+    local mockNode = {{ nome = "[TESTE_E2E] Form " .. entry.formName }}
+    inst:setNodeObject(mockNode)
+
+    if entry.cid ~= "mortal" then
+        assert(inst.tabMagiaSangue ~= nil, "tabMagiaSangue deve existir em " .. entry.formName)
+        local expectedInitialBM = (entry.cid == "tremere" or entry.cid == "giovanni")
+        assert(inst.tabMagiaSangue._props.setVisible == expectedInitialBM,
+            "Visibilidade inicial incorreta de tabMagiaSangue em " .. entry.formName)
+
+        if not expectedInitialBM then
+            -- Revela Aba 8 ao selecionar Taumaturgia ou Rituais e retorna p/ aba 0 ao remover enquanto na aba 7
+            mockNode.bg_rituals = 1
+            inst:setNodeObject(mockNode)
+            assert(inst.tabMagiaSangue._props.setVisible == true, "tabMagiaSangue deve aparecer com bg_rituals=1 em " .. entry.formName)
+
+            inst.pgcPrincipal:setTabIndex(7)
+            mockNode.bg_rituals = 0
+            inst:setNodeObject(mockNode)
+            assert(inst.tabMagiaSangue._props.setVisible == false, "tabMagiaSangue deve ocultar ao zerar acesso em " .. entry.formName)
+            assert(inst.pgcPrincipal:getTabIndex() == 0, "pgcPrincipal deve voltar ao índice 0 ao ocultar Aba 8 ativa em " .. entry.formName)
+        end
+    end
+
+    -- Dispara todos os listeners do formulário provando 0 erros de runtime
+    local ids = {{}}
+    for id, lRec in pairs(activeListeners) do
+        if lRec.ctx == inst then table.insert(ids, id) end
+    end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local lRec = activeListeners[id]
+        if lRec ~= nil then lRec.fn(lRec.ctrl) end
+    end
+
+    inst:destroy()
+    assert(inst._destroyed == true)
+end
+''')
+        run_lua_file(probe_forms_lua)
+    finally:
+        import shutil
+        shutil.rmtree(sandbox_lfm_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

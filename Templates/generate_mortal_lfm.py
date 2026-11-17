@@ -366,7 +366,7 @@ def generate_mortal_lfm() -> str:
 {build_tab4_backgrounds(ACCENT_MORTAL, border=BORDER_MORTAL, is_vampire=False)}
 {build_tab5_combat(ACCENT_MORTAL, border=BORDER_MORTAL, is_vampire=False)}
 {build_mortal_tab6()}
-{build_tab7_xp(ACCENT_MORTAL, border=BORDER_MORTAL, extra_top_card=narrador_switch_card)}
+{build_tab7_xp(ACCENT_MORTAL, border=BORDER_MORTAL, extra_top_card=narrador_switch_card, is_vampire=False)}
         </tabControl>
     </rectangle>
 

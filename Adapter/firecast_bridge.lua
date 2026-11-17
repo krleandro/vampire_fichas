@@ -21,7 +21,7 @@ end
 local GEN15_CHANNEL_NOTE = "(15ª Geração: 2 pts de vitae canalizados em 2 turnos)"
 
 local function isTrue(val)
-    return val == true or val == "true"
+    return val == true or val == "true" or val == 1 or val == "1"
 end
 
 local function isFalse(val)
@@ -288,6 +288,59 @@ function Bridge.collectDisciplines(sheet, ndbApi)
     return ordered
 end
 
+local function getDisciplineDots(sheet, discId, ndbApi)
+    local best = 0
+    for _, d in ipairs(Bridge.collectDisciplines(sheet, ndbApi)) do
+        if d.disc_id == discId and safeNonNegInt(d.nivel, 0) > best then
+            best = safeNonNegInt(d.nivel, 0)
+        end
+    end
+    return best
+end
+
+local function resolveSecondaryTradition(sheet, idx)
+    local rawTrad = (type(sheet) == "table") and sheet["bm_sec" .. idx .. "_disc"] or nil
+    local pid = (type(sheet) == "table") and (sheet["bm_sec" .. idx .. "_path_id"] or "") or ""
+    if pid ~= "" then
+        if V20.BloodMagicCatalog.THAUMATURGY_PATHS[pid] ~= nil then
+            return "thaumaturgy"
+        elseif V20.BloodMagicCatalog.NECROMANCY_PATHS[pid] ~= nil then
+            return "necromancy"
+        end
+    end
+    if rawTrad == "necromancy" or rawTrad == "thaumaturgy" then
+        return rawTrad
+    end
+    return (type(sheet) == "table" and sheet.cla_id == "giovanni") and "necromancy" or "thaumaturgy"
+end
+
+function Bridge.hasBloodMagicAccess(sheet, ndbApi)
+    if type(sheet) ~= "table" or not Bridge.isVampireSheet(sheet) then
+        return false
+    end
+    local discList = {}
+    for _, d in ipairs(Bridge.collectDisciplines(sheet, ndbApi)) do
+        table.insert(discList, d)
+    end
+    for i = 1, 9 do
+        local sid = sheet["disc_slot" .. i .. "_id"]
+        if sid == "thaumaturgy" or sid == "necromancy" then
+            table.insert(discList, {
+                disc_id = sid,
+                nivel = safeNonNegInt(sheet["disc_slot" .. i .. "_nivel"], 0),
+                selected = true,
+            })
+        end
+    end
+    local ritualsDots = safeNonNegInt(sheet.bg_rituals, 0)
+    for _, b in ipairs(Bridge.collectBackgrounds(sheet, ndbApi)) do
+        if b.bg_id == "rituals" and safeNonNegInt(b.nivel, 0) > ritualsDots then
+            ritualsDots = safeNonNegInt(b.nivel, 0)
+        end
+    end
+    return V20.BloodMagicEngine.hasBloodMagicAccess(sheet.cla_id, discList, ritualsDots)
+end
+
 function Bridge.collectMeritsFlaws(sheet, ndbApi)
     local list = {}
     local seenIds = {}
@@ -435,7 +488,8 @@ function Bridge.resolvePoolTrait(sheet, traitId, combatMods)
             val = val + safeInt(sheet.buff_vigor, 0) + safeInt(sceneMods.vigor, 0)
         end
         if sheet.cla_id == "nosferatu" and traitId == "attr_aparencia" then
-            val = 0
+            local activeBuffs = Bridge.deserializeBuffs(sheet)
+            val = (activeBuffs.obf_mask ~= nil) and math.max(1, val) or 0
         end
         return { val = val, label = attrMeta.name, category = nil, isVirtual = false }
     end
@@ -536,6 +590,66 @@ local function updateDisciplineSummaries(sheet)
             table.insert(lines, string.format("Nv %d - %s (%s): %s", pw.level, pw.name, pw.diffHint or "Dif 6", pw.summary or ""))
         end
         setIfChanged(sheet, "disc_catalogo_resumo", table.concat(lines, " || "))
+    end
+end
+
+local function updateBloodMagicSummaries(sheet, ndb)
+    if not Bridge.isVampireSheet(sheet) then return end
+
+    local thauDots = getDisciplineDots(sheet, "thaumaturgy", ndb)
+    local necroDots = getDisciplineDots(sheet, "necromancy", ndb)
+    local thauPrimLvl = V20.BloodMagicEngine.derivePrimaryPathLevel(thauDots)
+    local necroPrimLvl = V20.BloodMagicEngine.derivePrimaryPathLevel(necroDots)
+    setIfChanged(sheet, "bm_thau_prim_nivel", thauPrimLvl)
+    setIfChanged(sheet, "bm_necro_prim_nivel", necroPrimLvl)
+
+    local thauPrimId = (type(sheet.bm_thau_prim_id) == "string" and sheet.bm_thau_prim_id ~= "") and sheet.bm_thau_prim_id or "path_of_blood"
+    local thauPwrLvl = math.max(1, math.min(5, safeInt(sheet.bm_thau_prim_pwr_lvl, 1)))
+    local thauPath = V20.BloodMagicEngine.getPathTable("thaumaturgy", thauPrimId)
+    if thauPath and thauPath.powers and thauPath.powers[thauPwrLvl] then
+        local pw = thauPath.powers[thauPwrLvl]
+        local lockPfx = (thauPrimLvl < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
+        setIfChanged(sheet, "bm_thau_prim_resumo", string.format("%s%s — %s (Nv %d) | %s | %s", lockPfx, thauPath.name, pw.name, pw.level, pw.diffHint or "", pw.summary or ""))
+    else
+        setIfChanged(sheet, "bm_thau_prim_resumo", "Selecione a Linha Primária de Taumaturgia.")
+    end
+
+    local necroPrimId = (type(sheet.bm_necro_prim_id) == "string" and sheet.bm_necro_prim_id ~= "") and sheet.bm_necro_prim_id or "sepulchre_path"
+    local necroPwrLvl = math.max(1, math.min(5, safeInt(sheet.bm_necro_prim_pwr_lvl, 1)))
+    local necroPath = V20.BloodMagicEngine.getPathTable("necromancy", necroPrimId)
+    if necroPath and necroPath.powers and necroPath.powers[necroPwrLvl] then
+        local pw = necroPath.powers[necroPwrLvl]
+        local lockPfx = (necroPrimLvl < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
+        setIfChanged(sheet, "bm_necro_prim_resumo", string.format("%s%s — %s (Nv %d) | %s | %s", lockPfx, necroPath.name, pw.name, pw.level, pw.diffHint or "", pw.summary or ""))
+    else
+        setIfChanged(sheet, "bm_necro_prim_resumo", "Selecione a Linha Primária de Necromancia.")
+    end
+
+    for i = 1, 4 do
+        local trad = resolveSecondaryTradition(sheet, i)
+        local pid = sheet["bm_sec" .. i .. "_path_id"] or ""
+        local dots = safeNonNegInt(sheet["bm_sec" .. i .. "_nivel"], 0)
+        local pwrLvl = math.max(1, math.min(5, safeInt(sheet["bm_sec" .. i .. "_pwr_lvl"], 1)))
+        local pTable = (pid ~= "") and V20.BloodMagicEngine.getPathTable(trad, pid) or nil
+        if pTable and pTable.powers and pTable.powers[pwrLvl] then
+            local pw = pTable.powers[pwrLvl]
+            local lockPfx = (dots < pw.level) and string.format("[Requer Nv %d] ", pw.level) or ""
+            setIfChanged(sheet, "bm_sec" .. i .. "_resumo", string.format("%s%s (Nv %d) — %s | %s", lockPfx, pw.name, pw.level, pw.diffHint or "", pw.summary or ""))
+        else
+            setIfChanged(sheet, "bm_sec" .. i .. "_resumo", "Selecione uma Linha Secundária V20 (Nova: 7 XP | Evolução: Atual x4 XP).")
+        end
+    end
+
+    local ritId = (type(sheet.bm_ritual_id) == "string" and sheet.bm_ritual_id ~= "") and sheet.bm_ritual_id or "thau_rit_1_sacred_haven"
+    local rit = V20.BloodMagicCatalog.RITUALS[ritId]
+    if rit then
+        local tradName = (rit.tradition == "necromancy") and "Necromancia" or "Taumaturgia"
+        setIfChanged(sheet, "bm_ritual_catalogo_resumo", string.format(
+            "[%s Nv %d | Dif %d | Sangue: %d, FdV: %d] %s — %s",
+            tradName, rit.level, rit.defaultDiff, safeNonNegInt(rit.cost and rit.cost.blood, 0), safeNonNegInt(rit.cost and rit.cost.willpower, 0), rit.name, rit.summary or ""
+        ))
+    else
+        setIfChanged(sheet, "bm_ritual_catalogo_resumo", "Selecione um ritual oficial do catálogo V20.")
     end
 end
 
@@ -673,16 +787,60 @@ local function syncDerivedFieldsImpl(sheet, ndbApi)
     setIfChanged(sheet, "buffs_cena_resumo", (#activeIds > 0) and table.concat(activeIds, ", ") or "Nenhum buff ativo")
 
     updateDisciplineSummaries(sheet)
+    updateBloodMagicSummaries(sheet, ndb)
 
-    -- Atualiza resumo vivo do montador de rolagem no rodapé
-    local rAttr = Bridge.resolvePoolTrait(sheet, sheet.roll_attr_id or "attr_percepcao", cMods)
-    local rHab = Bridge.resolvePoolTrait(sheet, sheet.roll_hab_id, cMods)
+    if isVamp then
+        local trGoles = math.min(2, safeNonNegInt(sheet.tremere_laco_goles, 0))
+        local regente = (type(sheet.tremere_regente_nome) == "string" and sheet.tremere_regente_nome ~= "")
+            and (" [" .. sheet.tremere_regente_nome .. "]") or ""
+        local trStatus = "Sem Laço (0/2 goles)"
+        if trGoles >= 2 then
+            trStatus = "Laço de Sangue Completo (2/2 — Maldição Tremere)" .. regente
+        elseif trGoles == 1 then
+            trStatus = "1º Gole (1/2 — Início de Laço)" .. regente
+        end
+        setIfChanged(sheet, "tremere_laco_status", trStatus)
+    end
+
+    -- Atualiza resumo vivo do montador de rolagem no rodapé (incluindo modificadores de fraqueza de clã)
+    local rAttrId = sheet.roll_attr_id or "attr_percepcao"
+    local rHabId = (sheet.roll_hab_id ~= "" and sheet.roll_hab_id ~= "none") and sheet.roll_hab_id or nil
+    local rAttr = Bridge.resolvePoolTrait(sheet, rAttrId, cMods)
+    local rHab = Bridge.resolvePoolTrait(sheet, rHabId, cMods)
     local wPen = (isTrue(sheet.roll_ignorar_ferimento) or isTrue(sheet.em_frenesi)) and 0 or math.abs(safeInt(sheet.penalidade_ferimento, 0))
     local extra = safeInt(sheet.roll_bonus_dice, 0)
-    if (sheet.roll_attr_id == "attr_forca") then extra = extra + cMods.passivePotenceDice end
-    if (sheet.roll_attr_id == "attr_destreza") then extra = extra + cMods.passiveCelerityDice end
+    if (rAttrId == "attr_forca") then extra = extra + cMods.passivePotenceDice end
+    if (rAttrId == "attr_destreza") then extra = extra + cMods.passiveCelerityDice end
     if isTrue(sheet.roll_usar_status) then extra = extra + safeInt(sheet.status_bonus_dados, 0) end
+
+    local stOverridePreview = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet)
+    local cwPreview = isVamp and V20.ClanWeaknesses.computeRollModifiers({
+        cla_id = sheet.cla_id,
+        attrId = rAttrId,
+        habId = rHabId,
+        activeBuffs = Bridge.deserializeBuffs(sheet),
+        setita_luz_forte = sheet.setita_luz_forte,
+        lasombra_vigiado_espelhos = sheet.lasombra_vigiado_espelhos,
+        caitiff_estigma_ativo = sheet.caitiff_estigma_ativo,
+        tzimisce_dias_sem_terra = sheet.tzimisce_dias_sem_terra,
+        storytellerOverride = stOverridePreview,
+    }) or { blocked = false, bonusDiceMod = 0, diffMod = 0, poolDivisor = 1 }
+
+    extra = extra + safeInt(cwPreview.bonusDiceMod, 0)
+    local previewDiffMod = safeInt(cwPreview.diffMod, 0)
+    if rAttrId == "attr_percepcao" then
+        previewDiffMod = previewDiffMod + cMods.perceptionDiffMod + safeInt(sheet.percepcao_mod_qualidades, 0)
+    end
+    if isTrue(sheet.roll_usar_fama) then
+        previewDiffMod = previewDiffMod + safeInt(sheet.fama_mod_dif, 0)
+    end
+    local previewDiff = math.max(2, math.min(10, safeInt(sheet.roll_diff, 6) + previewDiffMod))
     local previewPool = math.max(0, rAttr.val + rHab.val + extra - wPen)
+    if cwPreview.blocked then
+        previewPool = 0
+    elseif cwPreview.poolDivisor and cwPreview.poolDivisor > 1 and previewPool >= 1 then
+        previewPool = math.max(1, math.floor(previewPool / cwPreview.poolDivisor))
+    end
     local habPart = rHab.label and string.format(" + %s (%d)", rHab.label, rHab.val) or ""
     setIfChanged(sheet, "roll_equacao_resumo", string.format(
         "%s (%d)%s + Bônus (%d) - Ferim. (%d) = %dd10 | Dif %d",
@@ -692,7 +850,7 @@ local function syncDerivedFieldsImpl(sheet, ndbApi)
         extra,
         wPen,
         previewPool,
-        safeInt(sheet.roll_diff, 6)
+        previewDiff
     ))
 end
 
@@ -925,6 +1083,8 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
     local diffMod = safeInt(opts.difficultyMod, 0)
     local extraAuto = 0
     local isVirtualPool = false
+    local resolvedAttrId = nil
+    local resolvedHabId = nil
 
     if opts.rawPool ~= nil then
         attrVal = safeInt(opts.rawPool, 0)
@@ -935,6 +1095,8 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
         local attrId = opts.attrId or sheet.roll_attr_id or "attr_percepcao"
         local habId = (opts.habId ~= nil) and opts.habId or (opts.attrId == nil and sheet.roll_hab_id or nil)
         if habId == "" or habId == "none" then habId = nil end
+        resolvedAttrId = attrId
+        resolvedHabId = habId
 
         local attrInfo = Bridge.resolvePoolTrait(sheet, attrId, cMods)
         local habInfo = habId and Bridge.resolvePoolTrait(sheet, habId, cMods) or { val = 0, label = nil, category = nil, isVirtual = false }
@@ -981,6 +1143,27 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
 
     local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
 
+    local cwMods = nil
+    if Bridge.isVampireSheet(sheet) and not isTrue(opts.skipClanWeakness) then
+        cwMods = V20.ClanWeaknesses.computeRollModifiers({
+            cla_id = sheet.cla_id,
+            attrId = resolvedAttrId,
+            habId = resolvedHabId,
+            activeBuffs = Bridge.deserializeBuffs(sheet),
+            setita_luz_forte = sheet.setita_luz_forte,
+            lasombra_vigiado_espelhos = sheet.lasombra_vigiado_espelhos,
+            caitiff_estigma_ativo = sheet.caitiff_estigma_ativo,
+            tzimisce_dias_sem_terra = sheet.tzimisce_dias_sem_terra,
+            storytellerOverride = stOverride,
+        })
+        if cwMods.blocked then
+            dlg.showMessage(cwMods.blockReason)
+            return { ok = false, error = cwMods.blockReason }
+        end
+        bonusDice = bonusDice + safeInt(cwMods.bonusDiceMod, 0)
+        diffMod = diffMod + safeInt(cwMods.diffMod, 0)
+    end
+
     local poolInfo = V20.Dice.buildPool({
         actorName = sheet.nome,
         attrVal = attrVal,
@@ -1000,6 +1183,15 @@ function Bridge.rollFromSheet(sheet, opts, firecastApi, dialogsApi)
     if not poolInfo.canRoll then
         dlg.showMessage(poolInfo.blockReason or "Rolagem bloqueada pelas regras V20.")
         return { ok = false, error = poolInfo.blockReason }
+    end
+
+    if cwMods ~= nil then
+        if cwMods.poolDivisor and cwMods.poolDivisor > 1 and poolInfo.pool >= 1 then
+            poolInfo.pool = math.max(1, math.floor(poolInfo.pool / cwMods.poolDivisor))
+        end
+        for _, w in ipairs(cwMods.warnings or {}) do
+            table.insert(poolInfo.warnings, w)
+        end
     end
 
     if spendWP then
@@ -1333,6 +1525,13 @@ function Bridge.applyDamage(sheet, amount, damageType, opts, firecastApi, dialog
     local qty = math.max(0, safeInt(amount ~= nil and amount or sheet.dano_aplicar_qtd, 1))
     local dtype = damageType or sheet.dano_aplicar_tipo or "bashing"
     local isVamp = Bridge.isVampireSheet(sheet)
+    local isSolar = (opts.isSolar ~= nil) and isTrue(opts.isSolar) or isTrue(sheet.dano_fonte_solar)
+    local solarExtra = 0
+    if isVamp and qty > 0 and isSolar then
+        dtype = "aggravated"
+        solarExtra = V20.ClanWeaknesses.computeSolarExtraDamage(sheet.cla_id, qty, true)
+    end
+    local totalQty = qty + solarExtra
     local huge = isTrue(sheet.tem_tamanho_grande) or V20.BackgroundsEngine.aggregateMeritsFlaws(Bridge.collectMeritsFlaws(sheet)).hugeSize
 
     local nextH = V20.Health.applyDamage({
@@ -1341,11 +1540,11 @@ function Bridge.applyDamage(sheet, amount, damageType, opts, firecastApi, dialog
         bashing = safeInt(sheet.dano_contundente, 0),
         lethal = safeInt(sheet.dano_letal, 0),
         aggravated = safeInt(sheet.dano_aggravado, 0),
-    }, qty, dtype, {
+    }, totalQty, dtype, {
         isVampire = isVamp,
-        isFirearm = (opts.isFirearm ~= nil) and isTrue(opts.isFirearm) or isTrue(sheet.dano_arma_fogo),
-        headshot = (opts.headshot ~= nil) and isTrue(opts.headshot) or isTrue(sheet.dano_tiro_cabeca),
-        halveBashing = (opts.halveBashing ~= nil) and isTrue(opts.halveBashing) or isTrue(sheet.dano_dividir_contundente),
+        isFirearm = (not isSolar) and ((opts.isFirearm ~= nil) and isTrue(opts.isFirearm) or isTrue(sheet.dano_arma_fogo)),
+        headshot = (not isSolar) and ((opts.headshot ~= nil) and isTrue(opts.headshot) or isTrue(sheet.dano_tiro_cabeca)),
+        halveBashing = (not isSolar) and ((opts.halveBashing ~= nil) and isTrue(opts.halveBashing) or isTrue(sheet.dano_dividir_contundente)),
     })
 
     sheet.dano_contundente = nextH.bashing
@@ -1355,13 +1554,15 @@ function Bridge.applyDamage(sheet, amount, damageType, opts, firecastApi, dialog
     LAST_AGG_MIRROR[sheet] = nextH.aggravated
     Bridge.syncDerivedFields(sheet)
 
+    local solarNote = (solarExtra > 0) and string.format(" [Luz Solar +%d Agravado da fraqueza]", solarExtra) or ""
     local alert = (sheet.vitalidade_alerta and sheet.vitalidade_alerta ~= "") and (" ⚠️ " .. sheet.vitalidade_alerta) or ""
     Bridge.notify(
         sheet,
-        string.format("⚔️ [%s] Dano aplicado (%d %s) -> %s (%s)%s",
+        string.format("⚔️ [%s] Dano aplicado (%d %s)%s -> %s (%s)%s",
             sheet.nome or "Personagem",
-            qty,
+            totalQty,
             dtype,
+            solarNote,
             sheet.vitalidade_resumo or "Saudável",
             sheet.vitalidade_trilha_visual or "",
             alert
@@ -1425,6 +1626,8 @@ function Bridge.clearSceneBuffs(sheet, firecastApi, dialogsApi)
     local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
     local st = V20.Blood.clearSceneBuffs(Bridge.sheetToEngineState(sheet))
     st = V20.DisciplinesEngine.clearSceneBuffs(st)
+    setIfChanged(sheet, "malkav_suprimida_cena", false)
+    setIfChanged(sheet, "toreador_fascinado_cena", false)
     applyEngineStateToSheet(sheet, st)
     Bridge.notify(sheet, string.format("🧹 [%s] Buffs de cena encerrados.", sheet.nome or "Personagem"), fc, dlg)
     return st
@@ -1537,7 +1740,17 @@ end
 
 function Bridge.huntWithHerdDomain(sheet, opts, firecastApi, dialogsApi)
     opts, firecastApi, dialogsApi = normalizeOptsAndApis(opts, firecastApi, dialogsApi)
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
     Bridge.syncDerivedFields(sheet)
+
+    if Bridge.isVampireSheet(sheet) and not isTrue(opts.isCainiteVitae) then
+        local vCheck = V20.ClanWeaknesses.checkVentrueFeeding(sheet)
+        if not vCheck.allowed then
+            Bridge.notify(sheet, "🩸 [" .. (sheet.nome or "Personagem") .. "] " .. vCheck.reason, fc, dlg)
+            return { ok = false, blocked = true, error = vCheck.reason }
+        end
+    end
+
     local attrId = opts.attrId or sheet.caca_attr_id or "attr_percepcao"
     local habId = opts.habId or sheet.caca_hab_id or "hab_manha"
     local baseDiff = safeInt(opts.difficulty ~= nil and opts.difficulty or sheet.caca_dif_base, 6)
@@ -1556,11 +1769,17 @@ function Bridge.huntWithHerdDomain(sheet, opts, firecastApi, dialogsApi)
                 sheet.sangue_atual = g.newState.currentBlood
                 sheet.sangue_fraco_usado = g.newState.thinBloodUsed
                 Bridge.syncDerivedFields(sheet)
-                return string.format("+%d Vitae absorvida -> %d/%d", safeInt(g.added, 0), safeInt(sheet.sangue_atual, 0), safeInt(sheet.sangue_max, 10))
+                local note = string.format("+%d Vitae absorvida -> %d/%d", safeInt(g.added, 0), safeInt(sheet.sangue_atual, 0), safeInt(sheet.sangue_max, 10))
+                if sheet.cla_id == "giovanni" then
+                    local kiss = V20.ClanWeaknesses.computeGiovanniKissDamage(evalRes.totalSuccesses)
+                    local fatalTxt = kiss.fatalRisk and " — CHOQUE/MORTE DO RECIPIENTE!" or ""
+                    note = note .. string.format(" | Beijo Doloroso Giovanni: %d níveis Letais no recipiente%s", kiss.lethalToVessel, fatalTxt)
+                end
+                return note
             end
             return nil
         end,
-    }, firecastApi, dialogsApi)
+    }, fc, dlg)
 end
 
 function Bridge.rollBackgroundAction(sheet, bgId, attrId, firecastApi, dialogsApi)
@@ -1612,6 +1831,7 @@ function Bridge.rollAllyOrRetainer(sheet, slotIdx, firecastApi, dialogsApi)
         rawPool = pool,
         difficulty = 6,
         ignoreWoundPenalty = true,
+        skipClanWeakness = true,
         label = "Ação de " .. name,
     }, firecastApi, dialogsApi)
 end
@@ -1710,10 +1930,13 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
         + math.max(0, safeInt(sheet.attr_destreza, 1) - 1)
         + math.max(0, safeInt(sheet.attr_vigor, 1) - 1)
 
-    local appDots = (sheet.cla_id == "nosferatu") and safeInt(sheet.attr_aparencia, 0) or math.max(0, safeInt(sheet.attr_aparencia, 1) - 1)
-    local soc = math.max(0, safeInt(sheet.attr_carisma, 1) - 1)
-        + math.max(0, safeInt(sheet.attr_manipulacao, 1) - 1)
-        + appDots
+    local socialFreeBase = isVamp and V20.ClanWeaknesses.getSocialBaseFreeDots(sheet.cla_id) or 3
+    local rawCar = math.max(1, safeInt(sheet.attr_carisma, 1))
+    local rawMan = math.max(1, safeInt(sheet.attr_manipulacao, 1))
+    local rawApp = (isVamp and sheet.cla_id == "nosferatu")
+        and math.max(0, safeInt(sheet.attr_aparencia, 0))
+        or math.max(1, safeInt(sheet.attr_aparencia, 1))
+    local soc = math.max(0, (rawCar + rawMan + rawApp) - socialFreeBase)
 
     local ment = math.max(0, safeInt(sheet.attr_percepcao, 1) - 1)
         + math.max(0, safeInt(sheet.attr_inteligencia, 1) - 1)
@@ -1784,6 +2007,51 @@ function Bridge.validateCreationOnSheet(sheet, ndbApi, firecastApi, dialogsApi, 
         },
     })
 
+    if isVamp then
+        local cwReq = V20.ClanWeaknesses.validateCreationRequirements({
+            cla_id = sheet.cla_id,
+            attr_aparencia = (sheet.cla_id == "nosferatu") and safeInt(sheet.attr_aparencia, 0) or safeInt(sheet.attr_aparencia, 1),
+            malkav_perturbacao = sheet.malkav_perturbacao,
+            ventrue_presa_restrita = sheet.ventrue_presa_restrita,
+            ravnos_vicio_descricao = sheet.ravnos_vicio_descricao,
+        })
+        if not cwReq.valid then
+            for _, errMsg in ipairs(cwReq.errors) do
+                if not (sheet.cla_id == "nosferatu" and errMsg:find("Nosferatu") and (#res.errors > 0 and table.concat(res.errors, " "):find("Nosferatu"))) then
+                    table.insert(res.errors, errMsg)
+                end
+            end
+            res.valid = false
+        end
+
+        for secIdx = 1, 4 do
+            local secLvl = safeNonNegInt(sheet["bm_sec" .. secIdx .. "_nivel"], 0)
+            if secLvl > 0 then
+                local trad = resolveSecondaryTradition(sheet, secIdx)
+                local secPathId = sheet["bm_sec" .. secIdx .. "_path_id"] or ""
+                if secPathId ~= "" and V20.BloodMagicEngine.getPathTable(trad, secPathId) == nil then
+                    table.insert(res.errors, string.format("Linha Secundária #%d incompatível com a tradição escolhida.", secIdx))
+                    res.valid = false
+                else
+                    local parentDots = getDisciplineDots(sheet, trad, ndbApi)
+                    local primId = (trad == "necromancy")
+                        and ((type(sheet.bm_necro_prim_id) == "string" and sheet.bm_necro_prim_id ~= "") and sheet.bm_necro_prim_id or "sepulchre_path")
+                        or ((type(sheet.bm_thau_prim_id) == "string" and sheet.bm_thau_prim_id ~= "") and sheet.bm_thau_prim_id or "path_of_blood")
+                    local vSec = V20.BloodMagicEngine.validateSecondaryPathUpgrade({
+                        parentDiscDots = parentDots,
+                        primaryPathId = primId,
+                        secondaryPathId = secPathId,
+                        targetLevel = secLvl,
+                    })
+                    if not vSec.ok then
+                        table.insert(res.errors, vSec.error)
+                        res.valid = false
+                    end
+                end
+            end
+        end
+    end
+
     if res.valid then
         sheet.criacao_resumo_status = string.format(
             "✅ Criação V20 válida! Bônus gastos: %d/%d (Restante: %d).",
@@ -1827,7 +2095,7 @@ local function inferTraitKindFromField(sheet, campo)
     if directDisc and V20.DisciplinesCatalog.DISCIPLINES[directDisc] ~= nil then
         return "discipline", nil, directDisc
     end
-    if campo:match("^trilha_sec_%d+$") or campo:match("^sec_path_[a-z0-9_]+$") then
+    if campo:match("^bm_sec[1-4]_nivel$") or campo:match("^trilha_sec_%d+$") or campo:match("^sec_path_[a-z0-9_]+$") then
         return "secondary_path", nil, nil
     end
     if campo == "virtude1_val" or campo == "virtude2_val" or campo == "virtude3_val" then
@@ -1898,6 +2166,30 @@ local function checkV20TraitCeiling(sheet, traitKind, campo, targetVal)
         if targetVal > 10 then
             return false, "Força de Vontade permanente possui teto máximo igual a 10 na V20."
         end
+    end
+    return true, nil
+end
+
+local function validateBmSecFieldUpgrade(sheet, campo, targetVal, ndbApi)
+    local secIdx = (type(campo) == "string") and tonumber(campo:match("^bm_sec([1-4])_nivel$")) or nil
+    if not secIdx then return true, nil end
+    local trad = resolveSecondaryTradition(sheet, secIdx)
+    local secPathId = sheet["bm_sec" .. secIdx .. "_path_id"] or ""
+    if secPathId ~= "" and V20.BloodMagicEngine.getPathTable(trad, secPathId) == nil then
+        return false, "A Linha Secundária selecionada não pertence à tradição escolhida."
+    end
+    local parentDots = getDisciplineDots(sheet, trad, ndbApi)
+    local primId = (trad == "necromancy")
+        and ((type(sheet.bm_necro_prim_id) == "string" and sheet.bm_necro_prim_id ~= "") and sheet.bm_necro_prim_id or "sepulchre_path")
+        or ((type(sheet.bm_thau_prim_id) == "string" and sheet.bm_thau_prim_id ~= "") and sheet.bm_thau_prim_id or "path_of_blood")
+    local vRes = V20.BloodMagicEngine.validateSecondaryPathUpgrade({
+        parentDiscDots = parentDots,
+        primaryPathId = primId,
+        secondaryPathId = secPathId,
+        targetLevel = targetVal,
+    })
+    if not vRes.ok then
+        return false, vRes.error
     end
     return true, nil
 end
@@ -2001,6 +2293,11 @@ function Bridge.submitOrApproveXP(sheet, action, payload, ndbApi, firecastApi, d
                 dlg.showMessage(ceilErr)
                 return { ok = false, error = ceilErr }
             end
+            local okSec, secErr = validateBmSecFieldUpgrade(sheet, campo, curRating + 1, ndbApi)
+            if not okSec then
+                dlg.showMessage(secErr)
+                return { ok = false, error = secErr }
+            end
         end
 
         local req = {
@@ -2069,10 +2366,16 @@ function Bridge.submitOrApproveXP(sheet, action, payload, ndbApi, firecastApi, d
             local kindForCeil = (slotIdx and sheet["disc_slot" .. slotIdx .. "_cat"] == "linha_secundaria") and "secondary_path" or inferredKind
             effCur = getEffectiveFieldRatingForXP(sheet, pendingEntry.campo_alvo, kindForCeil, discId)
             if not stOverride then
-                local okCeil, ceilErr = checkV20TraitCeiling(sheet, kindForCeil, pendingEntry.campo_alvo, safeNonNegInt(pendingEntry.novo_valor, 1))
+                local tgtPending = safeNonNegInt(pendingEntry.novo_valor, 1)
+                local okCeil, ceilErr = checkV20TraitCeiling(sheet, kindForCeil, pendingEntry.campo_alvo, tgtPending)
                 if not okCeil then
                     dlg.showMessage(ceilErr)
                     return { ok = false, error = ceilErr }
+                end
+                local okSec, secErr = validateBmSecFieldUpgrade(sheet, pendingEntry.campo_alvo, tgtPending, ndbApi)
+                if not okSec then
+                    dlg.showMessage(secErr)
+                    return { ok = false, error = secErr }
                 end
             end
         end
@@ -2104,6 +2407,518 @@ function Bridge.submitOrApproveXP(sheet, action, payload, ndbApi, firecastApi, d
     end
 
     return { ok = false, error = "Ação de XP desconhecida." }
+end
+
+function Bridge.endBrujahFrenzy(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local res = V20.ClanWeaknesses.endBrujahFrenzyWithWP({
+        em_frenesi = sheet.em_frenesi,
+        fdv_temp = safeInt(sheet.fdv_temp, 0),
+        storytellerOverride = stOverride,
+    })
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível encerrar o Frenesi.")
+        return res
+    end
+    sheet.em_frenesi = false
+    sheet.fdv_temp = res.newState.fdv_temp
+    Bridge.syncDerivedFields(sheet)
+    Bridge.notify(
+        sheet,
+        string.format("🔥 [%s] Encerrou o Frenesi ativo gastando 1 FdV (FdV Temp: %d/%d).",
+            sheet.nome or "Personagem", safeInt(sheet.fdv_temp, 0), safeInt(sheet.fdv_perm, 5)),
+        fc,
+        dlg
+    )
+    return res
+end
+
+function Bridge.recordGangrelFrenzy(sheet, firecastApi, dialogsApi, ndbApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet, ndbApi)
+    local targetAttr = sheet.gangrel_attr_penalizado
+    if targetAttr ~= "attr_carisma" and targetAttr ~= "attr_manipulacao" and targetAttr ~= "attr_aparencia" then
+        targetAttr = "attr_carisma"
+    end
+    local prevAttrVal = safeNonNegInt(sheet[targetAttr], 1)
+    local res = V20.ClanWeaknesses.recordGangrelFrenzy({
+        gangrel_tracos_qtd = safeNonNegInt(sheet.gangrel_tracos_qtd, 0),
+        gangrel_attr_penalizado = targetAttr,
+        attr_carisma = safeNonNegInt(sheet.attr_carisma, 1),
+        attr_manipulacao = safeNonNegInt(sheet.attr_manipulacao, 1),
+        attr_aparencia = safeNonNegInt(sheet.attr_aparencia, 1),
+    })
+    sheet.gangrel_tracos_qtd = res.newState.gangrel_tracos_qtd
+    if res.penalizedAttr ~= nil then
+        sheet[res.penalizedAttr] = res.newAttrVal
+        Bridge.syncDerivedFields(sheet, ndbApi)
+        local attrMeta = V20.Traits.ATTRIBUTES[res.penalizedAttr]
+        local attrLabel = (attrMeta and attrMeta.name) or res.penalizedAttr
+        Bridge.logAudit(
+            sheet,
+            ndbApi,
+            fc,
+            "maldicao_gangrel",
+            string.format("Fraqueza Gangrel (%d traços animais): %s %d -> %d", res.newState.gangrel_tracos_qtd, attrLabel, prevAttrVal, res.newAttrVal),
+            0,
+            "aprovado",
+            res.penalizedAttr,
+            res.newAttrVal
+        )
+        Bridge.notify(
+            sheet,
+            string.format("🐺 [%s] Frenesi Gangrel (%d traços animais) — Perda permanente em %s (%d -> %d)!",
+                sheet.nome or "Personagem", res.newState.gangrel_tracos_qtd, attrLabel, prevAttrVal, res.newAttrVal),
+            fc,
+            dlg
+        )
+    else
+        Bridge.syncDerivedFields(sheet, ndbApi)
+        Bridge.notify(
+            sheet,
+            string.format("🐺 [%s] Frenesi Gangrel registrado: %d traço(s) animal(is) acumulado(s).",
+                sheet.nome or "Personagem", res.newState.gangrel_tracos_qtd),
+            fc,
+            dlg
+        )
+    end
+    return {
+        ok = true,
+        count = res.newState.gangrel_tracos_qtd,
+        penalizedAttr = res.penalizedAttr,
+        newAttrVal = res.newAttrVal,
+    }
+end
+
+function Bridge.suppressMalkavianDerangement(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local res = V20.ClanWeaknesses.suppressMalkavianDerangement({
+        fdv_temp = safeInt(sheet.fdv_temp, 0),
+        storytellerOverride = stOverride,
+    })
+    if not res.ok then
+        dlg.showMessage(res.error or "Força de Vontade insuficiente para suprimir Perturbação.")
+        return res
+    end
+    sheet.fdv_temp = res.newState.fdv_temp
+    sheet.malkav_suprimida_cena = true
+    Bridge.syncDerivedFields(sheet)
+    local pert = (type(sheet.malkav_perturbacao) == "string" and sheet.malkav_perturbacao ~= "") and sheet.malkav_perturbacao or "Perturbação"
+    Bridge.notify(
+        sheet,
+        string.format("🌀 [%s] %s suprimida pela cena (-1 FdV | FdV Temp: %d/%d).",
+            sheet.nome or "Personagem", pert, safeInt(sheet.fdv_temp, 0), safeInt(sheet.fdv_perm, 5)),
+        fc,
+        dlg
+    )
+    return res
+end
+
+function Bridge.rollToreadorFascination(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    Bridge.syncDerivedFields(sheet)
+    local vLabel = (sheet.virtude2_tipo == "instinto") and "Instinto" or "Autocontrole"
+    local pool = math.max(1, safeInt(sheet.virtude2_val, 1))
+    local foco = (type(sheet.toreador_foco_arte) == "string" and sheet.toreador_foco_arte ~= "") and (" — " .. sheet.toreador_foco_arte) or ""
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = pool,
+        difficulty = 6,
+        ignoreWoundPenalty = true,
+        skipClanWeakness = true,
+        label = "Fascínio Estético Toreador (" .. vLabel .. ")" .. foco,
+        onEvaluated = function(evalRes)
+            if evalRes.totalSuccesses <= 0 then
+                sheet.toreador_fascinado_cena = true
+                return "Fraqueza Toreador: FASCINADO pela cena (gaste 1 FdV ou encerre a cena)!"
+            else
+                sheet.toreador_fascinado_cena = false
+                return "Resistiu ao Fascínio Estético."
+            end
+        end,
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.recordTremereDrink(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+    local res = V20.ClanWeaknesses.recordTremereDrink({
+        tremere_laco_goles = safeNonNegInt(sheet.tremere_laco_goles, 0),
+    })
+    sheet.tremere_laco_goles = res.step
+    Bridge.syncDerivedFields(sheet)
+    local regente = (type(sheet.tremere_regente_nome) == "string" and sheet.tremere_regente_nome ~= "")
+        and (" com " .. sheet.tremere_regente_nome) or ""
+    local statusMsg = res.fullBond
+        and ("Laço de Sangue Completo (2/2 — Maldição Tremere)" .. regente .. "!")
+        or string.format("1º Gole de Vitae (%d/2)%s.", res.step, regente)
+    Bridge.notify(sheet, string.format("🍷 [%s] %s", sheet.nome or "Personagem", statusMsg), fc, dlg)
+    return { ok = true, step = res.step, fullBond = res.fullBond }
+end
+
+function Bridge.ingestAssamiteVitae(sheet, points, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    if type(points) == "table" then
+        dialogsApi = firecastApi
+        firecastApi = points
+        points = nil
+    end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local pts = math.max(1, safeInt(points ~= nil and points or sheet.assamita_vitae_qtd, 1))
+    local huge = isTrue(sheet.tem_tamanho_grande) or V20.BackgroundsEngine.aggregateMeritsFlaws(Bridge.collectMeritsFlaws(sheet)).hugeSize
+    local st = Bridge.sheetToEngineState(sheet)
+    st.hugeSize = huge
+    st.bashing = safeNonNegInt(sheet.dano_contundente, 0)
+    st.lethal = safeNonNegInt(sheet.dano_letal, 0)
+    st.aggravated = safeNonNegInt(sheet.dano_aggravado, 0)
+    st.assamita_maldicao_modo = sheet.assamita_maldicao_modo or "ur_shulgi"
+
+    local res = V20.ClanWeaknesses.ingestAssamiteVitae(st, pts)
+    sheet.dano_contundente = res.newState.bashing
+    sheet.dano_letal = res.newState.lethal
+    sheet.dano_aggravado = res.newState.aggravated
+    sheet.dano_agravado = res.newState.aggravated
+    LAST_AGG_MIRROR[sheet] = res.newState.aggravated
+    sheet.sangue_atual = res.newState.currentBlood
+    sheet.sangue_fraco_usado = res.newState.thinBloodUsed or safeInt(sheet.sangue_fraco_usado, 0)
+    Bridge.syncDerivedFields(sheet)
+
+    if res.addictionDiff == nil then
+        Bridge.notify(
+            sheet,
+            string.format("🗡️ [%s] Maldição Tremere Clássica: ingeriu %d vitae cainita -> +%d dano Letal não absorvível e 0 sangue ganho!",
+                sheet.nome or "Personagem", pts, res.lethalApplied),
+            fc,
+            dlg
+        )
+        return { ok = true, lethalApplied = res.lethalApplied, bloodAdded = 0, addictionDiff = nil }
+    end
+
+    local rollRes = Bridge.rollFromSheet(sheet, {
+        rawPool = math.max(1, safeInt(sheet.virtude2_val, 1)),
+        difficulty = res.addictionDiff,
+        ignoreWoundPenalty = true,
+        skipClanWeakness = true,
+        extraNotes = { string.format("Maldição de Ur-Shulgi: +%d dano Letal não absorvível, +%d Vitae absorvida", res.lethalApplied, res.bloodAdded) },
+        label = "Vício Assamita (Autocontrole)",
+        onEvaluated = function(evalRes)
+            if evalRes.totalSuccesses <= 0 then
+                sheet.assamita_vicio_ativo = true
+                return "VÍCIO EM VITAE CAINITA ATIVADO!"
+            end
+            return "Resistiu ao vício em vitae cainita."
+        end,
+    }, fc, dlg)
+
+    return {
+        ok = true,
+        lethalApplied = res.lethalApplied,
+        bloodAdded = res.bloodAdded,
+        addictionDiff = res.addictionDiff,
+        roll = rollRes,
+    }
+end
+
+function Bridge.applyGiovanniKiss(sheet, points, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    if type(points) == "table" then
+        dialogsApi = firecastApi
+        firecastApi = points
+        points = nil
+    end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local pts = math.max(1, safeInt(points ~= nil and points or sheet.giovanni_beijo_pontos, 1))
+    local kiss = V20.ClanWeaknesses.computeGiovanniKissDamage(pts)
+    local added = 0
+    if Bridge.isVampireSheet(sheet) then
+        local g = V20.Blood.gain(Bridge.sheetToEngineState(sheet), pts)
+        sheet.sangue_atual = g.newState.currentBlood
+        sheet.sangue_fraco_usado = g.newState.thinBloodUsed
+        added = safeInt(g.added, 0)
+        Bridge.syncDerivedFields(sheet)
+    end
+
+    Bridge.notify(
+        sheet,
+        string.format("💀 [%s] O Beijo Doloroso Giovanni (%d vitae drenada -> +%d Sangue): recipiente mortal sofre %d níveis de dano Letal%s",
+            sheet.nome or "Personagem",
+            pts,
+            added,
+            kiss.lethalToVessel,
+            kiss.fatalRisk and " — CHOQUE / MORTE DO RECIPIENTE!" or "."
+        ),
+        fc,
+        dlg
+    )
+    return {
+        ok = true,
+        bloodDrained = pts,
+        bloodAdded = added,
+        lethalToVessel = kiss.lethalToVessel,
+        fatalRisk = kiss.fatalRisk,
+    }
+end
+
+function Bridge.rollRavnosVice(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    Bridge.syncDerivedFields(sheet)
+    local vLabel = (sheet.virtude2_tipo == "instinto") and "Instinto" or "Autocontrole"
+    local pool = math.max(1, safeInt(sheet.virtude2_val, 1))
+    local vicio = (type(sheet.ravnos_vicio_descricao) == "string" and sheet.ravnos_vicio_descricao ~= "") and (" — " .. sheet.ravnos_vicio_descricao) or ""
+    return Bridge.rollFromSheet(sheet, {
+        rawPool = pool,
+        difficulty = 6,
+        ignoreWoundPenalty = true,
+        skipClanWeakness = true,
+        label = "Resistir ao Vício Ravnos (" .. vLabel .. ")" .. vicio,
+        onEvaluated = function(evalRes)
+            if evalRes.totalSuccesses <= 0 then
+                sheet.ravnos_compulsao_ativa = true
+                return "Fraqueza Ravnos: COMPULSÃO ATIVA (cedeu ao vício)!"
+            else
+                sheet.ravnos_compulsao_ativa = false
+                return "Resistiu à tentação do vício."
+            end
+        end,
+    }, firecastApi, dialogsApi)
+end
+
+function Bridge.resetTzimisceSoil(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    local nextSt = V20.ClanWeaknesses.resetTzimisceSoil({
+        tzimisce_dias_sem_terra = sheet.tzimisce_dias_sem_terra,
+    })
+    sheet.tzimisce_dias_sem_terra = nextSt.tzimisce_dias_sem_terra
+    Bridge.syncDerivedFields(sheet)
+    local origem = (type(sheet.tzimisce_origem_terra) == "string" and sheet.tzimisce_origem_terra ~= "")
+        and (" (" .. sheet.tzimisce_origem_terra .. ")") or ""
+    Bridge.notify(
+        sheet,
+        string.format("⚰️ [%s] Repousou com 2 punhados de terra natal%s — penalidade Tzimisce zerada.",
+            sheet.nome or "Personagem", origem),
+        fc,
+        dlg
+    )
+    return { ok = true, tzimisce_dias_sem_terra = 0 }
+end
+
+local function dispatchBloodMagicRoll(sheet, rollSpec, tradition, isGen15Channel, fc, dlg)
+    if not rollSpec then return nil end
+    local notes = {}
+    if rollSpec.diffHint and rollSpec.diffHint ~= "" then
+        table.insert(notes, rollSpec.diffHint)
+    end
+    if isGen15Channel then
+        table.insert(notes, GEN15_CHANNEL_NOTE)
+    end
+    return Bridge.rollFromSheet(sheet, {
+        attrId = rollSpec.attr,
+        habId = rollSpec.hab,
+        difficulty = rollSpec.defaultDiff,
+        label = rollSpec.powerName,
+        spendWillpower = false,
+        extraNotes = (#notes > 0) and notes or nil,
+        onEvaluated = function(evalRes)
+            if tradition == "thaumaturgy" and evalRes.outcome == "botch" then
+                return "⚠️ Falha Crítica Taumatúrgica: perde 1 ponto de Força de Vontade Permanente (V20, p. 212)!"
+            end
+            return nil
+        end,
+    }, fc, dlg)
+end
+
+function Bridge.activatePrimaryBloodMagic(sheet, tradition, level, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    if type(level) == "table" then
+        dialogsApi = firecastApi
+        firecastApi = level
+        level = nil
+    end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local trad = (tradition == "necromancy") and "necromancy" or "thaumaturgy"
+    local pathId = (trad == "necromancy")
+        and ((type(sheet.bm_necro_prim_id) == "string" and sheet.bm_necro_prim_id ~= "") and sheet.bm_necro_prim_id or "sepulchre_path")
+        or ((type(sheet.bm_thau_prim_id) == "string" and sheet.bm_thau_prim_id ~= "") and sheet.bm_thau_prim_id or "path_of_blood")
+    local pathDots = (trad == "necromancy")
+        and safeNonNegInt(sheet.bm_necro_prim_nivel, 0)
+        or safeNonNegInt(sheet.bm_thau_prim_nivel, 0)
+    local pwrLvl = (level ~= nil)
+        and math.max(1, math.min(5, safeInt(level, 1)))
+        or math.max(1, math.min(5, safeInt((trad == "necromancy") and sheet.bm_necro_prim_pwr_lvl or sheet.bm_thau_prim_pwr_lvl, 1)))
+
+    local pTable = V20.BloodMagicEngine.getPathTable(trad, pathId)
+    local pw = pTable and pTable.powers and pTable.powers[pwrLvl] or nil
+    local baseBloodCost = math.max(0, safeInt(pw and pw.cost and pw.cost.blood, 0))
+    local isGen15Channel = Bridge.isVampireSheet(sheet)
+        and (baseBloodCost == 1)
+        and (safeInt(sheet.geracao, 13) == 15)
+        and (safeInt(sheet.sangue_gasto_turno, 0) == 0)
+
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local res = V20.BloodMagicEngine.activatePathPower(
+        Bridge.sheetToEngineState(sheet),
+        trad,
+        pathId,
+        pathDots,
+        pwrLvl,
+        { storytellerOverride = stOverride, bypassTurnLimit = isGen15Channel }
+    )
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível ativar o poder de Magia do Sangue.")
+        return res
+    end
+
+    applyEngineStateToSheet(sheet, res.newState)
+    dispatchBloodMagicRoll(sheet, res.rollSpec, trad, isGen15Channel, fc, dlg)
+    return res
+end
+
+function Bridge.activateSecondaryBloodMagic(sheet, slotIndex, level, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    if type(level) == "table" then
+        dialogsApi = firecastApi
+        firecastApi = level
+        level = nil
+    end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local idx = math.max(1, math.min(4, safeInt(slotIndex, 1)))
+    local trad = resolveSecondaryTradition(sheet, idx)
+    local pathId = sheet["bm_sec" .. idx .. "_path_id"] or ""
+    local pathDots = safeNonNegInt(sheet["bm_sec" .. idx .. "_nivel"], 0)
+    local pwrLvl = (level ~= nil)
+        and math.max(1, math.min(5, safeInt(level, 1)))
+        or math.max(1, math.min(5, safeInt(sheet["bm_sec" .. idx .. "_pwr_lvl"], 1)))
+
+    local pTable = V20.BloodMagicEngine.getPathTable(trad, pathId)
+    local pw = pTable and pTable.powers and pTable.powers[pwrLvl] or nil
+    local baseBloodCost = math.max(0, safeInt(pw and pw.cost and pw.cost.blood, 0))
+    local isGen15Channel = Bridge.isVampireSheet(sheet)
+        and (baseBloodCost == 1)
+        and (safeInt(sheet.geracao, 13) == 15)
+        and (safeInt(sheet.sangue_gasto_turno, 0) == 0)
+
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+    local res = V20.BloodMagicEngine.activatePathPower(
+        Bridge.sheetToEngineState(sheet),
+        trad,
+        pathId,
+        pathDots,
+        pwrLvl,
+        { storytellerOverride = stOverride, bypassTurnLimit = isGen15Channel }
+    )
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível ativar a Linha Secundária.")
+        return res
+    end
+
+    applyEngineStateToSheet(sheet, res.newState)
+    dispatchBloodMagicRoll(sheet, res.rollSpec, trad, isGen15Channel, fc, dlg)
+    return res
+end
+
+function Bridge.castCatalogRitual(sheet, ritualId, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    if type(ritualId) == "table" then
+        dialogsApi = firecastApi
+        firecastApi = ritualId
+        ritualId = nil
+    end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local rid = (type(ritualId) == "string" and ritualId ~= "")
+        and ritualId
+        or ((type(sheet.bm_ritual_id) == "string" and sheet.bm_ritual_id ~= "") and sheet.bm_ritual_id or "thau_rit_1_sacred_haven")
+    local rit = V20.BloodMagicCatalog.RITUALS[rid]
+    local parentDots = rit and getDisciplineDots(sheet, rit.tradition, nil) or 0
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+
+    local res = V20.BloodMagicEngine.castRitual(
+        Bridge.sheetToEngineState(sheet),
+        rid,
+        parentDots,
+        { storytellerOverride = stOverride }
+    )
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível conjurar o ritual.")
+        return res
+    end
+
+    applyEngineStateToSheet(sheet, res.newState)
+    if res.rollSpec then
+        Bridge.rollFromSheet(sheet, {
+            attrId = res.rollSpec.attr,
+            habId = res.rollSpec.hab,
+            difficulty = res.rollSpec.defaultDiff,
+            label = res.rollSpec.powerName,
+            spendWillpower = false,
+            extraNotes = (res.rollSpec.diffHint and res.rollSpec.diffHint ~= "") and { res.rollSpec.diffHint } or nil,
+        }, fc, dlg)
+    end
+    return res
+end
+
+function Bridge.castCustomRitual(sheet, firecastApi, dialogsApi)
+    if type(sheet) ~= "table" then return { ok = false } end
+    local fc, dlg = getFirecastAndDialogs(firecastApi, dialogsApi)
+    Bridge.syncDerivedFields(sheet)
+
+    local trad = (sheet.ritual_custom_trad == "necromancy") and "necromancy" or "thaumaturgy"
+    local lvl = math.max(1, safeInt(sheet.ritual_custom_nivel, 1))
+    local customRit = {
+        id = "ritual_custom",
+        name = (type(sheet.ritual_custom_nome) == "string" and sheet.ritual_custom_nome ~= "") and sheet.ritual_custom_nome or "Ritual Customizado",
+        tradition = trad,
+        level = lvl,
+        cost = {
+            blood = math.max(0, safeInt(sheet.ritual_custom_sangue, 0)),
+            willpower = math.max(0, safeInt(sheet.ritual_custom_fdv, 0)),
+        },
+        defaultDiff = safeInt(sheet.ritual_custom_dif, math.min(9, 3 + lvl)),
+        summary = string.format("Ritual Customizado (%s Nv %d)", (trad == "necromancy") and "Necromancia" or "Taumaturgia", lvl),
+    }
+    local parentDots = getDisciplineDots(sheet, trad, nil)
+    local stOverride = isTrue(sheet.narrador_override) and Bridge.isStoryteller(sheet, fc)
+
+    local res = V20.BloodMagicEngine.castRitual(
+        Bridge.sheetToEngineState(sheet),
+        customRit,
+        parentDots,
+        { storytellerOverride = stOverride }
+    )
+    if not res.ok then
+        dlg.showMessage(res.error or "Não foi possível conjurar o ritual customizado.")
+        return res
+    end
+
+    applyEngineStateToSheet(sheet, res.newState)
+    if res.rollSpec then
+        Bridge.rollFromSheet(sheet, {
+            attrId = res.rollSpec.attr,
+            habId = res.rollSpec.hab,
+            difficulty = res.rollSpec.defaultDiff,
+            label = res.rollSpec.powerName,
+            spendWillpower = false,
+            extraNotes = (res.rollSpec.diffHint and res.rollSpec.diffHint ~= "") and { res.rollSpec.diffHint } or nil,
+        }, fc, dlg)
+    end
+    return res
 end
 
 _G.V20Bridge = Bridge

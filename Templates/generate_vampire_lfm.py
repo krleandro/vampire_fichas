@@ -12,19 +12,24 @@ if ROOT not in sys.path:
 
 from Templates.theme_gothic import (  # noqa: E402
     ABILITIES_BY_COL,
+    ALL_BLOOD_MAGIC_PATHS_LIST,
     ATTRIBUTES_BY_COL,
     BACKGROUNDS_LIST,
     BG_MAIN,
     BG_PANEL,
     BORDER_VAMP,
+    CLAN_ORDER,
     CLANS,
     DISCIPLINES_LIST,
     MERITS_FLAWS_OPTIONS,
     MORALITY_PATHS,
+    NECROMANCY_PATHS_LIST,
+    RITUALS_LIST,
     TEXT_ALERT,
     TEXT_GOLD,
     TEXT_MAIN,
     TEXT_MUTED,
+    THAUMATURGY_PATHS_LIST,
     all_attr_options,
     all_hab_options,
     all_xp_upgradable_field_options,
@@ -437,6 +442,130 @@ def build_tab5_combat(accent: str, border: str = BORDER_VAMP, is_vampire: bool =
             </tab>"""
 
 
+def build_clan_weakness_controls_xml(clan: dict, accent: str) -> str:
+    cid = clan["id"]
+    if cid == "brujah":
+        return f"""                            <layout align="top" height="32" margins="{{top=8}}">
+                                <button name="btnBrujahEncerrarFrenesi" align="left" width="245" text="Encerrar Frenesi Ativo (-1 FdV)" fontSize="11" fontStyle="bold" margins="{{right=10}}">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.endBrujahFrenzy(sheet) end</event>
+                                </button>
+                                <label align="client" text="Frenesi Brujah: +2 dif automática (máx. 10) e FdV preventiva bloqueada (V20, p. 49)." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>"""
+    if cid == "gangrel":
+        soc_items = lua_str_list(["Carisma", "Manipulação", "Aparência"])
+        soc_vals = lua_str_list(["attr_carisma", "attr_manipulacao", "attr_aparencia"])
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="95" text="Traços Animais:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtGangrelTracosQtd" align="left" width="38" field="gangrel_tracos_qtd" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <label align="left" width="95" text="Atrib. Penaliz.:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbGangrelAttrPenalizado" align="left" width="125" field="gangrel_attr_penalizado" items="{soc_items}" values="{soc_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnGangrelRegistrarFrenesi" align="left" width="235" text="Registrar Frenesi Gangrel (+1 Traço)" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.recordGangrelFrenzy(sheet) end</event>
+                                </button>
+                            </layout>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <edit name="edtGangrelTracosLista" align="client" field="gangrel_tracos_lista" textPrompt="Características animais adquiridas (a cada 5 traços, -1 permanente no Atributo Social escolhido)..." fontColor="{TEXT_MAIN}" fontSize="10"/>
+                            </layout>"""
+    if cid == "malkavian":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="85" text="Perturbação:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtMalkavPerturbacao" align="left" width="235" field="malkav_perturbacao" textPrompt="Perturbação incurável obrigatória..." fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <checkBox name="chkMalkavSuprimidaCena" align="left" width="145" field="malkav_suprimida_cena" text="Suprimida na Cena" fontColor="{TEXT_GOLD}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnMalkavSuprimir" align="left" width="245" text="Suprimir Perturbação na Cena (-1 FdV)" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.suppressMalkavianDerangement(sheet) end</event>
+                                </button>
+                            </layout>"""
+    if cid == "nosferatu":
+        return f"""                            <layout align="top" height="32" margins="{{top=8}}">
+                                <button name="btnNosferatuMascara" align="left" width="265" text="Alternar Máscara das Mil Faces (Ofuscação 3)" fontSize="10" fontStyle="bold" margins="{{right=10}}">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.activateDisciplinePower(sheet, 'obfuscate', 'obf_3') end</event>
+                                </button>
+                                <label align="client" text="Aparência permanentemente 0: falha automática sem Máscara das Mil Faces ativa (V20, p. 61)." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>"""
+    if cid == "toreador":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="82" text="Foco de Arte:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtToreadorFocoArte" align="left" width="225" field="toreador_foco_arte" textPrompt="Arte / Beleza que desperta fascínio..." fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <checkBox name="chkToreadorFascinadoCena" align="left" width="145" field="toreador_fascinado_cena" text="Fascinado na Cena" fontColor="{TEXT_ALERT}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnToreadorTestarFascinio" align="left" width="235" text="Testar Fascínio Estético (Dif 6)" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.rollToreadorFascination(sheet) end</event>
+                                </button>
+                            </layout>"""
+    if cid == "tremere":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="65" text="Regente:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtTremereRegenteNome" align="left" width="155" field="tremere_regente_nome" textPrompt="Domitor / Regente" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <label align="left" width="44" text="Goles:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtTremereLacoGoles" align="left" width="36" field="tremere_laco_goles" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <button name="btnTremereRegistrarGole" align="left" width="195" text="Registrar Gole de Vitae (+1)" fontSize="10" fontStyle="bold" margins="{{right=8}}"/>
+                                <label align="client" field="tremere_laco_status" fontColor="{TEXT_ALERT}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>""".replace(
+            '<button name="btnTremereRegistrarGole" align="left" width="195" text="Registrar Gole de Vitae (+1)" fontSize="10" fontStyle="bold" margins="{right=8}"/>',
+            '<button name="btnTremereRegistrarGole" align="left" width="195" text="Registrar Gole de Vitae (+1)" fontSize="10" fontStyle="bold" margins="{right=8}"><event name="onClick">if sheet ~= nil then V20Bridge.recordTremereDrink(sheet) end</event></button>',
+        )
+    if cid == "ventrue":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="105" text="Presa Exclusiva:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtVentruePresaRestrita" align="left" width="295" field="ventrue_presa_restrita" textPrompt="Tipo exclusivo de recipiente mortal (obrigatório)..." fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=10}}"/>
+                                <checkBox name="chkVentruePresaCompativel" align="left" width="235" field="ventrue_presa_compativel" text="Presa Compatível na Caça Atual" fontColor="{TEXT_GOLD}" fontSize="10"/>
+                            </layout>"""
+    if cid == "assamite":
+        modo_it = lua_str_list(["Ur-Shulgi (Letal + Vitae + Vício)", "Tremere Clássica (Letal, 0 Vitae)"])
+        modo_vl = lua_str_list(["ur_shulgi", "tremere_classica"])
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <comboBox name="cmbAssamitaMaldicaoModo" align="left" width="235" field="assamita_maldicao_modo" items="{modo_it}" values="{modo_vl}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <label align="left" width="68" text="Qtd Vitae:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtAssamitaVitaeQtd" align="left" width="36" field="assamita_vitae_qtd" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <checkBox name="chkAssamitaVicioAtivo" align="left" width="105" field="assamita_vicio_ativo" text="Vício Ativo" fontColor="{TEXT_ALERT}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnAssamitaIngerirVitae" align="left" width="175" text="Ingerir Vitae Cainita" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.ingestAssamiteVitae(sheet, nil) end</event>
+                                </button>
+                            </layout>"""
+    if cid == "setite":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <checkBox name="chkSetitaLuzForte" align="left" width="280" field="setita_luz_forte" text="Sob Luz Forte (-1 dado em todas as paradas)" fontColor="{TEXT_ALERT}" fontSize="11" fontStyle="bold" margins="{{right=10}}"/>
+                                <label align="client" text="Luz Solar (Aba 5) soma automaticamente +2 níveis de dano Agravado (V20, p. 51)." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>"""
+    if cid == "giovanni":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="125" text="Vitae Drenada (N):" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtGiovanniBeijoPontos" align="left" width="40" field="giovanni_beijo_pontos" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=10}}"/>
+                                <button name="btnGiovanniBeijo" align="left" width="215" text="Aplicar O Beijo Doloroso" fontSize="10" fontStyle="bold" margins="{{right=10}}">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.applyGiovanniKiss(sheet, nil) end</event>
+                                </button>
+                                <label align="client" text="Causa 2xN níveis Letais no recipiente mortal (morte/choque em >= 7)." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>"""
+    if cid == "lasombra":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <checkBox name="chkLasombraEspelhos" align="left" width="330" field="lasombra_vigiado_espelhos" text="Vigiado por Espelhos/Câmeras (+1 dif Social/Furtiv.)" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold" margins="{{right=10}}"/>
+                                <label align="client" text="Luz Solar (Aba 5) soma automaticamente +1 nível Agravado (V20, p. 57)." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>"""
+    if cid == "ravnos":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="88" text="Vício Ravnos:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtRavnosVicio" align="left" width="235" field="ravnos_vicio_descricao" textPrompt="Vício específico obrigatório..." fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <checkBox name="chkRavnosCompulsaoAtiva" align="left" width="135" field="ravnos_compulsao_ativa" text="Compulsão Ativa" fontColor="{TEXT_ALERT}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnRavnosTestarVicio" align="left" width="235" text="Resistir ao Vício Ravnos (Dif 6)" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.rollRavnosVice(sheet) end</event>
+                                </button>
+                            </layout>"""
+    if cid == "tzimisce":
+        return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <label align="left" width="82" text="Terra Natal:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtTzimisceOrigemTerra" align="left" width="185" field="tzimisce_origem_terra" textPrompt="Origem dos 2 punhados de terra..." fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <label align="left" width="95" text="Dias s/ Terra:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <edit name="edtTzimisceDiasSemTerra" align="left" width="38" field="tzimisce_dias_sem_terra" type="number" fontColor="{TEXT_ALERT}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <button name="btnTzimisceRepousarTerra" align="left" width="265" text="Repousar com 2 Punhados de Terra Natal" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.resetTzimisceSoil(sheet) end</event>
+                                </button>
+                            </layout>"""
+    # caitiff
+    return f"""                            <layout align="top" height="30" margins="{{top=8}}">
+                                <checkBox name="chkCaitiffEstigmaAtivo" align="left" width="340" field="caitiff_estigma_ativo" text="Estigma Social Caitiff Ativo (+2 dif Social c/ Membros)" fontColor="{TEXT_ALERT}" fontSize="10" fontStyle="bold" margins="{{right=10}}"/>
+                                <label align="client" text="Sem disciplinas de clã: qualquer disciplina evolui por Atual x 6 XP (10 XP nova)." fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                            </layout>"""
+
+
 def build_tab6_morality(clan: dict, accent: str) -> str:
     v1_items = lua_str_list(["Consciência", "Convicção"])
     v1_vals = lua_str_list(["consciencia", "conviccao"])
@@ -444,10 +573,11 @@ def build_tab6_morality(clan: dict, accent: str) -> str:
     v2_vals = lua_str_list(["autocontrole", "instinto"])
     path_items = lua_str_list([n for _, n in MORALITY_PATHS])
     path_vals = lua_str_list([i for i, _ in MORALITY_PATHS])
+    weakness_ctrls = build_clan_weakness_controls_xml(clan, accent)
 
     return f"""            <tab name="tabMoralidade" title="6. Moralidade &amp; Besta">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
-                    <layout align="top" height="520">
+                    <layout align="top" height="600">
                         <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}" margins="{{bottom=10}}">
                             <label align="top" height="22" text="VIRTUDES, TRILHA DE MORALIDADE &amp; MODIFICADOR DE AURA" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <layout align="top" height="28" margins="{{top=6}}">
@@ -472,7 +602,7 @@ def build_tab6_morality(clan: dict, accent: str) -> str:
                             </layout>
                         </rectangle>
 
-                        <rectangle align="top" height="190" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}">
+                        <rectangle align="top" height="265" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=10, bottom=10}}">
                             <label align="top" height="22" text="A BESTA INTERIOR — FRENESI, RÖTSCHRECK &amp; FRAQUEZA {xml_esc(clan['name'].upper())}" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
                             <label align="top" height="38" text="{xml_esc(clan['weaknessSummary'])}" wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=4}}"/>
                             <layout align="top" height="32" margins="{{top=8}}">
@@ -492,13 +622,14 @@ def build_tab6_morality(clan: dict, accent: str) -> str:
                                     <event name="onClick">if sheet ~= nil then V20Bridge.rollDegeneration(sheet) end</event>
                                 </button>
                             </layout>
+{weakness_ctrls}
                         </rectangle>
                     </layout>
                 </scrollBox>
             </tab>"""
 
 
-def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = "") -> str:
+def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = "", is_vampire: bool = True) -> str:
     xp_tipo_items = lua_str_list([
         "Automático (pelo Campo)",
         "Atributo (Atual x4)",
@@ -519,7 +650,7 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
         "morality",
         "willpower",
     ])
-    xp_campo_items, xp_campo_vals = all_xp_upgradable_field_options()
+    xp_campo_items, xp_campo_vals = all_xp_upgradable_field_options(is_vampire=is_vampire)
     xp_cat_items = lua_str_list(["Automático (pela Ficha)", "De Clã (x5)", "Caitiff (x6)", "Fora do Clã (x7)"])
     xp_cat_vals = lua_str_list(["auto", "cla", "caitiff", "fora_cla"])
 
@@ -575,6 +706,102 @@ def build_tab7_xp(accent: str, border: str = BORDER_VAMP, extra_top_card: str = 
             </tab>"""
 
 
+def build_tab8_blood_magic(clan: dict, accent: str) -> str:
+    bm_visible = "true" if clan["id"] in ("tremere", "giovanni") else "false"
+    thau_items = lua_str_list([n for _, n in THAUMATURGY_PATHS_LIST])
+    thau_vals = lua_str_list([i for i, _ in THAUMATURGY_PATHS_LIST])
+    necro_items = lua_str_list([n for _, n in NECROMANCY_PATHS_LIST])
+    necro_vals = lua_str_list([i for i, _ in NECROMANCY_PATHS_LIST])
+    sec_path_items = lua_str_list([n for _, n in ALL_BLOOD_MAGIC_PATHS_LIST])
+    sec_path_vals = lua_str_list([i for i, _ in ALL_BLOOD_MAGIC_PATHS_LIST])
+    trad_items = lua_str_list(["Taumaturgia", "Necromancia"])
+    trad_vals = lua_str_list(["thaumaturgy", "necromancy"])
+    lvl_items = lua_str_list(["Poder Nv 1", "Poder Nv 2", "Poder Nv 3", "Poder Nv 4", "Poder Nv 5"])
+    lvl_vals = lua_str_list(["1", "2", "3", "4", "5"])
+    rit_items = lua_str_list([n for _, n in RITUALS_LIST])
+    rit_vals = lua_str_list([i for i, _ in RITUALS_LIST])
+
+    sec_cards = []
+    for i in range(1, 5):
+        sec_cards.append(
+            f"""                        <rectangle align="top" height="60" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="5" yradius="5" padding="{{left=10, right=10, top=6, bottom=6}}" margins="{{bottom=6}}">
+                            <layout align="top" height="26">
+                                <label align="left" width="56" text="SEC #{i}" fontColor="{accent}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbBmSecDisc{i}" align="left" width="115" field="bm_sec{i}_disc" items="{trad_items}" values="{trad_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <comboBox name="cmbBmSecPathId{i}" align="left" width="235" field="bm_sec{i}_path_id" items="{sec_path_items}" values="{sec_path_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <label align="left" width="38" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                                <edit name="edtBmSecNivel{i}" align="left" width="36" field="bm_sec{i}_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <comboBox name="cmbBmSecPwrLvl{i}" align="left" width="108" field="bm_sec{i}_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <button name="btnBmSecAtivar{i}" align="right" width="138" text="Ativar Secundária" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.activateSecondaryBloodMagic(sheet, {i}, nil) end</event>
+                                </button>
+                            </layout>
+                            <label align="client" field="bm_sec{i}_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=2}}"/>
+                        </rectangle>"""
+        )
+
+    return f"""            <tab name="tabMagiaSangue" title="8. Magia do Sangue &amp; Rituais" visible="{bm_visible}">
+                <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
+                    <layout align="top" height="720">
+                        <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{accent}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{bottom=10}}">
+                            <label align="top" height="22" text="LINHAS PRIMÁRIAS — TAUMATURGIA &amp; NECROMANCIA (SINCRONIZADAS COM A ABA 3)" fontColor="{accent}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <label align="left" width="125" text="Prim. Taumaturgia:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbBmThauPrimId" align="left" width="215" field="bm_thau_prim_id" items="{thau_items}" values="{thau_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <label align="left" width="42" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                                <label align="left" width="28" field="bm_thau_prim_nivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <comboBox name="cmbBmThauPrimPwrLvl" align="left" width="115" field="bm_thau_prim_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnBmThauPrimAtivar" align="right" width="190" text="Ativar Linha Taumaturgia" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.activatePrimaryBloodMagic(sheet, 'thaumaturgy', nil) end</event>
+                                </button>
+                            </layout>
+                            <label align="top" height="22" field="bm_thau_prim_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=2}}"/>
+                            <layout align="top" height="28" margins="{{top=6}}">
+                                <label align="left" width="125" text="Prim. Necromancia:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}"/>
+                                <comboBox name="cmbBmNecroPrimId" align="left" width="215" field="bm_necro_prim_id" items="{necro_items}" values="{necro_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <label align="left" width="42" text="Nível:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=4}}"/>
+                                <label align="left" width="28" field="bm_necro_prim_nivel" fontColor="{TEXT_GOLD}" fontSize="12" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{right=8}}"/>
+                                <comboBox name="cmbBmNecroPrimPwrLvl" align="left" width="115" field="bm_necro_prim_pwr_lvl" items="{lvl_items}" values="{lvl_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=8}}"/>
+                                <button name="btnBmNecroPrimAtivar" align="right" width="190" text="Ativar Linha Necromancia" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.activatePrimaryBloodMagic(sheet, 'necromancy', nil) end</event>
+                                </button>
+                            </layout>
+                            <label align="client" field="bm_necro_prim_resumo" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=2}}"/>
+                        </rectangle>
+
+                        <label align="top" height="20" text="LINHAS SECUNDÁRIAS V20 (EXIGE PRIMÁRIA &gt;= 2 • NOVA: 7 XP • EVOLUÇÃO: ATUAL x4 XP NA ABA 7)" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}" margins="{{bottom=4}}"/>
+{chr(10).join(sec_cards)}
+
+                        <rectangle align="top" height="165" color="{BG_PANEL}" strokeColor="{BORDER_VAMP}" strokeSize="1" xradius="6" yradius="6" padding="{{left=12, right=12, top=8, bottom=8}}" margins="{{top=6}}">
+                            <label align="top" height="22" text="GRIMÓRIO DE 20 RITUAIS CLÁSSICOS V20 &amp; CONJURAÇÃO CUSTOMIZADA (INTELIGÊNCIA + OCULTISMO)" fontColor="{accent}" fontSize="11" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <layout align="top" height="28" margins="{{top=4}}">
+                                <comboBox name="cmbBmRitualId" align="left" width="455" field="bm_ritual_id" items="{rit_items}" values="{rit_vals}" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=8}}"/>
+                                <button name="btnBmConjurarRitualOficial" align="right" width="195" text="Conjurar Ritual Oficial" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.castCatalogRitual(sheet, nil) end</event>
+                                </button>
+                            </layout>
+                            <label align="top" height="24" field="bm_ritual_catalogo_resumo" fontColor="{TEXT_GOLD}" fontSize="10" horzTextAlign="{assert_align("leading")}" margins="{{top=2}}"/>
+                            <layout align="top" height="28" margins="{{top=8}}">
+                                <edit name="edtRitualCustomNome" align="left" width="185" field="ritual_custom_nome" textPrompt="Nome do Ritual Customizado" fontColor="{TEXT_MAIN}" fontSize="11" margins="{{right=6}}"/>
+                                <comboBox name="cmbRitualCustomTrad" align="left" width="115" field="ritual_custom_trad" items="{trad_items}" values="{trad_vals}" fontColor="{TEXT_MAIN}" fontSize="10" margins="{{right=6}}"/>
+                                <label align="left" width="28" text="Nv:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtRitualCustomNivel" align="left" width="32" field="ritual_custom_nivel" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <label align="left" width="46" text="Sangue:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtRitualCustomSangue" align="left" width="32" field="ritual_custom_sangue" type="number" fontColor="{TEXT_ALERT}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <label align="left" width="30" text="FdV:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtRitualCustomFdv" align="left" width="32" field="ritual_custom_fdv" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <label align="left" width="26" text="Dif:" fontColor="{TEXT_MUTED}" fontSize="10" horzTextAlign="{assert_align("trailing")}" margins="{{right=3}}"/>
+                                <edit name="edtRitualCustomDif" align="left" width="32" field="ritual_custom_dif" type="number" fontColor="{TEXT_GOLD}" fontSize="11" horzTextAlign="{assert_align("center")}" margins="{{right=6}}"/>
+                                <button name="btnBmConjurarRitualCustom" align="right" width="125" text="Conjurar Custom" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if sheet ~= nil then V20Bridge.castCustomRitual(sheet) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                    </layout>
+                </scrollBox>
+            </tab>"""
+
+
 def generate_vampire_lfm(clan_id: str) -> str:
     key = clan_id.lower().strip()
     if key not in CLANS:
@@ -589,6 +816,10 @@ def generate_vampire_lfm(clan_id: str) -> str:
     d1 = in_clan[0] if len(in_clan) > 0 else ""
     d2 = in_clan[1] if len(in_clan) > 1 else ""
     d3 = in_clan[2] if len(in_clan) > 2 else ""
+    slot13_cat = "caitiff" if clan["id"] == "caitiff" else "cla"
+    slot49_cat = "caitiff" if clan["id"] == "caitiff" else "fora_cla"
+    default_sec_trad = "necromancy" if clan["id"] == "giovanni" else "thaumaturgy"
+    default_rit_id = "necro_rit_1_call_hungry" if clan["id"] == "giovanni" else "thau_rit_1_sacred_haven"
 
     defaults: list[tuple[str, str]] = [
         ("nome", f"Neófito {clan['name']}"),
@@ -617,12 +848,49 @@ def generate_vampire_lfm(clan_id: str) -> str:
         ("dano_aggravado", "0"),
         ("dano_aplicar_qtd", "1"),
         ("dano_aplicar_tipo", "bashing"),
+        ("dano_fonte_solar", "false"),
         ("cura_tipo", "bashing"),
         ("armadura_absorcao", "0"),
         ("tem_tamanho_grande", "false"),
         ("frenesi_dif", "6"),
         ("rotschreck_dif", "6"),
         ("em_frenesi", "false"),
+        ("gangrel_tracos_qtd", "0"),
+        ("gangrel_tracos_lista", ""),
+        ("gangrel_attr_penalizado", "attr_carisma"),
+        ("malkav_perturbacao", ""),
+        ("malkav_suprimida_cena", "false"),
+        ("toreador_foco_arte", ""),
+        ("toreador_fascinado_cena", "false"),
+        ("tremere_laco_goles", "0"),
+        ("tremere_regente_nome", ""),
+        ("tremere_laco_status", "Sem Laço (0/2 goles)"),
+        ("ventrue_presa_restrita", ""),
+        ("ventrue_presa_compativel", "true"),
+        ("assamita_maldicao_modo", "ur_shulgi"),
+        ("assamita_vitae_qtd", "1"),
+        ("assamita_vicio_ativo", "false"),
+        ("setita_luz_forte", "false"),
+        ("giovanni_beijo_pontos", "1"),
+        ("lasombra_vigiado_espelhos", "false"),
+        ("ravnos_vicio_descricao", ""),
+        ("ravnos_compulsao_ativa", "false"),
+        ("tzimisce_origem_terra", ""),
+        ("tzimisce_dias_sem_terra", "0"),
+        ("caitiff_estigma_ativo", "true"),
+        ("bm_thau_prim_id", "path_of_blood"),
+        ("bm_thau_prim_nivel", "1" if "thaumaturgy" in in_clan else "0"),
+        ("bm_thau_prim_pwr_lvl", "1"),
+        ("bm_necro_prim_id", "sepulchre_path"),
+        ("bm_necro_prim_nivel", "1" if "necromancy" in in_clan else "0"),
+        ("bm_necro_prim_pwr_lvl", "1"),
+        ("bm_ritual_id", default_rit_id),
+        ("ritual_custom_nome", ""),
+        ("ritual_custom_trad", default_sec_trad),
+        ("ritual_custom_nivel", "1"),
+        ("ritual_custom_sangue", "0"),
+        ("ritual_custom_fdv", "0"),
+        ("ritual_custom_dif", "4"),
         ("roll_attr_id", "attr_destreza"),
         ("roll_hab_id", "hab_briga"),
         ("roll_bonus_dice", "0"),
@@ -642,15 +910,15 @@ def generate_vampire_lfm(clan_id: str) -> str:
         ("xp_pendente_status", "nenhum"),
         ("disc_slot1_id", d1),
         ("disc_slot1_nivel", "1" if d1 else "0"),
-        ("disc_slot1_cat", "cla"),
+        ("disc_slot1_cat", slot13_cat),
         ("disc_slot1_pwr_lvl", "1"),
         ("disc_slot2_id", d2),
         ("disc_slot2_nivel", "1" if d2 else "0"),
-        ("disc_slot2_cat", "cla"),
+        ("disc_slot2_cat", slot13_cat),
         ("disc_slot2_pwr_lvl", "1"),
         ("disc_slot3_id", d3),
         ("disc_slot3_nivel", "1" if d3 else "0"),
-        ("disc_slot3_cat", "cla"),
+        ("disc_slot3_cat", slot13_cat),
         ("disc_slot3_pwr_lvl", "1"),
     ]
 
@@ -658,8 +926,16 @@ def generate_vampire_lfm(clan_id: str) -> str:
         defaults.extend([
             (f"disc_slot{i}_id", ""),
             (f"disc_slot{i}_nivel", "0"),
-            (f"disc_slot{i}_cat", "fora_cla"),
+            (f"disc_slot{i}_cat", slot49_cat),
             (f"disc_slot{i}_pwr_lvl", "1"),
+        ])
+
+    for i in range(1, 5):
+        defaults.extend([
+            (f"bm_sec{i}_disc", default_sec_trad),
+            (f"bm_sec{i}_path_id", ""),
+            (f"bm_sec{i}_nivel", "0"),
+            (f"bm_sec{i}_pwr_lvl", "1"),
         ])
 
     for _, rows in ATTRIBUTES_BY_COL:
@@ -713,7 +989,8 @@ def generate_vampire_lfm(clan_id: str) -> str:
 {build_tab4_backgrounds(accent, border=BORDER_VAMP, is_vampire=True)}
 {build_tab5_combat(accent, border=BORDER_VAMP, is_vampire=True)}
 {build_tab6_morality(clan, accent)}
-{build_tab7_xp(accent, border=BORDER_VAMP)}
+{build_tab7_xp(accent, border=BORDER_VAMP, is_vampire=True)}
+{build_tab8_blood_magic(clan, accent)}
         </tabControl>
     </rectangle>
 
@@ -727,8 +1004,21 @@ def generate_vampire_lfm(clan_id: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Gera ficha vampírica LFM parametrizada por clã para o Firecast SDK 3.7b.")
     parser.add_argument("--clan", default="brujah", help="Identificador do clã V20 (ex.: brujah).")
-    parser.add_argument("--out", default="", help="Caminho opcional de saída .lfm.")
+    parser.add_argument("--all-clans", action="store_true", help="Gera os 14 modelos vampíricos de uma só vez em Sheets/.")
+    parser.add_argument("--out", default="", help="Caminho opcional de saída .lfm (quando --clan único).")
     args = parser.parse_args()
+
+    if args.all_clans:
+        out_dir = os.path.join(ROOT, "Sheets")
+        os.makedirs(out_dir, exist_ok=True)
+        for cid in CLAN_ORDER:
+            clan = CLANS[cid]
+            xml_content = generate_vampire_lfm(cid)
+            out_path = os.path.join(out_dir, f"{clan['formName']}.lfm")
+            with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(xml_content)
+            print(f"[OK] Gerado {os.path.relpath(out_path, ROOT)}")
+        return
 
     clan = CLANS[args.clan.lower().strip()]
     xml_content = generate_vampire_lfm(args.clan)
