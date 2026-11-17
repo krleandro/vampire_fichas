@@ -170,11 +170,11 @@ Catalog.DISCIPLINES = {
     thaumaturgy = {
         id = "thaumaturgy", name = "Taumaturgia (Linha do Sangue)", hasPaths = true,
         powers = {
-            p(1, "thau_1", "Um Gosto por Sangue", 0, 1, "attr_fdv_ref", nil, 4, "Testa FdV (dif = nível do poder + 3 = 4)", nil, "Identifica geração, sangue restante, natureza vampírica e diablerie por 1 gota (V20, p. 214)."),
-            p(2, "thau_2", "Fúria do Sangue", 0, 1, "attr_fdv_ref", nil, 5, "Testa FdV dif 5 ao tocar alvo; força gasto de sangue da vítima", nil, "Obriga outro vampiro a queimar vitae involuntariamente e amplia dif. de Frenesi (V20, p. 214)."),
-            p(3, "thau_3", "Sangue de Potência", 0, 1, "attr_fdv_ref", nil, 6, "Testa FdV dif 6; reduz efetivamente a Geração por 1 hora", nil, "Concentra temporariamente o próprio sangue para operar em Geração mais baixa (V20, p. 215)."),
-            p(4, "thau_4", "Furto de Vitae", 0, 1, "attr_fdv_ref", nil, 7, "Testa FdV dif 7; drena sangue à distância (até 15m) sem Laço completo imediato", nil, "Arranca torrente de sangue da vítima pelo ar direto para o taumaturgo (V20, p. 215)."),
-            p(5, "thau_5", "Caldeirão de Sangue", 0, 1, "attr_fdv_ref", nil, 8, "Testa FdV dif 8 ao toque; ferve 1 ponto de sangue por sucesso (1 Agravado cada)", nil, "Ferve o sangue nas veias do alvo, matando mortais e causando dano Agravado a Membros (V20, p. 216)."),
+            p(1, "thau_1", "Um Gosto por Sangue", 1, 0, "attr_fdv_ref", nil, 4, "1 Sangue; testa FdV (dif = nível do poder + 3 = 4)", nil, "Identifica geração, sangue restante, natureza vampírica e diablerie por 1 gota (V20, p. 214)."),
+            p(2, "thau_2", "Fúria do Sangue", 1, 0, "attr_fdv_ref", nil, 5, "1 Sangue; testa FdV dif 5 ao tocar alvo; força gasto de sangue da vítima", nil, "Obriga outro vampiro a queimar vitae involuntariamente e amplia dif. de Frenesi (V20, p. 214)."),
+            p(3, "thau_3", "Sangue de Potência", 1, 0, "attr_fdv_ref", nil, 6, "1 Sangue; testa FdV dif 6; reduz efetivamente a Geração por 1 hora", nil, "Concentra temporariamente o próprio sangue para operar em Geração mais baixa (V20, p. 215)."),
+            p(4, "thau_4", "Furto de Vitae", 1, 0, "attr_fdv_ref", nil, 7, "1 Sangue; testa FdV dif 7; drena sangue à distância (até 15m) sem Laço completo imediato", nil, "Arranca torrente de sangue da vítima pelo ar direto para o taumaturgo (V20, p. 215)."),
+            p(5, "thau_5", "Caldeirão de Sangue", 1, 0, "attr_fdv_ref", nil, 8, "1 Sangue; testa FdV dif 8 ao toque; ferve 1 ponto de sangue por sucesso (1 Agravado cada)", nil, "Ferve o sangue nas veias do alvo, matando mortais e causando dano Agravado a Membros (V20, p. 216)."),
         },
     },
     vicissitude = {

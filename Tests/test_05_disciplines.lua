@@ -138,6 +138,32 @@ local okMixedOverride = Engine.activatePower(stNoWP, { disc_id = "serpentis", ni
 assert(okMixedOverride.ok == true and okMixedOverride.newState.currentBlood == 5 and okMixedOverride.newState.storytellerOverride == nil)
 assert(okMixedOverride.buffToggled.id == "serp_skin" and okMixedOverride.buffToggled.active == true)
 
+-- Taumaturgia (V20, p. 212): todos os poderes da Linha do Sangue (thau_1..thau_5) gastam 1 Sangue (0 FdV) e rolam FdV (dif = nível + 3)
+for lvl = 1, 5 do
+    local tpw = Catalog.DISCIPLINES.thaumaturgy.powers[lvl]
+    assert(tpw.cost.blood == 1 and tpw.cost.willpower == 0, "Taumaturgia nível " .. lvl .. " deve custar 1 Sangue e 0 FdV (V20, p. 212)")
+    assert(tpw.defaultDiff == lvl + 3, "Taumaturgia nível " .. lvl .. " deve ter dif = nível + 3")
+end
+local stTremere = {
+    nome = "[TESTE_E2E] Strauss Tremere",
+    isVampire = true,
+    generation = 10,
+    currentBlood = 9,
+    spentThisTurn = 0,
+    fdv_temp = 7,
+    activeBuffs = {},
+}
+local actThau1 = Engine.activatePower(stTremere, { disc_id = "thaumaturgy", nivel = 5 }, Catalog.DISCIPLINES.thaumaturgy.powers[1], {})
+assert(actThau1.ok == true)
+assert(actThau1.newState.currentBlood == 8, "thau_1 deve descontar 1 ponto de sangue")
+assert(actThau1.newState.fdv_temp == 7, "thau_1 não deve descontar Força de Vontade temporária")
+assert(actThau1.rollSpec.attr == "attr_fdv_ref" and actThau1.rollSpec.hab == nil and actThau1.rollSpec.defaultDiff == 4)
+
+local stTremereTurn2 = Engine.clearTurnEffects(actThau1.newState)
+local actThau5 = Engine.activatePower(stTremereTurn2, { disc_id = "thaumaturgy", nivel = 5 }, Catalog.DISCIPLINES.thaumaturgy.powers[5], {})
+assert(actThau5.ok == true and actThau5.newState.currentBlood == 7 and actThau5.newState.fdv_temp == 7)
+assert(actThau5.rollSpec.attr == "attr_fdv_ref" and actThau5.rollSpec.defaultDiff == 8)
+
 -- 4. Modificadores de Potência ativa (sucessos automáticos), Rapidez ativa (ações extras ignorando limite/turno) e Fortitude
 local st2 = {
     nome = "[TESTE_E2E] Elena Toreador",
