@@ -44,14 +44,23 @@ def load_skill_compiler():
     return mod
 
 
-def verify_lfm_xml_and_compile(compiler, gui_sdk: str, rel_path: str, expected_dt: str, expected_name: str) -> ET.Element:
+def verify_lfm_xml_and_compile(
+    compiler,
+    gui_sdk: str,
+    rel_path: str,
+    expected_dt: str,
+    expected_name: str,
+    expected_form_type: str = "sheetTemplate",
+) -> ET.Element:
     full = os.path.join(ROOT, rel_path)
     assert os.path.exists(full), f"Arquivo {rel_path} não gerado"
     root = ET.parse(full).getroot()
     assert root.tag == "form", f"Raiz de {rel_path} deve ser <form>"
     assert root.attrib.get("dataType") == expected_dt, f"dataType inesperado em {rel_path}"
     assert root.attrib.get("name") == expected_name, f"name inesperado em {rel_path}"
-    assert root.attrib.get("formType") == "sheetTemplate", f"formType deve ser sheetTemplate em {rel_path}"
+    assert root.attrib.get("formType") == expected_form_type, (
+        f"formType deve ser {expected_form_type} em {rel_path}, obteve {root.attrib.get('formType')}"
+    )
     assert root.attrib.get("theme") == "dark", f"theme deve ser dark em {rel_path}"
     assert root.attrib.get("title"), f"title obrigatório em {rel_path}"
 
@@ -131,6 +140,13 @@ def main() -> None:
         [sys.executable, os.path.join(ROOT, "Templates", "generate_mortal_lfm.py")],
         check=True,
     )
+    dock_gen_script = os.path.join(ROOT, "Templates", "generate_coterie_dock_lfm.py")
+    assert os.path.exists(dock_gen_script), "Templates/generate_coterie_dock_lfm.py não encontrado"
+    subprocess.run([sys.executable, dock_gen_script], check=True)
+    dock_idem = subprocess.run([sys.executable, dock_gen_script], capture_output=True, text=True, check=True)
+    assert "Inalterado" in dock_idem.stdout, (
+        f"Segunda execução de generate_coterie_dock_lfm.py deve ser idempotente (_write_if_changed): {dock_idem.stdout}"
+    )
 
     expected_vampire_sheets = [
         ("brujah", "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah", "Vampiro V20 - Brujah"),
@@ -199,6 +215,79 @@ def main() -> None:
         compiler, gui_sdk, "Sheets/frmMortal.lfm", "br.com.v20.Mortal", "frmMortal"
     )
     assert mortal_root.attrib.get("title") == "Vampiro V20 - Mortal"
+
+    dock_root = verify_lfm_xml_and_compile(
+        compiler,
+        gui_sdk,
+        "Sheets/frmV20CoterieDock.lfm",
+        "br.com.v20.CoterieDock",
+        "frmV20CoterieDock",
+        expected_form_type="tablesDock",
+    )
+    assert dock_root.attrib.get("title") == "Vampiro V20 - Painel da Coterie & Iniciativa"
+    assert dock_root.attrib.get("width") == "340" and dock_root.attrib.get("height") == "580"
+    seen_dock_names: set[str] = set()
+    for el in dock_root.iter():
+        if el is not dock_root and el.tag != "event" and "name" in el.attrib:
+            nm = el.attrib["name"]
+            assert nm not in seen_dock_names, f"Controle duplicado '{nm}' em frmV20CoterieDock.lfm"
+            seen_dock_names.add(nm)
+    for req_dock_ctrl in (
+        "pgcDock",
+        "tabCenaIniciativa",
+        "tabNarradorCoterie",
+        "layNpcQuickControls",
+        "edtNpcInitNome",
+        "edtNpcInitMod",
+        "chkNpcInitOculto",
+        "btnAddNpcInit",
+        "btnTogglePhase",
+        "btnClearInit",
+        "lblStPageInfo",
+        "btnStPrevPage",
+        "btnStNextPage",
+        "btnBatchAwaken",
+        "btnBatchNewTurn",
+        "btnBatchEndScene",
+    ):
+        assert req_dock_ctrl in seen_dock_names, f"Controle '{req_dock_ctrl}' ausente em frmV20CoterieDock.lfm"
+    for idx_i in range(1, 11):
+        row_nm = f"lblInitRow{idx_i}"
+        assert row_nm in seen_dock_names, f"{row_nm} ausente em frmV20CoterieDock.lfm"
+        row_els = [el for el in dock_root.iter("label") if el.attrib.get("name") == row_nm]
+        assert len(row_els) == 1 and "field" not in row_els[0].attrib, (
+            f"{row_nm} não deve ter atributo field direto para garantir filtragem por papel"
+        )
+    for idx_p in range(1, 9):
+        pub_nm = f"lblPubSlot{idx_p}"
+        assert pub_nm in seen_dock_names, f"{pub_nm} ausente em frmV20CoterieDock.lfm"
+        pub_els = [el for el in dock_root.iter("label") if el.attrib.get("name") == pub_nm]
+        assert len(pub_els) == 1 and "field" not in pub_els[0].attrib, (
+            f"{pub_nm} não deve ter atributo field direto"
+        )
+        for st_prefix in (
+            "rectStCard",
+            "lblStCardTitle",
+            "lblStCardStats",
+            "lblStCardFlags",
+            "btnStBloodMinus",
+            "btnStBloodPlus",
+            "btnStApproveXp",
+        ):
+            assert f"{st_prefix}{idx_p}" in seen_dock_names, (
+                f"{st_prefix}{idx_p} ausente em frmV20CoterieDock.lfm"
+            )
+    dock_form_events = {child.attrib.get("name") for child in dock_root if child.tag == "event"}
+    assert {"OnShow", "OnHide"}.issubset(dock_form_events), (
+        f"frmV20CoterieDock.lfm deve declarar <event name='OnShow'> e <event name='OnHide'> na raiz <form>: {dock_form_events}"
+    )
+    dock_script_txt = "\n".join((sc.text or "") for sc in dock_root.iter("script"))
+    assert "_onBeforeDestroy" in dock_script_txt, "frmV20CoterieDock.lfm deve registrar self._onBeforeDestroy"
+
+    dock_bridge_path = os.path.join(ROOT, "Adapter", "coterie_dock_bridge.lua")
+    assert os.path.exists(dock_bridge_path), "Adapter/coterie_dock_bridge.lua não encontrado"
+    with open(dock_bridge_path, "r", encoding="utf-8") as f:
+        compiler.validate_lua_syntax(f.read(), "@Adapter/coterie_dock_bridge.lua")
 
     # Verificar campos estruturais obrigatórios em frmBrujah.lfm
     brujah_tabs = list(brujah_root.iter("tab"))
@@ -2004,6 +2093,529 @@ for _, entry in ipairs(FORMS) do
 end
 ''')
         run_lua_file(probe_forms_lua)
+
+        # 4. E2E de CoterieDockBridge + frmV20CoterieDock (Jogador vs Narrador, 0 vazamentos de dados ou observers)
+        build_mod_spec = importlib.util.spec_from_file_location(
+            "build_v20_suite", os.path.join(ROOT, "tools", "build_v20_suite.py")
+        )
+        assert build_mod_spec is not None and build_mod_spec.loader is not None
+        build_mod = importlib.util.module_from_spec(build_mod_spec)
+        build_mod_spec.loader.exec_module(build_mod)
+        dock_compiled_lua = build_mod.compile_v20_lfm(
+            compiler, os.path.join(ROOT, "Sheets", "frmV20CoterieDock.lfm")
+        )
+        dock_compiled_file = os.path.join(sandbox_lfm_dir, "frmV20CoterieDock.lfm.lua")
+        with open(dock_compiled_file, "w", encoding="utf-8", newline="\n") as f:
+            f.write(dock_compiled_lua)
+        dock_compiled_lua_path = dock_compiled_file.replace("\\", "/")
+
+        probe_dock_lua = os.path.join(sandbox_lfm_dir, "run_dock_e2e.lua")
+        with open(probe_dock_lua, "w", encoding="utf-8", newline="\n") as f:
+            f.write(f'''
+local Bridge = require("Adapter.firecast_bridge")
+local DockBridge = require("Adapter.coterie_dock_bridge")
+assert(_G.V20CoterieDockBridge == DockBridge, "V20CoterieDockBridge deve ser exposto em _G")
+assert(DockBridge.ROOM_NDB_NAME == "v20_coterie_dock_v1", "ROOM_NDB_NAME inesperado")
+
+local allControls = {{}}
+local activeListeners = {{}}
+local specialForms = {{}}
+local createdObservers = {{}}
+local chatMessages = {{}}
+local dialogMessages = {{}}
+local nextHandle = 1000
+local nextListenerId = 1
+local nextDiceFaces = {{ 5 }}
+local currentIsMestre = false
+
+local ctrlProto = {{}}
+local ctrlMeta = {{ __index = ctrlProto }}
+local ALLOWED_SETTERS = {{
+    "setAlign", "setWidth", "setHeight", "setLeft", "setTop",
+    "setColor", "setStrokeColor", "setStrokeSize", "setXradius", "setYradius",
+    "setMargins", "setPadding", "setText", "setFontColor", "setFontSize",
+    "setHorzTextAlign", "setVertTextAlign", "setWordWrap", "setField", "setType",
+    "setTransparent", "setTextPrompt", "setItems", "setValues", "setValue",
+    "setTitle", "setSRC", "setStyle", "setOptimize", "setFields", "setDefaultValues",
+    "setReadOnly", "setHitTest", "setCursor", "setHint", "setVisible", "setEnabled",
+    "setName", "setFormType", "setDataType", "setTheme"
+}}
+for _, mName in ipairs(ALLOWED_SETTERS) do
+    ctrlProto[mName] = function(self, val) self._props[mName] = val end
+end
+function ctrlProto:getTabIndex() return self._tabIdx or 0 end
+function ctrlProto:setTabIndex(idx) self._tabIdx = idx end
+function ctrlProto:beginUpdate() end
+function ctrlProto:endUpdate() end
+function ctrlProto:setParent(p) table.insert(p._children, self) end
+function ctrlProto:addEventListener(evName, fn, ctx)
+    local id = nextListenerId
+    nextListenerId = nextListenerId + 1
+    local rec = {{ id = id, ctrl = self, evName = evName, fn = fn, ctx = ctx }}
+    activeListeners[id] = rec
+    table.insert(self._listeners, rec)
+    return id
+end
+function ctrlProto:setNodeObject(nodeObject)
+    self._nodeObject = nodeObject
+    if nodeObject ~= nil then
+        for _, child in ipairs(self._children) do
+            if child._tag == "dataLink" then
+                local fields = child._props.setFields
+                local defaults = child._props.setDefaultValues
+                if type(fields) == "table" and type(defaults) == "table" then
+                    for i, fName in ipairs(fields) do
+                        if nodeObject[fName] == nil and defaults[i] ~= nil then
+                            nodeObject[fName] = defaults[i]
+                        end
+                    end
+                end
+                for _, lRec in ipairs(child._listeners) do
+                    if lRec.evName == "onChange" and activeListeners[lRec.id] ~= nil then
+                        lRec.fn(child)
+                    end
+                end
+            end
+        end
+    end
+end
+function ctrlProto:setNodeDatabase(nodeObject) self:setNodeObject(nodeObject) end
+function ctrlProto:destroy()
+    assert(not self._destroyed)
+    for _, ch in ipairs(self._children) do assert(ch._destroyed == true) end
+    self._destroyed = true
+end
+
+_G._obj_newObject = function(tag)
+    nextHandle = nextHandle + 1
+    local h = nextHandle
+    allControls[h] = setmetatable({{ handle = h, _tag = tag, _props = {{}}, _children = {{}}, _listeners = {{}}, _destroyed = false, _tabIdx = 0 }}, ctrlMeta)
+    return h
+end
+_G.GUI = {{ fromHandle = function(h) return assert(allControls[h]) end }}
+_G.gui = _G.GUI
+_G._gui_assignInitialParentForForm = function(_) end
+_G.lfm_setPropAsString = function(ctrl, prop, val) ctrl._props[prop] = tostring(val) end
+_G.showMessage = function(msg) table.insert(dialogMessages, tostring(msg)) end
+_G.Dialogs = {{ showMessage = _G.showMessage }}
+
+-- NodeFacade simulado estrito (proíbe gravar table/function e notifica observers ativos)
+local function makeStrictNodeFacade(initialTbl)
+    local store = {{}}
+    for k, v in pairs(initialTbl or {{}}) do store[k] = v end
+    local proxy = {{ __nodeFacadeFlag = true }}
+    setmetatable(proxy, {{
+        __index = function(_, k) return store[k] end,
+        __newindex = function(_, k, v)
+            assert(type(v) ~= "table" and type(v) ~= "function",
+                "Proibido gravar table/function em NodeFacade: " .. tostring(k))
+            local prev = store[k]
+            store[k] = v
+            if prev ~= v then
+                for _, obs in ipairs(createdObservers) do
+                    if obs.enabled and obs.node == proxy and type(obs.onChanged) == "function" then
+                        obs.onChanged(proxy, k, prev)
+                    end
+                end
+            end
+        end,
+    }})
+    return proxy, store
+end
+
+local roomNode, roomStore = makeStrictNodeFacade({{}})
+
+local tremereSheet, _ = makeStrictNodeFacade({{
+    nome = "[TESTE_E2E] Tremere",
+    cla_id = "tremere",
+    is_vampire = true,
+    geracao_base = 12,
+    attr_destreza = 2,
+    attr_raciocinio = 3,
+    sangue_atual = 9,
+    virtude2_val = 4,
+    fdv_perm = 6,
+    fdv_temp = 5,
+    dano_contundente = 1,
+    moralidade_val = 7,
+    xp_total = 20,
+    xp_gasto = 0,
+    xp_exige_aprovacao = true,
+}})
+Bridge.syncDerivedFields(tremereSheet)
+
+local brujahSheet, _ = makeStrictNodeFacade({{
+    nome = "[TESTE_E2E] Brujah",
+    cla_id = "brujah",
+    is_vampire = true,
+    geracao_base = 11,
+    attr_destreza = 4,
+    attr_raciocinio = 3,
+    sangue_atual = 8,
+    virtude2_val = 3,
+    fdv_perm = 5,
+    fdv_temp = 5,
+    dano_letal = 4,
+    buff_forca = 2,
+    em_agarrao = true,
+    cmb_defesas_feitas_turno = 2,
+    cmb_dano_pendente_ativo = true,
+    moralidade_val = 6,
+}})
+Bridge.syncDerivedFields(brujahSheet)
+
+local nosferatuHiddenSheet, _ = makeStrictNodeFacade({{
+    nome = "[TESTE_E2E] Ancião Nosferatu Oculto",
+    cla_id = "nosferatu",
+    is_vampire = true,
+    geracao_base = 7,
+    attr_destreza = 5,
+    attr_raciocinio = 5,
+    sangue_atual = 15,
+    virtude2_val = 4,
+    fdv_perm = 8,
+    fdv_temp = 8,
+    moralidade_val = 5,
+}})
+Bridge.syncDerivedFields(nosferatuHiddenSheet)
+
+local bibItemsBySheet = {{}}
+local itemTremere = {{
+    codigoInterno = 101,
+    tipo = "personagem",
+    nome = "[TESTE_E2E] Tremere",
+    dataType = "br.com.v20.Tremere",
+    visivel = true,
+    visivelRecursivamente = true,
+    loadSheetNDB = function(_, cb) cb(tremereSheet) end,
+}}
+local itemBrujah = {{
+    codigoInterno = 102,
+    tipo = "personagem",
+    nome = "[TESTE_E2E] Brujah",
+    dataType = "br.com.v20.Brujah",
+    visivel = true,
+    visivelRecursivamente = true,
+    loadSheetNDB = function(_, cb) cb(brujahSheet) end,
+}}
+local itemNosferatu = {{
+    codigoInterno = 103,
+    tipo = "personagem",
+    nome = "[TESTE_E2E] Ancião Nosferatu Oculto",
+    dataType = "br.com.v20.Nosferatu",
+    visivel = false,
+    visivelRecursivamente = false,
+    loadSheetNDB = function(_, cb) cb(nosferatuHiddenSheet) end,
+}}
+bibItemsBySheet[tremereSheet] = itemTremere
+bibItemsBySheet[brujahSheet] = itemBrujah
+bibItemsBySheet[nosferatuHiddenSheet] = itemNosferatu
+
+local simulatedMesa = {{
+    nome = "[TESTE_E2E] Sala Crônica Noturna",
+    meuJogador = setmetatable({{}}, {{
+        __index = function(_, k)
+            if k == "isMestre" then return currentIsMestre end
+            if k == "login" then return currentIsMestre and "test_e2e_narrador" or "test_e2e_jogador" end
+            return nil
+        end
+    }}),
+    biblioteca = {{
+        filhos = {{
+            itemTremere,
+            itemBrujah,
+            {{
+                tipo = "diretorio",
+                nome = "[TESTE_E2E] Pasta NPCs Secretos",
+                visivel = false,
+                visivelRecursivamente = false,
+                filhos = {{ itemNosferatu }},
+            }},
+        }},
+    }},
+    abrirNDBDeMesa = function(_, ndbName, cb, opcoes)
+        assert(ndbName == "v20_coterie_dock_v1", "Nome inesperado do room NDB: " .. tostring(ndbName))
+        assert(type(opcoes) == "table" and opcoes.criar == true, "abrirNDBDeMesa deve passar {{ criar = true }}")
+        cb(roomNode)
+    end,
+    activeChat = {{
+        rolarDados = function(_, _, _, cb)
+            cb({{ ops = {{ {{ tipo = "dado", resultados = nextDiceFaces }} }} }})
+        end,
+        enviarMensagem = function(_, msg)
+            table.insert(chatMessages, tostring(msg))
+        end,
+    }},
+}}
+
+_G.Firecast = {{
+    registrarForm = function(_) end,
+    registrarDataType = function(_) end,
+    registrarSpecialForm = function(spec) specialForms[spec.name] = spec end,
+    interpretarRolagem = function(expr)
+        return {{
+            expr = expr,
+            ops = {{ {{ tipo = "dado", resultados = nextDiceFaces }} }},
+            rolarLocalmente = function(self)
+                self.ops = {{ {{ tipo = "dado", resultados = nextDiceFaces }} }}
+            end,
+        }}
+    end,
+    getMesaDe = function(_) return simulatedMesa end,
+    getPersonagemDe = function(s) return bibItemsBySheet[s] end,
+    getBibliotecaItemDe = function(s) return bibItemsBySheet[s] end,
+}}
+_G.RRPG = _G.Firecast
+_G.rrpg = _G.Firecast
+
+_G.NDB = {{
+    getChildNodes = function(_) return {{}} end,
+    newObserver = function(nodeObj)
+        local obs = {{ node = nodeObj, enabled = true, onChanged = nil }}
+        table.insert(createdObservers, obs)
+        return obs
+    end,
+}}
+
+package.preload["firecast.lua"] = function() return _G.Firecast end
+package.preload["rrpgObjs.lua"] = function()
+    return {{
+        beginObjectsLoading = function() end,
+        endObjectsLoading = function() end,
+        removeEventListenerById = function(id) activeListeners[id] = nil end,
+    }}
+end
+package.preload["rrpgGUI.lua"] = function() return _G.GUI end
+package.preload["rrpgDialogs.lua"] = function() return _G.Dialogs end
+package.preload["rrpgLFM.lua"] = function() return true end
+package.preload["ndb.lua"] = function() return _G.NDB end
+package.preload["locale.lua"] = function() return true end
+package.preload["utils.lua"] = function()
+    return {{ tryFinally = function(t, f) local ok, e = pcall(t); f(); if not ok then error(e, 0) end end }}
+end
+package.preload["v20_loader.lua"] = function() return true end
+
+-- Submete 1 pedido de XP pendente no Tremere enquanto jogador
+currentIsMestre = false
+local xpSub = Bridge.submitOrApproveXP(
+    tremereSheet,
+    "submit",
+    {{ traitKind = "willpower", field = "fdv_perm", label = "FdV Permanente" }},
+    _G.NDB,
+    _G.Firecast,
+    _G.Dialogs
+)
+assert(xpSub.ok == true and tremereSheet.xp_pendente_status == "pendente")
+
+-- Rolar Iniciativa nos 2 PJs visíveis e no NPC oculto via V20Bridge.rollInitiative
+-- Tremere: Des 2 + Rac 3 - Ferim 0 = 5; d10=3 -> Total 8
+nextDiceFaces = {{ 3 }}
+Bridge.rollInitiative(tremereSheet, _G.Firecast, _G.Dialogs)
+-- Brujah: Des 4 + Rac 3 - Ferim 2 (Ferido Gravemente c/ 4 letais) = 5; d10=9 -> Total 14
+nextDiceFaces = {{ 9 }}
+Bridge.rollInitiative(brujahSheet, _G.Firecast, _G.Dialogs)
+-- Nosferatu Oculto: Des 5 + Rac 5 = 10; d10=10 -> Total 20 (Oculto!)
+nextDiceFaces = {{ 10 }}
+Bridge.rollInitiative(nosferatuHiddenSheet, _G.Firecast, _G.Dialogs)
+
+local dockSpec = dofile("{dock_compiled_lua_path}")
+assert(specialForms["frmV20CoterieDock"] == dockSpec, "frmV20CoterieDock deve registrar registrarSpecialForm")
+
+local function assertRoomNodeHasZeroPrivateData()
+    local forbiddenSubstrings = {{
+        "sangue", "fdv", "moralidade", "cla_id", "geracao", "xp_", "Humanidade"
+    }}
+    for k, v in pairs(roomStore) do
+        local ks = tostring(k)
+        for _, bad in ipairs(forbiddenSubstrings) do
+            assert(ks:find(bad, 1, true) == nil, "Chave privada vazada em roomNode: " .. ks)
+        end
+        if ks:match("^init_row%d+_txt$") or ks:match("^pub_slot%d+_txt$") then
+            local vs = tostring(v)
+            assert(vs:find("Nosferatu", 1, true) == nil and vs:find("Oculto", 1, true) == nil,
+                "NPC oculto vazado em slot público do roomNode (" .. ks .. "): " .. vs)
+        end
+    end
+end
+
+-- 4.1 Visão do Jogador (isMestre = false)
+currentIsMestre = false
+local playerDock = dockSpec.new()
+playerDock.pgcDock:setTabIndex(1)
+DockBridge.connectDock(playerDock, _G.Firecast, _G.NDB)
+
+assert(playerDock.pgcDock:getTabIndex() == 0, "Jogador deve ser redirecionado para a Aba 0")
+assert(playerDock.tabNarradorCoterie._props.setVisible == false, "tabNarradorCoterie deve ficar oculta para Jogador")
+assert(playerDock.layNpcQuickControls._props.setVisible == false, "Controles rápidos de NPC devem ficar ocultos para Jogador")
+
+-- Fase inicial = declaracao (ascendente: Tremere 8 antes de Brujah 14; Nosferatu 20 oculto NÃO aparece!)
+local pRow1 = tostring(playerDock.lblInitRow1._props.setText or "")
+local pRow2 = tostring(playerDock.lblInitRow2._props.setText or "")
+local pRow3 = tostring(playerDock.lblInitRow3._props.setText or "")
+assert(pRow1:find("Tremere", 1, true) ~= nil and pRow1:find("8", 1, true) ~= nil, "Linha 1 Jogador inesperada: " .. pRow1)
+assert(pRow2:find("Brujah", 1, true) ~= nil and pRow2:find("14", 1, true) ~= nil, "Linha 2 Jogador inesperada: " .. pRow2)
+assert(pRow3:find("Nosferatu", 1, true) == nil and pRow3:find("20", 1, true) == nil, "Linha 3 Jogador não deve exibir NPC oculto: " .. pRow3)
+for i = 1, 10 do
+    local txt = tostring(playerDock["lblInitRow" .. i]._props.setText or "")
+    assert(txt:find("Nosferatu", 1, true) == nil and txt:find("Oculto", 1, true) == nil, "NPC oculto vazou na Iniciativa do Jogador: " .. txt)
+end
+for i = 1, 8 do
+    local ptxt = tostring(playerDock["lblPubSlot" .. i]._props.setText or "")
+    assert(ptxt:find("Nosferatu", 1, true) == nil and ptxt:find("Oculto", 1, true) == nil, "NPC oculto vazou no Resumo Público: " .. ptxt)
+end
+local pub1 = tostring(playerDock.lblPubSlot1._props.setText or "")
+local pub2 = tostring(playerDock.lblPubSlot2._props.setText or "")
+assert(pub1:find("Tremere", 1, true) ~= nil and pub1:find("Escoriado", 1, true) ~= nil, "PubSlot1 inesperado: " .. pub1)
+assert(pub2:find("Brujah", 1, true) ~= nil and pub2:find("Ferido", 1, true) ~= nil, "PubSlot2 inesperado: " .. pub2)
+assertRoomNodeHasZeroPrivateData()
+
+-- Tentativas de mutação por Jogador comum DEVEM ser bloqueadas no backend
+dialogMessages = {{}}
+assert(DockBridge.toggleCombatPhase(playerDock, _G.Firecast, _G.Dialogs).ok == false)
+assert(DockBridge.addQuickNpcInitiative(playerDock, _G.Firecast, _G.Dialogs).ok == false)
+assert(DockBridge.clearInitiative(playerDock, _G.Firecast, _G.Dialogs).ok == false)
+assert(DockBridge.adjustCardBlood(playerDock, 1, -1, _G.Firecast, _G.Dialogs).ok == false)
+assert(DockBridge.approveCardXP(playerDock, 1, _G.Firecast, _G.NDB, _G.Dialogs).ok == false)
+assert(DockBridge.batchAwakenNightly(playerDock, _G.Firecast, _G.Dialogs).ok == false)
+assert(DockBridge.batchNewTurn(playerDock, _G.Firecast, _G.Dialogs).ok == false)
+assert(DockBridge.batchEndScene(playerDock, _G.Firecast, _G.Dialogs).ok == false)
+assert(#dialogMessages >= 8, "Todas as tentativas ilegais do Jogador devem avisar bloqueio de permissão")
+assert(tremereSheet.sangue_atual == 9 and tremereSheet.fdv_perm == 6, "Nenhuma ficha pode ter sido mutada pelo Jogador")
+
+playerDock:destroy()
+for _, obs in ipairs(createdObservers) do
+    assert(obs.enabled == false, "destroy() do playerDock deve desativar observer via _onBeforeDestroy")
+end
+
+-- 4.2 Visão do Narrador (isMestre = true)
+createdObservers = {{}}
+currentIsMestre = true
+local stDock = dockSpec.new()
+DockBridge.connectDock(stDock, _G.Firecast, _G.NDB)
+
+assert(stDock.tabNarradorCoterie._props.setVisible == true, "tabNarradorCoterie deve ficar visível para o Narrador")
+assert(#createdObservers == 4, "Narrador deve conectar 1 observer no roomNode + 3 nos charNodes (sem duplicar), obteve: " .. #createdObservers)
+for _, obs in ipairs(createdObservers) do assert(obs.enabled == true) end
+
+-- Verificar Iniciativa do Narrador em Declaração (ascendente: 8, 14, [Oculto] 20)
+assert(tostring(stDock.lblInitRow1._props.setText):find("Tremere", 1, true) ~= nil)
+assert(tostring(stDock.lblInitRow2._props.setText):find("Brujah", 1, true) ~= nil)
+assert(tostring(stDock.lblInitRow3._props.setText):find("[Oculto] [TESTE_E2E] Ancião Nosferatu Oculto", 1, true) ~= nil,
+    "Narrador deve enxergar [Oculto] na Iniciativa: " .. tostring(stDock.lblInitRow3._props.setText))
+
+-- Verificar Cartões do Narrador (3 ativos, 5 ocultos)
+assert(stDock.rectStCard1._props.setVisible == true)
+assert(stDock.rectStCard2._props.setVisible == true)
+assert(stDock.rectStCard3._props.setVisible == true)
+assert(stDock.rectStCard4._props.setVisible == false)
+assert(tostring(stDock.lblStCardTitle1._props.setText):find("Tremere", 1, true) ~= nil)
+assert(tostring(stDock.lblStCardFlags1._props.setText):find("[XP Pendente]", 1, true) ~= nil)
+assert(stDock.btnStApproveXp1._props.setVisible == true)
+assert(tostring(stDock.lblStCardFlags2._props.setText):find("[Agarrão]", 1, true) ~= nil)
+assert(tostring(stDock.lblStCardFlags3._props.setText):find("[Oculto]", 1, true) ~= nil)
+assertRoomNodeHasZeroPrivateData()
+
+-- Alternar Fase: Declaração (ascendente) -> Ação (descendente: 20, 14, 8)
+local phaseRes = DockBridge.toggleCombatPhase(stDock, _G.Firecast, _G.Dialogs)
+assert(phaseRes.ok == true and roomNode.combate_fase == "acao")
+assert(tostring(stDock.lblInitRow1._props.setText):find("Nosferatu", 1, true) ~= nil,
+    "Na Fase de Ação, maior Iniciativa (20) age primeiro: " .. tostring(stDock.lblInitRow1._props.setText))
+assert(tostring(stDock.lblInitRow3._props.setText):find("Tremere", 1, true) ~= nil)
+-- E no roomNode público, init_row1_txt deve ser Brujah (14) e jamais o Nosferatu oculto!
+assert(tostring(roomNode.init_row1_txt or ""):find("Brujah", 1, true) ~= nil)
+assertRoomNodeHasZeroPrivateData()
+
+-- Adicionar NPC rápido oculto pelo Dock
+stDock.sheet.npc_init_nome = "[TESTE_E2E] Carniçal Vigia"
+stDock.sheet.npc_init_mod = 4
+stDock.sheet.npc_init_oculto = true
+nextDiceFaces = {{ 7 }}
+local quickRes = DockBridge.addQuickNpcInitiative(stDock, _G.Firecast, _G.Dialogs)
+assert(quickRes.ok == true)
+assertRoomNodeHasZeroPrivateData()
+
+-- Ajustar Sangue pelo Cartão 1 (Tremere: 9 -> 8)
+local bloodRes = DockBridge.adjustCardBlood(stDock, 1, -1, _G.Firecast, _G.Dialogs)
+assert(bloodRes.ok == true and tremereSheet.sangue_atual == 8)
+assert(tostring(stDock.lblStCardStats1._props.setText):find("8/11", 1, true) ~= nil,
+    "Stats do cartão 1 devem refletir Sangue 8/11: " .. tostring(stDock.lblStCardStats1._props.setText))
+
+-- Aprovar XP pendente pelo Cartão 1 (Tremere fdv_perm: 6 -> 7)
+chatMessages = {{}}
+local appRes = DockBridge.approveCardXP(stDock, 1, _G.Firecast, _G.NDB, _G.Dialogs)
+assert(appRes.ok == true and tremereSheet.fdv_perm == 7 and tremereSheet.xp_pendente_status == "aprovado")
+assert(stDock.btnStApproveXp1._props.setVisible == false, "Botão Aprovar XP deve ocultar após aprovação")
+assert(#chatMessages == 1, "approveCardXP deve postar 1 mensagem consolidada no chat, obteve: " .. #chatMessages)
+
+-- batchAwakenNightly: gasta 1 Vitae em cada vampiro e posta EXATAMENTE 1 boletim consolidado no chat
+chatMessages = {{}}
+local awkRes = DockBridge.batchAwakenNightly(stDock, _G.Firecast, _G.Dialogs)
+assert(awkRes.ok == true)
+assert(tremereSheet.sangue_atual == 7 and brujahSheet.sangue_atual == 7 and nosferatuHiddenSheet.sangue_atual == 14)
+assert(#chatMessages == 1, "batchAwakenNightly deve enviar apenas 1 boletim único no chat, enviou: " .. #chatMessages)
+assert(chatMessages[1]:find("Nosferatu", 1, true) == nil, "Boletim público no chat não deve revelar nome de NPC oculto: " .. chatMessages[1])
+
+-- batchNewTurn: reseta turno nas fichas, incrementa rodada_atual (1 -> 2), volta fase p/ declaracao e posta 1 msg
+brujahSheet.sangue_gasto_turno = 2
+chatMessages = {{}}
+local turnRes = DockBridge.batchNewTurn(stDock, _G.Firecast, _G.Dialogs)
+assert(turnRes.ok == true and tonumber(roomNode.rodada_atual) == 2 and roomNode.combate_fase == "declaracao")
+assert(brujahSheet.sangue_gasto_turno == 0 and brujahSheet.cmb_defesas_feitas_turno == 0)
+assert(#chatMessages == 1, "batchNewTurn deve enviar 1 anúncio único no chat, enviou: " .. #chatMessages)
+
+-- batchEndScene: limpa buffs de cena, agarrão e dano pendente, reseta rodada p/ 1 e posta 1 msg
+chatMessages = {{}}
+local endRes = DockBridge.batchEndScene(stDock, _G.Firecast, _G.Dialogs)
+assert(endRes.ok == true and tonumber(roomNode.rodada_atual) == 1)
+assert(brujahSheet.buff_forca == 0 and brujahSheet.em_agarrao == false and brujahSheet.cmb_dano_pendente_ativo == false)
+assert(#chatMessages == 1, "batchEndScene deve enviar 1 anúncio único no chat, enviou: " .. #chatMessages)
+
+-- Torpor por inanição em batchAwakenNightly quando sangue_atual == 0
+tremereSheet.sangue_atual = 0
+chatMessages = {{}}
+local torpAwk = DockBridge.batchAwakenNightly(stDock, _G.Firecast, _G.Dialogs)
+assert(torpAwk.ok == true and tremereSheet.em_torpor == true)
+assert(#chatMessages == 1 and chatMessages[1]:find("Torpor", 1, true) ~= nil,
+    "Boletim único deve alertar entrada em Torpor: " .. tostring(chatMessages[1]))
+
+-- Paginação (changePage) ao expandir biblioteca dinamicamente p/ 10 fichas (2 páginas: 8 + 2)
+for extraIdx = 4, 10 do
+    local extraNode, _ = makeStrictNodeFacade({{
+        nome = "[TESTE_E2E] Membro Extra #" .. extraIdx,
+        cla_id = "caitiff",
+        is_vampire = true,
+        geracao_base = 13,
+        sangue_atual = 6,
+    }})
+    table.insert(simulatedMesa.biblioteca.filhos, {{
+        codigoInterno = 200 + extraIdx,
+        tipo = "personagem",
+        nome = "[TESTE_E2E] Membro Extra #" .. extraIdx,
+        dataType = "br.com.v20.Caitiff",
+        visivel = true,
+        visivelRecursivamente = true,
+        loadSheetNDB = function(_, cb) cb(extraNode) end,
+    }})
+end
+local pgRes = DockBridge.changePage(stDock, 1, _G.Firecast, _G.NDB)
+assert(pgRes.ok == true and pgRes.page == 2 and pgRes.totalPages == 2,
+    "changePage(+1) deve avançar p/ página 2/2 ao detectar 10 fichas: page=" .. tostring(pgRes.page))
+assert(stDock.rectStCard1._props.setVisible == true and stDock.rectStCard2._props.setVisible == true and stDock.rectStCard3._props.setVisible == false)
+local pgBack = DockBridge.changePage(stDock, -1, _G.Firecast, _G.NDB)
+assert(pgBack.page == 1 and stDock.rectStCard8._props.setVisible == true)
+
+-- Limpar Iniciativa e desconectar Dock do Narrador -> 0 observers ativos!
+assert(DockBridge.clearInitiative(stDock, _G.Firecast, _G.Dialogs).ok == true)
+assert(tonumber(roomNode.init_count) == 0)
+assert(#createdObservers == 11, "1 observer do roomNode + 10 charNodes únicos sem duplicar, total criado: " .. #createdObservers)
+
+DockBridge.disconnectDock(stDock)
+for idx, obs in ipairs(createdObservers) do
+    assert(obs.enabled == false, "Observer #" .. idx .. " continuou ativo após disconnectDock!")
+end
+stDock:destroy()
+''')
+        run_lua_file(probe_dock_lua)
     finally:
         import shutil
         shutil.rmtree(sandbox_lfm_dir, ignore_errors=True)

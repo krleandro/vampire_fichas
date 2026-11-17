@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Auditoria E2E do pacote compilado dist/Vampiro_V20_Suite.rpk (v0.6.0, 15 fichas) segundo SDK 3.7b e PF-4."""
+"""Auditoria E2E do pacote compilado dist/Vampiro_V20_Suite.rpk (v1.0.0, 16 formulários) segundo SDK 3.7b e PF-4."""
 import ctypes
 import glob
 import hashlib
@@ -19,7 +19,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BUILD_SCRIPT = os.path.join(ROOT, "tools", "build_v20_suite.py")
 DLL_PATH = r"C:\Users\Cliente\AppData\Local\Firecast\lua54x64.dll"
 
-EXPECTED_VERSION = "0.6.0"
+EXPECTED_VERSION = "1.0.0"
 
 EXPECTED_SHEETS: list[tuple[str, str, str, str, str]] = [
     ("brujah", "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah", "Vampiro V20 - Brujah"),
@@ -39,11 +39,25 @@ EXPECTED_SHEETS: list[tuple[str, str, str, str, str]] = [
     ("mortal", "Sheets/frmMortal.lfm", "br.com.v20.Mortal", "frmMortal", "Vampiro V20 - Mortal"),
 ]
 
+DOCK_SPEC: tuple[str, str, str, str, str, str] = (
+    "coterie_dock",
+    "Sheets/frmV20CoterieDock.lfm",
+    "br.com.v20.CoterieDock",
+    "frmV20CoterieDock",
+    "Vampiro V20 - Painel da Coterie & Iniciativa",
+    "tablesDock",
+)
+
+EXPECTED_ALL_FORMS: list[tuple[str, str, str, str, str, str]] = [
+    (cid, lfm, dt, fn, title, "sheetTemplate")
+    for cid, lfm, dt, fn, title in EXPECTED_SHEETS
+] + [DOCK_SPEC]
+
 
 def _lua_forms_table() -> str:
     rows = [
-        f'    {{ cid = "{cid}", lfmLua = "{lfm}.lua", dataType = "{dt}", formName = "{fn}" }}'
-        for cid, lfm, dt, fn, _ in EXPECTED_SHEETS
+        f'    {{ cid = "{cid}", lfmLua = "{lfm}.lua", dataType = "{dt}", formName = "{fn}", formType = "{ft}" }}'
+        for cid, lfm, dt, fn, _, ft in EXPECTED_ALL_FORMS
     ]
     return "{\n" + ",\n".join(rows) + "\n}"
 
@@ -349,6 +363,19 @@ package.cpath = ""
 local vhdSearchPaths = {{ "" }}
 local registeredForms = {{}}
 local registeredDataTypes = {{}}
+local registeredSpecialForms = {{}}
+local createdObservers = {{}}
+local runtimeIsMestre = false
+local runtimeRoomNode = {{}}
+local runtimeCharNode = {{
+    nome = "[TESTE_E2E] Neófito RPK Dock",
+    cla_id = "tremere",
+    is_vampire = true,
+    geracao_base = 12,
+    sangue_atual = 9,
+    fdv_perm = 6,
+    fdv_temp = 6,
+}}
 local dialogLog = {{}}
 local chatLog = {{}}
 local allControls = {{}}
@@ -491,6 +518,10 @@ _G.Firecast = {{
         assert(type(spec) == "table" and spec.dataType ~= nil, "registrarDataType inválido")
         registeredDataTypes[spec.dataType] = spec
     end,
+    registrarSpecialForm = function(spec)
+        assert(type(spec) == "table" and spec.name ~= nil, "registrarSpecialForm inválido")
+        registeredSpecialForms[spec.name] = spec
+    end,
     interpretarRolagem = function(expr)
         return {{
             expr = expr,
@@ -500,7 +531,23 @@ _G.Firecast = {{
     end,
     getMesaDe = function(_)
         return {{
-            meuJogador = {{ isMestre = false, login = "test_e2e_rpk_runner" }},
+            meuJogador = {{ isMestre = runtimeIsMestre, login = "test_e2e_rpk_runner" }},
+            biblioteca = {{
+                filhos = {{
+                    {{
+                        codigoInterno = 501,
+                        tipo = "personagem",
+                        nome = "[TESTE_E2E] Neófito RPK Dock",
+                        dataType = "br.com.v20.Tremere",
+                        visivel = true,
+                        visivelRecursivamente = true,
+                        loadSheetNDB = function(_, cb) cb(runtimeCharNode) end,
+                    }},
+                }},
+            }},
+            abrirNDBDeMesa = function(_, _, cb, _)
+                cb(runtimeRoomNode)
+            end,
             activeChat = {{
                 rolarDados = function(_, _, _, cb)
                     cb({{ ops = {{ {{ tipo = "dado", resultados = {{ 9, 8, 7 }} }} }} }})
@@ -517,6 +564,11 @@ _G.rrpg = _G.Firecast
 
 _G.NDB = {{
     getChildNodes = function(_) return {{}} end,
+    newObserver = function(nodeObj)
+        local obs = {{ node = nodeObj, enabled = true, onChanged = nil }}
+        table.insert(createdObservers, obs)
+        return obs
+    end,
 }}
 
 local mockRrpgObjs = {{
@@ -592,14 +644,20 @@ assert(type(_G.V20.BloodMagicCatalog) == "table", "V20.BloodMagicCatalog deve es
 assert(type(_G.V20.BloodMagicEngine) == "table", "V20.BloodMagicEngine deve estar carregado")
 assert(type(_G.V20.CombatManeuvers) == "table", "V20.CombatManeuvers deve estar carregado")
 assert(type(_G.V20.CoterieTracker) == "table", "V20.CoterieTracker deve estar carregado")
+assert(type(_G.V20CoterieDockBridge) == "table", "V20CoterieDockBridge deve estar carregado")
 assert(#vhdSearchPaths >= 4, "vhd.addSearchPath deve registrar /Data, /Core, /Adapter")
 
--- 2. Carregar, instanciar, vincular [TESTE_E2E], exercitar eventos e destruir TODAS as 15 fichas
-assert(#EXPECTED_FORMS == 15, "Devem existir exatamente 15 modelos de ficha configurados")
+-- 2. Carregar, instanciar, vincular [TESTE_E2E], exercitar eventos e destruir TODOS os 16 formulários
+assert(#EXPECTED_FORMS == 16, "Devem existir exatamente 16 formulários configurados")
 for _, fInfo in ipairs(EXPECTED_FORMS) do
     local spec = require(fInfo.lfmLua)
     assert(registeredForms[fInfo.formName] == spec, "Form não registrado: " .. fInfo.formName)
     assert(registeredDataTypes[fInfo.dataType] == spec, "DataType não registrado: " .. fInfo.dataType)
+    if fInfo.formType == "tablesDock" then
+        assert(registeredSpecialForms[fInfo.formName] == spec, "tablesDock deve registrar registrarSpecialForm: " .. fInfo.formName)
+    else
+        assert(registeredSpecialForms[fInfo.formName] == nil, "sheetTemplate NÃO deve registrar registrarSpecialForm: " .. fInfo.formName)
+    end
     assert(spec.cacheMode == "none", "cacheMode deve ser 'none' em " .. fInfo.formName)
 
     local ctor = _G["new" .. fInfo.formName]
@@ -610,7 +668,60 @@ for _, fInfo in ipairs(EXPECTED_FORMS) do
     assert(rawget(inst, "_oldSetNodeObjectFunction") == ctrlProto.setNodeObject,
         "Regra 1 SDK 3.7b deve preservar setNodeObject em " .. fInfo.formName)
 
-    if fInfo.cid ~= "mortal" then
+    if fInfo.cid == "coterie_dock" then
+        -- Testa ciclo completo OnShow -> observadores ativos -> OnHide -> 0 observadores -> OnShow -> destroy() -> 0 observadores!
+        runtimeIsMestre = true
+        createdObservers = {{}}
+        local onShowFn, onHideFn = nil, nil
+        for _, lRec in pairs(activeListeners) do
+            if lRec.ctx == inst and lRec.ctrl == inst then
+                if lRec.evName == "OnShow" then onShowFn = lRec.fn end
+                if lRec.evName == "OnHide" then onHideFn = lRec.fn end
+            end
+        end
+        assert(type(onShowFn) == "function" and type(onHideFn) == "function", "OnShow/OnHide devem estar compilados em frmV20CoterieDock")
+        onShowFn(inst)
+        local activeObsAfterShow = 0
+        for _, obs in ipairs(createdObservers) do
+            if obs.enabled then activeObsAfterShow = activeObsAfterShow + 1 end
+        end
+        assert(activeObsAfterShow >= 2, "OnShow do Narrador deve criar observers ativos p/ roomNode e charNode, obteve: " .. activeObsAfterShow)
+        assert(inst.tabNarradorCoterie._props.setVisible == true)
+
+        -- Aciona todos os botões onClick/onChange do Dock como Narrador
+        local dockListenerIds = {{}}
+        for id, lRec in pairs(activeListeners) do
+            if lRec.ctx == inst and lRec.ctrl ~= inst then
+                table.insert(dockListenerIds, id)
+            end
+        end
+        table.sort(dockListenerIds)
+        assert(#dockListenerIds >= 25, "Dock deve possuir controles interativos compilados, obteve: " .. #dockListenerIds)
+        for _, id in ipairs(dockListenerIds) do
+            local lRec = activeListeners[id]
+            if lRec ~= nil then lRec.fn(lRec.ctrl) end
+        end
+
+        onHideFn(inst)
+        for _, obs in ipairs(createdObservers) do
+            assert(obs.enabled == false, "OnHide deve desativar 100% dos observers")
+        end
+
+        -- Reabre com OnShow e destrói direto (sem OnHide) para provar que _onBeforeDestroy limpa tudo
+        onShowFn(inst)
+        local activeBeforeDestroy = 0
+        for _, obs in ipairs(createdObservers) do
+            if obs.enabled then activeBeforeDestroy = activeBeforeDestroy + 1 end
+        end
+        assert(activeBeforeDestroy >= 2)
+        runtimeIsMestre = false
+        inst:destroy()
+        assert(inst._destroyed == true)
+        for _, obs in ipairs(createdObservers) do
+            assert(obs.enabled == false, "destroy() deve desativar 100% dos observers via _onBeforeDestroy")
+        end
+    else
+        if fInfo.cid ~= "mortal" then
         local vampSheet = {{
             nome = "[TESTE_E2E] Personagem RPK " .. fInfo.formName,
             geracao_base = 9,
@@ -704,19 +815,20 @@ for _, fInfo in ipairs(EXPECTED_FORMS) do
     assert(eventsFired > 100, "Deveria executar >100 eventos em " .. fInfo.formName .. ", executou: " .. tostring(eventsFired))
     assert(#chatLog > chatBefore, "Eventos de rolagem em " .. fInfo.formName .. " devem publicar diagnóstico V20 no chat")
 
-    inst:destroy()
-    assert(inst._destroyed == true, fInfo.formName .. " deve ser destruído completamente")
-    assert(inst.barHeaderTop == nil and inst.pgcPrincipal == nil,
-        "Controles filhos devem ser limpos para nil em " .. fInfo.formName .. ":destroy()")
+        inst:destroy()
+        assert(inst._destroyed == true, fInfo.formName .. " deve ser destruído completamente")
+        assert(inst.barHeaderTop == nil and inst.pgcPrincipal == nil,
+            "Controles filhos devem ser limpos para nil em " .. fInfo.formName .. ":destroy()")
+    end
 end
 
--- Todos os listeners dos 15 forms foram removidos em _releaseEvents()
+-- Todos os listeners dos 16 forms foram removidos em _releaseEvents()
 local remainingListeners = 0
 for _, _ in pairs(activeListeners) do remainingListeners = remainingListeners + 1 end
-assert(remainingListeners == 0, "Nenhum listener deve sobrar ativo após destroy() das 15 fichas, restaram: " .. tostring(remainingListeners))
+assert(remainingListeners == 0, "Nenhum listener deve sobrar ativo após destroy() dos 16 forms, restaram: " .. tostring(remainingListeners))
 assert(#createdHandles == #destroyedHandles, "Todos os handles criados devem ser destruídos: " .. #createdHandles .. " vs " .. #destroyedHandles)
 """
-        run_lua_in_isolated_state(dll, lua_harness, "@test_09_rpk_forms_runtime_15")
+        run_lua_in_isolated_state(dll, lua_harness, "@test_09_rpk_forms_runtime_16")
     finally:
         shutil.rmtree(extract_dir, ignore_errors=True)
 
@@ -740,8 +852,11 @@ def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL, rpk_path: str) -> No
             for n in names
             if n.endswith(".lua") and not n.startswith("sdk/") and not n.endswith(".lfm.lua")
         )
-        assert boot_entries[0] == "Adapter/firecast_bridge.lua", (
-            f"Adapter/firecast_bridge.lua deve ser o 1º script no auto-boot alfabético, obteve: {boot_entries[0]}"
+        assert boot_entries[0] == "Adapter/coterie_dock_bridge.lua", (
+            f"Adapter/coterie_dock_bridge.lua deve ser o 1º script no auto-boot alfabético, obteve: {boot_entries[0]}"
+        )
+        assert boot_entries[1] == "Adapter/firecast_bridge.lua", (
+            f"Adapter/firecast_bridge.lua deve ser o 2º script no auto-boot alfabético, obteve: {boot_entries[1]}"
         )
         assert boot_entries[-1] == "v20_loader.lua", (
             f"v20_loader.lua deve ser o último script no auto-boot alfabético, obteve: {boot_entries[-1]}"
@@ -775,6 +890,7 @@ local vhdSearchPaths = {{ "" }}
 local vhdLoaded = {{}}
 local registeredForms = {{}}
 local registeredDataTypes = {{}}
+local registeredSpecialForms = {{}}
 local allControls = {{}}
 local createdHandles = {{}}
 local destroyedHandles = {{}}
@@ -860,6 +976,7 @@ _G.Dialogs = {{ showMessage = _G.showMessage }}
 _G.Firecast = {{
     registrarForm = function(spec) registeredForms[spec.name] = spec end,
     registrarDataType = function(spec) registeredDataTypes[spec.dataType] = spec end,
+    registrarSpecialForm = function(spec) registeredSpecialForms[spec.name] = spec end,
     interpretarRolagem = function(expr)
         return {{ expr = expr, ops = {{ {{ tipo = "dado", resultados = {{ 10, 8 }} }} }}, rolarLocalmente = function() end }}
     end,
@@ -928,7 +1045,7 @@ end
 -- Confirma que v20_shim.dlua NÃO foi auto-executado antes do boot
 assert(vhdLoaded["v20_shim.dlua"] == nil and _G.__v20_loader_ready == nil)
 
--- Auto-boot estrito em ordem alfabética (Adapter/firecast_bridge.lua é o #1!)
+-- Auto-boot estrito em ordem alfabética (Adapter/coterie_dock_bridge.lua é o #1!)
 for idx, relEntry in ipairs(BOOT_ENTRIES) do
     assert(not relEntry:match("%.dlua$"), ".dlua proibido no auto-boot: " .. relEntry)
     local f = assert(io.open(RPK_ROOT .. "/" .. relEntry, "rb"), "Arquivo ausente: " .. relEntry)
@@ -938,23 +1055,31 @@ for idx, relEntry in ipairs(BOOT_ENTRIES) do
     if not chunk then error(loadErr, 0) end
     chunk()
     if idx == 1 then
-        -- Logo após Adapter/firecast_bridge.lua (#1), v20_shim.dlua já deve ter sido carregado via require!
+        -- Logo após Adapter/coterie_dock_bridge.lua (#1), v20_shim.dlua, V20, V20Bridge e V20CoterieDockBridge já devem estar carregados!
         assert(vhdLoaded["v20_shim.dlua"] ~= nil, "v20_shim.dlua deve ser carregado sob demanda via require no 1º script!")
         assert(_G.__v20_loader_ready == true, "__v20_loader_ready deve estar ativo já no 1º script do boot!")
-        assert(type(_G.V20) == "table" and type(_G.V20Bridge) == "table")
+        assert(type(_G.V20) == "table" and type(_G.V20Bridge) == "table" and type(_G.V20CoterieDockBridge) == "table")
         assert(type(_G.V20.ClanWeaknesses) == "table" and type(_G.V20.BloodMagicEngine) == "table")
         assert(type(_G.V20.CombatManeuvers) == "table" and type(_G.V20.CoterieTracker) == "table")
     end
 end
 
--- Agora carrega, instancia, vincula [TESTE_E2E], dispara eventos e destrói em ordem reversa TODOS os 15 forms!
-assert(#EXPECTED_FORMS == 15)
+-- Agora carrega, instancia, vincula [TESTE_E2E], dispara eventos e destrói em ordem reversa TODOS os 16 forms!
+assert(#EXPECTED_FORMS == 16)
 for _, fInfo in ipairs(EXPECTED_FORMS) do
     local spec = require(fInfo.lfmLua)
     assert(registeredForms[fInfo.formName] == spec and registeredDataTypes[fInfo.dataType] == spec)
+    if fInfo.formType == "tablesDock" then
+        assert(registeredSpecialForms[fInfo.formName] == spec)
+    else
+        assert(registeredSpecialForms[fInfo.formName] == nil)
+    end
     local ctor = assert(_G["new" .. fInfo.formName], "Construtor ausente: new" .. fInfo.formName)
     local inst = ctor()
-    if fInfo.cid ~= "mortal" then
+    if fInfo.cid == "coterie_dock" then
+        local sd = {{ npc_init_nome = "[TESTE_E2E] NPC Boot", npc_init_mod = 3 }}
+        inst:setNodeObject(sd)
+    elseif fInfo.cid ~= "mortal" then
         local sb = {{ nome = "[TESTE_E2E] Boot " .. fInfo.formName, geracao_base = 12 }}
         inst:setNodeObject(sb)
         assert(sb.cla_id == fInfo.cid and sb.geracao == 12 and sb.sangue_max == 11)
@@ -969,7 +1094,11 @@ for _, fInfo in ipairs(EXPECTED_FORMS) do
         if lRec.ctx == inst then table.insert(ids, id) end
     end
     table.sort(ids)
-    assert(#ids > 100, "Esperados >100 listeners em " .. fInfo.formName)
+    if fInfo.cid == "coterie_dock" then
+        assert(#ids >= 25, "Esperados >=25 listeners em " .. fInfo.formName)
+    else
+        assert(#ids > 100, "Esperados >100 listeners em " .. fInfo.formName)
+    end
     for _, id in ipairs(ids) do
         local lRec = activeListeners[id]
         if lRec ~= nil then lRec.fn(lRec.ctrl) end
@@ -981,10 +1110,10 @@ end
 
 local rem = 0
 for _, _ in pairs(activeListeners) do rem = rem + 1 end
-assert(rem == 0, "Listeners residuais após destroy dos 15 forms no auto-boot: " .. tostring(rem))
+assert(rem == 0, "Listeners residuais após destroy dos 16 forms no auto-boot: " .. tostring(rem))
 assert(#createdHandles == #destroyedHandles, "Handles vazados no auto-boot: " .. #createdHandles .. " vs " .. #destroyedHandles)
 """
-        run_lua_in_isolated_state(dll, lua_autoboot, "@test_09_vhd_sorted_autoboot_15")
+        run_lua_in_isolated_state(dll, lua_autoboot, "@test_09_vhd_sorted_autoboot_16")
     finally:
         shutil.rmtree(extract_dir, ignore_errors=True)
 
@@ -1007,7 +1136,7 @@ def main() -> None:
                 "Vampiro_V20_Suite.rdk deve ser cópia idêntica do .rpk"
             )
 
-        expected_dt_ids = [s[2] for s in EXPECTED_SHEETS]
+        expected_dt_ids = [s[2] for s in EXPECTED_ALL_FORMS]
 
         with zipfile.ZipFile(rpk_path, "r") as zf:
             names = set(zf.namelist())
@@ -1036,21 +1165,23 @@ def main() -> None:
             actual_version = mod_root.findtext("version")
             assert actual_version == EXPECTED_VERSION, (
                 f"Versão esperada {EXPECTED_VERSION!r} em module.xml, obteve {actual_version!r} "
-                f"(dataTypes empacotados: {len(dt_ids)}/15 -> {dt_ids})"
+                f"(dataTypes empacotados: {len(dt_ids)}/16 -> {dt_ids})"
             )
-            assert dt_ids == expected_dt_ids, f"Lista ./dataTypes/dataType inesperada ({len(dt_ids)}/15): {dt_ids}"
+            assert dt_ids == expected_dt_ids, f"Lista ./dataTypes/dataType inesperada ({len(dt_ids)}/16): {dt_ids}"
             assert assembled_ids == expected_dt_ids, (
-                f"Lista ./assembledFeatures/dataTypes/dataType inesperada ({len(assembled_ids)}/15): {assembled_ids}"
+                f"Lista ./assembledFeatures/dataTypes/dataType inesperada ({len(assembled_ids)}/16): {assembled_ids}"
             )
 
-            for idx, (_, exp_lfm, exp_dt, exp_form, exp_title) in enumerate(EXPECTED_SHEETS):
+            for idx, (_, exp_lfm, exp_dt, exp_form, exp_title, exp_ftype) in enumerate(EXPECTED_ALL_FORMS):
                 dt_node = dt_els[idx]
                 asm_node = asm_els[idx]
                 assert dt_node.attrib.get("name") == exp_form
                 assert dt_node.attrib.get("lfmFile") == exp_lfm
                 assert dt_node.attrib.get("title") == exp_title
                 assert asm_node.attrib.get("id") == exp_dt
-                assert asm_node.attrib.get("formType") == "sheetTemplate"
+                assert asm_node.attrib.get("formType") == exp_ftype, (
+                    f"formType inesperado para {exp_dt}: {asm_node.attrib.get('formType')} vs {exp_ftype}"
+                )
                 assert asm_node.attrib.get("lfmFile") == exp_lfm
                 assert asm_node.attrib.get("formName") == exp_form
                 asm_info = asm_node.find("info")
@@ -1063,8 +1194,8 @@ def main() -> None:
                 root_val = (mod_root.findtext(meta_tag) or "").strip()
                 assert info_val and info_val == root_val, f"Tag <{meta_tag}> inconsistente no module.xml assemblado"
 
-            # Garante presença de todas as 30 entradas de fichas (15 .lfm + 15 .lfm.lua)
-            for _, exp_lfm, _, _, _ in EXPECTED_SHEETS:
+            # Garante presença de todas as 32 entradas de formulários (16 .lfm + 16 .lfm.lua)
+            for _, exp_lfm, _, _, _, _ in EXPECTED_ALL_FORMS:
                 assert exp_lfm in names, f"LFM ausente no .rpk: {exp_lfm}"
                 assert f"{exp_lfm}.lua" in names, f"LFM compilado ausente no .rpk: {exp_lfm}.lua"
 
@@ -1078,6 +1209,7 @@ def main() -> None:
                 "Core/coterie_tracker.lua",
                 "Core/v20_init.lua",
                 "Adapter/firecast_bridge.lua",
+                "Adapter/coterie_dock_bridge.lua",
             ):
                 assert req_mod in names, f"Módulo obrigatório ausente no .rpk: {req_mod}"
 
@@ -1092,7 +1224,7 @@ def main() -> None:
                 + zf.read("sdk/rrpgObjs.lua").decode("utf-8", errors="ignore")
             )
 
-            for _, exp_lfm, exp_dt, exp_form, _ in EXPECTED_SHEETS:
+            for _, exp_lfm, exp_dt, exp_form, _, exp_ftype in EXPECTED_ALL_FORMS:
                 compiled_lfm = f"{exp_lfm}.lua"
                 code = zf.read(compiled_lfm).decode("utf-8")
                 assert 'require("v20_loader.lua");' in code
@@ -1100,7 +1232,12 @@ def main() -> None:
                 assert 'rawget(obj, "setNodeObject")' not in code
                 assert 'cacheMode = "none"' in code
                 assert "if self._onBeforeDestroy ~= nil then self:_onBeforeDestroy(); end;" in code
-                assert "registrarSpecialForm" not in code
+                if exp_ftype == "tablesDock":
+                    assert f"Firecast.registrarSpecialForm(_{exp_form});" in code, (
+                        f"tablesDock {compiled_lfm} deve conter Firecast.registrarSpecialForm(_{exp_form});"
+                    )
+                else:
+                    assert "registrarSpecialForm" not in code
                 assert f'obj:setDataType("{exp_dt}");' in code
                 assert f'obj:setName("{exp_form}");' in code
 
@@ -1125,6 +1262,22 @@ def main() -> None:
                     assert first_line.startswith('require("v20_shim.dlua"); '), (
                         f'{entry} no .rpk deve iniciar com require("v20_shim.dlua"); na linha 1'
                     )
+
+        # Inspeciona em modo somente-leitura os binários rastreados em dist/ (sem mutá-los!)
+        dist_rpk = os.path.join(ROOT, "dist", "Vampiro_V20_Suite.rpk")
+        dist_rdk = os.path.join(ROOT, "dist", "Vampiro_V20_Suite.rdk")
+        assert os.path.exists(dist_rpk) and os.path.exists(dist_rdk), "Binários dist/Vampiro_V20_Suite.{rpk,rdk} ausentes"
+        with open(dist_rpk, "rb") as df1, open(dist_rdk, "rb") as df2:
+            assert hashlib.sha256(df1.read()).hexdigest() == hashlib.sha256(df2.read()).hexdigest(), (
+                "dist/Vampiro_V20_Suite.rdk deve ser idêntico ao dist/Vampiro_V20_Suite.rpk"
+            )
+        with zipfile.ZipFile(dist_rpk, "r") as dzf:
+            d_mod_root = ET.fromstring(dzf.read("module.xml").decode("utf-8"))
+            assert d_mod_root.findtext("version") == EXPECTED_VERSION, (
+                f"dist/Vampiro_V20_Suite.rpk desatualizado: versão {d_mod_root.findtext('version')!r} != {EXPECTED_VERSION!r}"
+            )
+            d_dt_ids = [(el.text or "").strip() for el in d_mod_root.findall("./dataTypes/dataType")]
+            assert d_dt_ids == expected_dt_ids, f"dist/Vampiro_V20_Suite.rpk com dataTypes inesperados: {d_dt_ids}"
 
         verify_rpk_vhd_sorted_autoboot_round1(dll, rpk_path)
         verify_xml_escaping_pf4()

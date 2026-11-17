@@ -2,3 +2,4 @@
 require("v20_shim.dlua")
 require("Core.v20_init")
 require("Adapter.firecast_bridge")
+require("Adapter.coterie_dock_bridge")

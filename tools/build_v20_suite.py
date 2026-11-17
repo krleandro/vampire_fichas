@@ -37,7 +37,10 @@ CLAN_FORM_FILES = [
     "Sheets/frmTzimisce.lfm",
     "Sheets/frmCaitiff.lfm",
 ]
-LFM_ENTRIES = CLAN_FORM_FILES + ["Sheets/frmMortal.lfm"]
+LFM_ENTRIES = CLAN_FORM_FILES + [
+    "Sheets/frmMortal.lfm",
+    "Sheets/frmV20CoterieDock.lfm",
+]
 
 
 def _xml_text(val: str) -> str:
@@ -239,6 +242,10 @@ def main(argv: list[str] | None = None) -> None:
         )
         subprocess.run(
             [sys.executable, os.path.join(ROOT, "Templates", "generate_mortal_lfm.py")],
+            check=True,
+        )
+        subprocess.run(
+            [sys.executable, os.path.join(ROOT, "Templates", "generate_coterie_dock_lfm.py")],
             check=True,
         )
 

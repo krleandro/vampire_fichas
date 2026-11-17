@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form name="frmV20CoterieDock" formType="tablesDock" dataType="br.com.v20.CoterieDock" title="Vampiro V20 - Painel da Coterie &amp; Iniciativa" width="340" height="580" theme="dark">
+
+    <script>
+        <![CDATA[
+        local CoterieDockBridge = _G.V20CoterieDockBridge or require("Adapter.coterie_dock_bridge")
+        self._onBeforeDestroy = function(fObj)
+            if CoterieDockBridge ~= nil and CoterieDockBridge.disconnectDock ~= nil then
+                CoterieDockBridge.disconnectDock(fObj)
+            end
+        end
+        ]]>
+    </script>
+
+    <rectangle align="client" color="#0D0D11">
+        <tabControl name="pgcDock" align="client" margins="{left=4, right=4, top=4, bottom=4}">
+            <tab name="tabCenaIniciativa" title="1. Cena &amp; Iniciativa">
+                <scrollBox align="client" padding="{left=6, right=6, top=6, bottom=6}">
+                    <layout align="top" height="630">
+                        <rectangle align="top" height="66" color="#16161E" strokeColor="#9E1B24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <layout align="top" height="24">
+                                <label name="lblCenaTitulo" align="client" text="Cena Noturna" fontColor="#D9B45B" fontSize="12" fontStyle="bold" horzTextAlign="leading"/>
+                                <button name="btnRefreshDock" align="right" width="68" text="Atualizar" fontSize="10" margins="{left=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.refreshDock(self) end</event>
+                                </button>
+                            </layout>
+                            <label name="lblRodadaInfo" align="client" text="Rodada 1 • DECLARAÇÃO (Menor -&gt; Maior)" fontColor="#9E9890" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=4}"/>
+                        </rectangle>
+
+                        <rectangle name="layNpcQuickControls" align="top" height="78" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <layout align="top" height="26">
+                                <edit name="edtNpcInitNome" align="left" width="124" field="npc_init_nome" textPrompt="Nome NPC" fontColor="#ECE8E1" fontSize="11" margins="{right=4}"/>
+                                <label align="left" width="28" text="Mod:" fontColor="#9E9890" fontSize="10" horzTextAlign="trailing" margins="{right=2}"/>
+                                <edit name="edtNpcInitMod" align="left" width="34" field="npc_init_mod" type="number" fontColor="#D9B45B" fontSize="11" horzTextAlign="center" margins="{right=4}"/>
+                                <checkBox name="chkNpcInitOculto" align="client" field="npc_init_oculto" text="Oculto" fontColor="#E05A5A" fontSize="10"/>
+                            </layout>
+                            <layout align="top" height="28" margins="{top=6}">
+                                <button name="btnAddNpcInit" align="left" width="90" text="+ Rolar NPC" fontSize="10" fontStyle="bold" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.addQuickNpcInitiative(self) end</event>
+                                </button>
+                                <button name="btnTogglePhase" align="left" width="106" text="Alternar Fase" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.toggleCombatPhase(self) end</event>
+                                </button>
+                                <button name="btnClearInit" align="client" text="Limpar" fontSize="10">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.clearInitiative(self) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+
+                        <rectangle align="top" height="244" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=8, bottom=8}" margins="{bottom=6}">
+                            <label align="top" height="20" text="ORDEM DE INICIATIVA V20" fontColor="#9E1B24" fontSize="11" fontStyle="bold" horzTextAlign="leading" margins="{bottom=4}"/>
+                            <label name="lblInitRow1" align="top" height="20" text="1. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow2" align="top" height="20" text="2. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow3" align="top" height="20" text="3. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow4" align="top" height="20" text="4. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow5" align="top" height="20" text="5. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow6" align="top" height="20" text="6. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow7" align="top" height="20" text="7. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow8" align="top" height="20" text="8. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow9" align="top" height="20" text="9. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblInitRow10" align="top" height="20" text="10. —" fontColor="#ECE8E1" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                        </rectangle>
+
+                        <rectangle align="top" height="206" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=8, bottom=8}">
+                            <label align="top" height="20" text="CONDIÇÃO APARENTE DA COTERIE" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading" margins="{bottom=4}"/>
+                            <label name="lblPubSlot1" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot2" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot3" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot4" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot5" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot6" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot7" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                            <label name="lblPubSlot8" align="top" height="20" text="• —" fontColor="#9E9890" fontSize="11" horzTextAlign="leading" wordWrap="false"/>
+                        </rectangle>
+                    </layout>
+                </scrollBox>
+            </tab>
+            <tab name="tabNarradorCoterie" title="2. Narrador (Coterie)" visible="false">
+                <scrollBox align="client" padding="{left=6, right=6, top=6, bottom=6}">
+                    <layout align="top" height="1060">
+                        <rectangle align="top" height="104" color="#16161E" strokeColor="#9E1B24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label align="top" height="18" text="COMANDOS EM LOTE DO NARRADOR" fontColor="#9E1B24" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <layout align="top" height="28" margins="{top=4}">
+                                <button name="btnBatchAwaken" align="left" width="142" text="Despertar Coterie" fontSize="10" fontStyle="bold" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.batchAwakenNightly(self) end</event>
+                                </button>
+                                <button name="btnBatchNewTurn" align="client" text="+1 Rodada / Turno" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.batchNewTurn(self) end</event>
+                                </button>
+                            </layout>
+                            <layout align="top" height="28" margins="{top=4}">
+                                <button name="btnBatchEndScene" align="client" text="Encerrar Cena (Limpar Buffs &amp; Agarrão)" fontSize="10">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.batchEndScene(self) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+
+                        <rectangle align="top" height="36" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=6, right=6, top=4, bottom=4}" margins="{bottom=6}">
+                            <button name="btnStPrevPage" align="left" width="58" text="&lt; Ant." fontSize="10">
+                                <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.changePage(self, -1) end</event>
+                            </button>
+                            <button name="btnStNextPage" align="right" width="58" text="Próx. &gt;" fontSize="10">
+                                <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.changePage(self, 1) end</event>
+                            </button>
+                            <label name="lblStPageInfo" align="client" text="Página 1/1 (0 fichas)" fontColor="#9E9890" fontSize="10" fontStyle="bold" horzTextAlign="center"/>
+                        </rectangle>
+
+                        <rectangle name="rectStCard1" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle1" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats1" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags1" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus1" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 1, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus1" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 1, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp1" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 1) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard2" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle2" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats2" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags2" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus2" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 2, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus2" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 2, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp2" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 2) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard3" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle3" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats3" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags3" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus3" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 3, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus3" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 3, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp3" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 3) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard4" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle4" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats4" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags4" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus4" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 4, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus4" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 4, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp4" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 4) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard5" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle5" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats5" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags5" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus5" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 5, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus5" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 5, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp5" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 5) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard6" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle6" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats6" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags6" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus6" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 6, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus6" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 6, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp6" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 6) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard7" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle7" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats7" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags7" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus7" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 7, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus7" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 7, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp7" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 7) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                        <rectangle name="rectStCard8" align="top" height="108" visible="false" color="#1D1D28" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=6, bottom=6}" margins="{bottom=6}">
+                            <label name="lblStCardTitle8" align="top" height="18" text="—" fontColor="#D9B45B" fontSize="11" fontStyle="bold" horzTextAlign="leading"/>
+                            <label name="lblStCardStats8" align="top" height="32" text="" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="leading" margins="{top=2}"/>
+                            <label name="lblStCardFlags8" align="top" height="16" text="" wordWrap="true" fontColor="#E05A5A" fontSize="10" fontStyle="bold" horzTextAlign="leading" margins="{top=2}"/>
+                            <layout align="top" height="24" margins="{top=4}">
+                                <button name="btnStBloodMinus8" align="left" width="66" text="-1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 8, -1) end</event>
+                                </button>
+                                <button name="btnStBloodPlus8" align="left" width="66" text="+1 Vitae" fontSize="10" margins="{right=4}">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.adjustCardBlood(self, 8, 1) end</event>
+                                </button>
+                                <button name="btnStApproveXp8" align="client" visible="false" text="Aprovar XP" fontSize="10" fontStyle="bold">
+                                    <event name="onClick">if CoterieDockBridge ~= nil then CoterieDockBridge.approveCardXP(self, 8) end</event>
+                                </button>
+                            </layout>
+                        </rectangle>
+                    </layout>
+                </scrollBox>
+            </tab>
+        </tabControl>
+    </rectangle>
+
+    <dataLink fields="{'npc_init_nome', 'npc_init_mod', 'npc_init_oculto'}" defaultValues="{'NPC', '4', 'false'}"></dataLink>
+    <event name="OnShow">if CoterieDockBridge ~= nil then CoterieDockBridge.connectDock(self) end</event>
+    <event name="OnHide">if CoterieDockBridge ~= nil then CoterieDockBridge.disconnectDock(self) end</event>
+</form>
