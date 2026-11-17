@@ -1555,12 +1555,24 @@
             </tab>
             <tab name="tabSobreSuite" title="9. Sobre">
                 <scrollBox align="client" padding="{left=10, right=10, top=10, bottom=10}">
-                    <layout align="top" height="430">
+                    <layout align="top" height="525">
                         <rectangle name="crdSobreIdentificacao" align="top" height="176" color="#16161E" strokeColor="#3A3F5E" strokeSize="1" xradius="6" yradius="6" padding="{left=14, right=14, top=14, bottom=14}" margins="{bottom=10}">
                             <label name="lblSobreSelo" align="top" height="20" text="IDENTIFICAÇÃO DA SUÍTE • RRPG FIRECAST SDK 3.7b" fontColor="#9E9890" fontSize="10" fontStyle="bold" horzTextAlign="center"/>
                             <label name="lblSobreTituloPrincipal" align="top" height="44" text="Suite de plugins para Vampiro - A máscara V 20" wordWrap="true" fontColor="#D9B45B" fontSize="17" fontStyle="bold" horzTextAlign="center" margins="{top=6}"/>
                             <label name="lblSobreAutoria" align="top" height="30" text="Desenvolvida por Mestre Carlos (krmirim)" wordWrap="true" fontColor="#3A3F5E" fontSize="14" fontStyle="bold" horzTextAlign="center" margins="{top=4}"/>
-                            <label name="lblSobreVersaoModelo" align="top" height="28" text="Versão 1.0.1 • Clã Lasombra (br.com.v20.Lasombra)" wordWrap="true" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{top=6}"/>
+                            <label name="lblSobreVersaoModelo" align="top" height="28" text="Versão 1.0.2 • Clã Lasombra (br.com.v20.Lasombra)" wordWrap="true" fontColor="#ECE8E1" fontSize="11" horzTextAlign="center" margins="{top=6}"/>
+                        </rectangle>
+
+                        <rectangle name="crdSobreAtualizador" align="top" height="86" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=14, right=14, top=8, bottom=8}" margins="{bottom=10}">
+                            <label name="lblUpdateStatus" align="top" height="22" text="Versão instalada: v1.0.2 • Repositório: github.com/krleandro/vampire_fichas" wordWrap="true" fontColor="#D9B45B" fontSize="10" fontStyle="bold" horzTextAlign="leading"/>
+                            <layout align="top" height="30" margins="{top=6}">
+                                <button name="btnVerificarAtualizacao" align="left" width="215" text="Verificar / Atualizar" fontSize="10" fontStyle="bold" margins="{right=6}">
+                                    <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkAndInstall(self, { manual = true }) end</event>
+                                </button>
+                                <button name="btnAbrirGithub" align="client" text="Abrir GitHub Oficial" fontSize="10">
+                                    <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.openRepository() end</event>
+                                </button>
+                            </layout>
                         </rectangle>
 
                         <rectangle name="crdSobreModulos" align="top" height="210" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=14, right=14, top=12, bottom=12}">
@@ -1584,4 +1596,5 @@
     <dataLink fields="{'hab_etiqueta', 'hab_armas_fogo', 'hab_arrombamento', 'hab_armas_brancas', 'hab_performance', 'hab_furtividade', 'hab_sobrevivencia', 'hab_academicos', 'hab_computador', 'hab_financas', 'hab_investigacao', 'hab_direito', 'hab_medicina', 'hab_ocultismo', 'hab_politica', 'hab_ciencias', 'hab_tecnologia', 'bg_allies', 'bg_alternate_identity', 'bg_contacts', 'bg_domain', 'bg_fame', 'bg_generation', 'bg_herd', 'bg_influence', 'bg_mentor', 'bg_resources', 'bg_retainers', 'bg_rituals', 'bg_status', 'mf_slot1_ativo', 'mf_slot1_id'}" defaultValues="{'0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'true', ''}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarPermissoesModo(self); end</event></dataLink>
     <dataLink fields="{'mf_slot1_nome', 'mf_slot1_tipo', 'mf_slot1_pontos', 'mf_slot2_ativo', 'mf_slot2_id', 'mf_slot2_nome', 'mf_slot2_tipo', 'mf_slot2_pontos', 'mf_slot3_ativo', 'mf_slot3_id', 'mf_slot3_nome', 'mf_slot3_tipo', 'mf_slot3_pontos', 'mf_slot4_ativo', 'mf_slot4_id', 'mf_slot4_nome', 'mf_slot4_tipo', 'mf_slot4_pontos', 'mf_slot5_ativo', 'mf_slot5_id', 'mf_slot5_nome', 'mf_slot5_tipo', 'mf_slot5_pontos', 'mf_slot6_ativo', 'mf_slot6_id', 'mf_slot6_nome', 'mf_slot6_tipo', 'mf_slot6_pontos', 'cmb_manobra_id', 'cmb_arma_slot', 'cmb_acoes_normais', 'cmb_acao_ordem'}" defaultValues="{'', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'true', '', '', 'qualidade', '0', 'strike', '1', '1', '1'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarPermissoesModo(self); end</event></dataLink>
     <dataLink fields="{'cmb_menor_parada', 'cmb_acao_rapidez', 'cmb_mira_turnos', 'cmb_tem_luneta', 'cmb_alvo_localizado', 'cmb_cobertura', 'cmb_posicao', 'cmb_defesa_alvo_sucessos', 'cmb_forca_alvo', 'cmb_defesas_feitas_turno', 'em_agarrao', 'armadura_penalidade', 'rapidez_acoes_extras', 'cmb_manobra_resumo', 'cmb_dano_pendente_ativo', 'cmb_dano_pendente_parada', 'cmb_dano_pendente_auto', 'cmb_dano_pendente_tipo', 'cmb_dano_pendente_estaca', 'cmb_dano_pendente_cabeca', 'cmb_dano_pendente_manobra', 'cmb_dano_pendente_resumo'}" defaultValues="{'0', 'false', '0', 'false', 'nenhum', 'nenhuma', 'frontal', '0', '2', '0', 'false', '0', '0', 'Soco (V20, p. 276) — Manobra padrão desarmada (Força Contundente; V20, p. 276).', 'false', '0', '0', 'bashing', 'false', 'false', '', 'Nenhum dano encadeado pendente.'}"><event name="onChange">if sheet ~= nil and V20Bridge ~= nil then V20Bridge.syncDerivedFields(sheet); atualizarPermissoesModo(self); end</event></dataLink>
+    <event name="OnShow">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
 </form>

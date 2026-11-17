@@ -188,6 +188,9 @@ def main() -> None:
         assert "Desenvolvida por Mestre Carlos (krmirim)" in sobre_texts, (
             f"Crédito do autor ausente em tabSobreSuite ({rel_p})"
         )
+        assert "btnVerificarAtualizacao" in seen_ctrl_names and "btnAbrirGithub" in seen_ctrl_names, (
+            f"Botões do atualizador automático ausentes em tabSobreSuite ({rel_p})"
+        )
         expected_vis = "true" if cid in ("tremere", "giovanni") else "false"
         assert bm_tabs[0].attrib.get("visible") == expected_vis, (
             f"tabMagiaSangue em {rel_p} deve iniciar visible='{expected_vis}', obteve '{bm_tabs[0].attrib.get('visible')}'"

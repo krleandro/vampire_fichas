@@ -1,5 +1,6 @@
 -- v20_loader.lua (executado automaticamente no boot do plugin e requerido pelos .lfm.lua)
 require("v20_shim.dlua")
 require("Core.v20_init")
+require("Adapter.auto_updater")
 require("Adapter.firecast_bridge")
 require("Adapter.coterie_dock_bridge")

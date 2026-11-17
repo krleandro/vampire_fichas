@@ -925,8 +925,10 @@ def suite_credits_tab_xml(
     author_sz = "12" if compact else "14"
     meta_sz = "10" if compact else "11"
     hero_h = "156" if compact else "176"
+    upd_h = "96" if compact else "86"
     body_h = "230" if compact else "210"
-    total_h = "420" if compact else "430"
+    total_h = "525" if compact else "525"
+    btn_upd_w = "152" if compact else "215"
 
     return f"""            <tab name="tabSobreSuite" title="{xml_esc(tab_title)}">
                 <scrollBox align="client" padding="{{left=10, right=10, top=10, bottom=10}}">
@@ -935,7 +937,19 @@ def suite_credits_tab_xml(
                             <label name="lblSobreSelo" align="top" height="20" text="IDENTIFICAÇÃO DA SUÍTE • RRPG FIRECAST SDK 3.7b" fontColor="{TEXT_MUTED}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("center")}"/>
                             <label name="lblSobreTituloPrincipal" align="top" height="44" text="Suite de plugins para Vampiro - A máscara V 20" wordWrap="true" fontColor="{TEXT_GOLD}" fontSize="{title_sz}" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
                             <label name="lblSobreAutoria" align="top" height="30" text="Desenvolvida por Mestre Carlos (krmirim)" wordWrap="true" fontColor="{accent_color}" fontSize="{author_sz}" fontStyle="bold" horzTextAlign="{assert_align("center")}" margins="{{top=4}}"/>
-                            <label name="lblSobreVersaoModelo" align="top" height="28" text="{xml_esc(f'Versão 1.0.1 • {model_label}')}" wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
+                            <label name="lblSobreVersaoModelo" align="top" height="28" text="{xml_esc(f'Versão 1.0.2 • {model_label}')}" wordWrap="true" fontColor="{TEXT_MAIN}" fontSize="{meta_sz}" horzTextAlign="{assert_align("center")}" margins="{{top=6}}"/>
+                        </rectangle>
+
+                        <rectangle name="crdSobreAtualizador" align="top" height="{upd_h}" color="{BG_PANEL}" strokeColor="{border_color}" strokeSize="1" xradius="6" yradius="6" padding="{{left={pad}, right={pad}, top=8, bottom=8}}" margins="{{bottom=10}}">
+                            <label name="lblUpdateStatus" align="top" height="22" text="Versão instalada: v1.0.2 • Repositório: github.com/krleandro/vampire_fichas" wordWrap="true" fontColor="{TEXT_GOLD}" fontSize="10" fontStyle="bold" horzTextAlign="{assert_align("leading")}"/>
+                            <layout align="top" height="30" margins="{{top=6}}">
+                                <button name="btnVerificarAtualizacao" align="left" width="{btn_upd_w}" text="Verificar / Atualizar" fontSize="10" fontStyle="bold" margins="{{right=6}}">
+                                    <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkAndInstall(self, {{ manual = true }}) end</event>
+                                </button>
+                                <button name="btnAbrirGithub" align="client" text="Abrir GitHub Oficial" fontSize="10">
+                                    <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.openRepository() end</event>
+                                </button>
+                            </layout>
                         </rectangle>
 
                         <rectangle name="crdSobreModulos" align="top" height="{body_h}" color="{BG_PANEL}" strokeColor="{border_color}" strokeSize="1" xradius="6" yradius="6" padding="{{left={pad}, right={pad}, top=12, bottom=12}}">

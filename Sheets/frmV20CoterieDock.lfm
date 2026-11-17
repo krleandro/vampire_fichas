@@ -241,12 +241,24 @@
             </tab>
             <tab name="tabSobreSuite" title="Sobre">
                 <scrollBox align="client" padding="{left=10, right=10, top=10, bottom=10}">
-                    <layout align="top" height="420">
+                    <layout align="top" height="525">
                         <rectangle name="crdSobreIdentificacao" align="top" height="156" color="#16161E" strokeColor="#9E1B24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=14, bottom=14}" margins="{bottom=10}">
                             <label name="lblSobreSelo" align="top" height="20" text="IDENTIFICAÇÃO DA SUÍTE • RRPG FIRECAST SDK 3.7b" fontColor="#9E9890" fontSize="10" fontStyle="bold" horzTextAlign="center"/>
                             <label name="lblSobreTituloPrincipal" align="top" height="44" text="Suite de plugins para Vampiro - A máscara V 20" wordWrap="true" fontColor="#D9B45B" fontSize="13" fontStyle="bold" horzTextAlign="center" margins="{top=6}"/>
                             <label name="lblSobreAutoria" align="top" height="30" text="Desenvolvida por Mestre Carlos (krmirim)" wordWrap="true" fontColor="#9E1B24" fontSize="12" fontStyle="bold" horzTextAlign="center" margins="{top=4}"/>
-                            <label name="lblSobreVersaoModelo" align="top" height="28" text="Versão 1.0.1 • Painel Coterie &amp; Iniciativa (br.com.v20.CoterieDock)" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="center" margins="{top=6}"/>
+                            <label name="lblSobreVersaoModelo" align="top" height="28" text="Versão 1.0.2 • Painel Coterie &amp; Iniciativa (br.com.v20.CoterieDock)" wordWrap="true" fontColor="#ECE8E1" fontSize="10" horzTextAlign="center" margins="{top=6}"/>
+                        </rectangle>
+
+                        <rectangle name="crdSobreAtualizador" align="top" height="96" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=8, bottom=8}" margins="{bottom=10}">
+                            <label name="lblUpdateStatus" align="top" height="22" text="Versão instalada: v1.0.2 • Repositório: github.com/krleandro/vampire_fichas" wordWrap="true" fontColor="#D9B45B" fontSize="10" fontStyle="bold" horzTextAlign="leading"/>
+                            <layout align="top" height="30" margins="{top=6}">
+                                <button name="btnVerificarAtualizacao" align="left" width="152" text="Verificar / Atualizar" fontSize="10" fontStyle="bold" margins="{right=6}">
+                                    <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkAndInstall(self, { manual = true }) end</event>
+                                </button>
+                                <button name="btnAbrirGithub" align="client" text="Abrir GitHub Oficial" fontSize="10">
+                                    <event name="onClick">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.openRepository() end</event>
+                                </button>
+                            </layout>
                         </rectangle>
 
                         <rectangle name="crdSobreModulos" align="top" height="230" color="#16161E" strokeColor="#3A1C24" strokeSize="1" xradius="6" yradius="6" padding="{left=8, right=8, top=12, bottom=12}">
@@ -264,6 +276,6 @@
 
     <dataLink fields="{'npc_init_nome', 'npc_init_mod', 'npc_init_oculto'}" defaultValues="{'NPC', '4', 'false'}"></dataLink>
     <event name="OnNodeReady">if CoterieDockBridge ~= nil and CoterieDockBridge.ensureIsolatedSheet ~= nil then CoterieDockBridge.ensureIsolatedSheet(self) end</event>
-    <event name="OnShow">if CoterieDockBridge ~= nil then CoterieDockBridge.connectDock(self) end</event>
+    <event name="OnShow">if CoterieDockBridge ~= nil then CoterieDockBridge.connectDock(self) end; if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
     <event name="OnHide">if CoterieDockBridge ~= nil then CoterieDockBridge.disconnectDock(self) end</event>
 </form>

@@ -19,7 +19,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BUILD_SCRIPT = os.path.join(ROOT, "tools", "build_v20_suite.py")
 DLL_PATH = r"C:\Users\Cliente\AppData\Local\Firecast\lua54x64.dll"
 
-EXPECTED_VERSION = "1.0.1"
+EXPECTED_VERSION = "1.0.2"
 
 EXPECTED_SHEETS: list[tuple[str, str, str, str, str]] = [
     ("brujah", "Sheets/frmBrujah.lfm", "br.com.v20.Brujah", "frmBrujah", "Vampiro V20 - Brujah"),
@@ -852,11 +852,14 @@ def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL, rpk_path: str) -> No
             for n in names
             if n.endswith(".lua") and not n.startswith("sdk/") and not n.endswith(".lfm.lua")
         )
-        assert boot_entries[0] == "Adapter/coterie_dock_bridge.lua", (
-            f"Adapter/coterie_dock_bridge.lua deve ser o 1º script no auto-boot alfabético, obteve: {boot_entries[0]}"
+        assert boot_entries[0] == "Adapter/auto_updater.lua", (
+            f"Adapter/auto_updater.lua deve ser o 1º script no auto-boot alfabético, obteve: {boot_entries[0]}"
         )
-        assert boot_entries[1] == "Adapter/firecast_bridge.lua", (
-            f"Adapter/firecast_bridge.lua deve ser o 2º script no auto-boot alfabético, obteve: {boot_entries[1]}"
+        assert boot_entries[1] == "Adapter/coterie_dock_bridge.lua", (
+            f"Adapter/coterie_dock_bridge.lua deve ser o 2º script no auto-boot alfabético, obteve: {boot_entries[1]}"
+        )
+        assert boot_entries[2] == "Adapter/firecast_bridge.lua", (
+            f"Adapter/firecast_bridge.lua deve ser o 3º script no auto-boot alfabético, obteve: {boot_entries[2]}"
         )
         assert boot_entries[-1] == "v20_loader.lua", (
             f"v20_loader.lua deve ser o último script no auto-boot alfabético, obteve: {boot_entries[-1]}"
@@ -866,6 +869,7 @@ def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL, rpk_path: str) -> No
             "Core/clan_weaknesses.lua",
             "Core/combat_maneuvers.lua",
             "Core/coterie_tracker.lua",
+            "Core/version_updater.lua",
             "Data/blood_magic_catalog.lua",
             "Data/combat_maneuvers_catalog.lua",
         ):
@@ -1055,12 +1059,15 @@ for idx, relEntry in ipairs(BOOT_ENTRIES) do
     if not chunk then error(loadErr, 0) end
     chunk()
     if idx == 1 then
-        -- Logo após Adapter/coterie_dock_bridge.lua (#1), v20_shim.dlua, V20, V20Bridge e V20CoterieDockBridge já devem estar carregados!
+        -- Logo após Adapter/auto_updater.lua (#1), v20_shim.dlua, V20 e V20AutoUpdater já devem estar carregados!
         assert(vhdLoaded["v20_shim.dlua"] ~= nil, "v20_shim.dlua deve ser carregado sob demanda via require no 1º script!")
         assert(_G.__v20_loader_ready == true, "__v20_loader_ready deve estar ativo já no 1º script do boot!")
-        assert(type(_G.V20) == "table" and type(_G.V20Bridge) == "table" and type(_G.V20CoterieDockBridge) == "table")
+        assert(type(_G.V20) == "table" and type(_G.V20.VersionUpdater) == "table" and type(_G.V20AutoUpdater) == "table")
         assert(type(_G.V20.ClanWeaknesses) == "table" and type(_G.V20.BloodMagicEngine) == "table")
         assert(type(_G.V20.CombatManeuvers) == "table" and type(_G.V20.CoterieTracker) == "table")
+    elseif idx == 2 then
+        -- Logo após Adapter/coterie_dock_bridge.lua (#2), V20Bridge e V20CoterieDockBridge já devem estar carregados!
+        assert(type(_G.V20Bridge) == "table" and type(_G.V20CoterieDockBridge) == "table")
     end
 end
 
@@ -1195,6 +1202,9 @@ def main() -> None:
                 assert info_val and info_val == root_val, f"Tag <{meta_tag}> inconsistente no module.xml assemblado"
             assert (info_el.findtext("author") or "").strip() == "Mestre Carlos (krmirim)", (
                 f"Autor inesperado em module.xml: {info_el.findtext('author')}"
+            )
+            assert (info_el.findtext("site") or "").strip() == "https://github.com/krleandro/vampire_fichas", (
+                f"Site inesperado em module.xml: {info_el.findtext('site')}"
             )
 
             # Garante presença de todas as 32 entradas de formulários (16 .lfm + 16 .lfm.lua)

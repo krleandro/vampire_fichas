@@ -21,6 +21,7 @@ V20 = V20 or {
     BloodMagicEngine   = require("Core.blood_magic_engine"),
     CombatManeuvers    = require("Core.combat_maneuvers"),
     CoterieTracker     = require("Core.coterie_tracker"),
+    VersionUpdater     = require("Core.version_updater"),
 }
 
 V20.ClanWeaknesses         = V20.ClanWeaknesses or require("Core.clan_weaknesses")
@@ -29,5 +30,6 @@ V20.BloodMagicEngine       = V20.BloodMagicEngine or require("Core.blood_magic_e
 V20.CombatManeuversCatalog = V20.CombatManeuversCatalog or require("Data.combat_maneuvers_catalog")
 V20.CombatManeuvers        = V20.CombatManeuvers or require("Core.combat_maneuvers")
 V20.CoterieTracker         = V20.CoterieTracker or require("Core.coterie_tracker")
+V20.VersionUpdater         = V20.VersionUpdater or require("Core.version_updater")
 
 return V20

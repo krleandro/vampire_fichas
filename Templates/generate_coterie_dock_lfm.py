@@ -181,7 +181,7 @@ def generate_coterie_dock_lfm() -> str:
 
 {datalinks}
     <event name="OnNodeReady">if CoterieDockBridge ~= nil and CoterieDockBridge.ensureIsolatedSheet ~= nil then CoterieDockBridge.ensureIsolatedSheet(self) end</event>
-    <event name="OnShow">if CoterieDockBridge ~= nil then CoterieDockBridge.connectDock(self) end</event>
+    <event name="OnShow">if CoterieDockBridge ~= nil then CoterieDockBridge.connectDock(self) end; if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
     <event name="OnHide">if CoterieDockBridge ~= nil then CoterieDockBridge.disconnectDock(self) end</event>
 </form>
 """

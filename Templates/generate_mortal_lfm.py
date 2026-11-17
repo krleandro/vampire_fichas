@@ -376,6 +376,7 @@ def generate_mortal_lfm() -> str:
     </rectangle>
 
 {datalinks}
+    <event name="OnShow">if _G.V20AutoUpdater ~= nil then _G.V20AutoUpdater.checkOnOpen(self) end</event>
 </form>
 """
     validate_generated_lfm_xml(xml_out)
