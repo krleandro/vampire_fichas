@@ -1001,6 +1001,19 @@ def generate_vampire_lfm(clan_id: str) -> str:
     return xml_out
 
 
+def _write_if_changed(out_path: str, xml_content: str) -> None:
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    if os.path.exists(out_path):
+        with open(out_path, "r", encoding="utf-8") as existing_f:
+            existing = existing_f.read()
+        if existing.replace("\r\n", "\n") == xml_content.replace("\r\n", "\n"):
+            print(f"[OK] Inalterado {os.path.relpath(out_path, ROOT)}")
+            return
+    with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(xml_content)
+    print(f"[OK] Gerado {os.path.relpath(out_path, ROOT)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Gera ficha vampírica LFM parametrizada por clã para o Firecast SDK 3.7b.")
     parser.add_argument("--clan", default="brujah", help="Identificador do clã V20 (ex.: brujah).")
@@ -1015,18 +1028,13 @@ def main() -> None:
             clan = CLANS[cid]
             xml_content = generate_vampire_lfm(cid)
             out_path = os.path.join(out_dir, f"{clan['formName']}.lfm")
-            with open(out_path, "w", encoding="utf-8", newline="\n") as f:
-                f.write(xml_content)
-            print(f"[OK] Gerado {os.path.relpath(out_path, ROOT)}")
+            _write_if_changed(out_path, xml_content)
         return
 
     clan = CLANS[args.clan.lower().strip()]
     xml_content = generate_vampire_lfm(args.clan)
     out_path = args.out or os.path.join(ROOT, "Sheets", f"{clan['formName']}.lfm")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(xml_content)
-    print(f"[OK] Gerado {os.path.relpath(out_path, ROOT)}")
+    _write_if_changed(out_path, xml_content)
 
 
 if __name__ == "__main__":

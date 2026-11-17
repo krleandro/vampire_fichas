@@ -9,14 +9,13 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 
 sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-RPK_PATH = os.path.join(ROOT, "dist", "Vampiro_V20_Suite.rpk")
-RDK_PATH = os.path.join(ROOT, "dist", "Vampiro_V20_Suite.rdk")
 BUILD_SCRIPT = os.path.join(ROOT, "tools", "build_v20_suite.py")
 DLL_PATH = r"C:\Users\Cliente\AppData\Local\Firecast\lua54x64.dll"
 
@@ -118,8 +117,7 @@ def verify_xml_escaping_pf4() -> None:
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
 
-    sandbox_dir = os.path.join(ROOT, "output", "test_e2e_xml_escape_sandbox")
-    shutil.rmtree(sandbox_dir, ignore_errors=True)
+    sandbox_dir = tempfile.mkdtemp(prefix="test_e2e_xml_escape_sandbox_")
     os.makedirs(os.path.join(sandbox_dir, "Sheets"), exist_ok=True)
     orig_root = builder.ROOT
     try:
@@ -167,18 +165,175 @@ def verify_xml_escaping_pf4() -> None:
         shutil.rmtree(sandbox_dir, ignore_errors=True)
 
 
-def verify_rpk_forms_runtime_pf4(dll: ctypes.CDLL) -> None:
+def verify_tablesdock_compiler_enhancements(dll: ctypes.CDLL) -> None:
     """
-    PF-4: Extrai dist/Vampiro_V20_Suite.rpk para sandbox isolada, carrega v20_loader.lua e
+    Valida que compile_v20_lfm em tools/build_v20_suite.py emite:
+    - obj._e_form_event{k} + liberação reversa em obj:_releaseEvents() para <event> filhos diretos de <form>;
+    - hook self:_onBeforeDestroy() no início de obj:destroy();
+    - Firecast.registrarSpecialForm(_{form_name}) para formType="tablesDock", sem injetá-lo em sheetTemplate.
+    """
+    spec = importlib.util.spec_from_file_location("build_v20_suite", BUILD_SCRIPT)
+    assert spec is not None and spec.loader is not None, "Não foi possível carregar tools/build_v20_suite.py"
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    assert hasattr(builder, "compile_v20_lfm"), "build_v20_suite.py deve expor compile_v20_lfm"
+    help_res = subprocess.run([sys.executable, BUILD_SCRIPT, "--help"], capture_output=True, text=True, check=True)
+    assert "--output-dir" in help_res.stdout and "--skip-regenerate" in help_res.stdout
+    base_compiler = builder.load_base_compiler()
+
+    sandbox_dir = tempfile.mkdtemp(prefix="test_e2e_dock_compiler_")
+    try:
+        dock_lfm = os.path.join(sandbox_dir, "frmTesteE2EDock.lfm")
+        with open(dock_lfm, "w", encoding="utf-8", newline="\n") as f:
+            f.write(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<form name="frmTesteE2EDock" formType="tablesDock" dataType="br.com.v20.test_e2e.Dock" '
+                'title="[TESTE_E2E] Painel Coterie Dock" width="340" height="580" theme="dark">\n'
+                '    <script><![CDATA[\n'
+                '        self._onBeforeDestroy = function(fObj) fObj._beforeDestroyFired = true end\n'
+                '    ]]></script>\n'
+                '    <button name="btnPing" text="[TESTE_E2E] Ping" width="80" height="24">\n'
+                '        <event name="onClick">self._pingClicked = true</event>\n'
+                '    </button>\n'
+                '    <event name="OnShow">self._onShowFired = true</event>\n'
+                '    <event name="OnHide">self._onHideFired = true</event>\n'
+                '</form>\n'
+            )
+
+        sheet_lfm = os.path.join(sandbox_dir, "frmTesteE2ESheet.lfm")
+        with open(sheet_lfm, "w", encoding="utf-8", newline="\n") as f:
+            f.write(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<form name="frmTesteE2ESheet" formType="sheetTemplate" dataType="br.com.v20.test_e2e.Sheet" '
+                'title="[TESTE_E2E] Ficha Padrão" align="client" theme="dark"/>\n'
+            )
+
+        dock_lua = builder.compile_v20_lfm(base_compiler, dock_lfm)
+        sheet_lua = builder.compile_v20_lfm(base_compiler, sheet_lfm)
+
+        validate_lua_buffer(dll, dock_lua.encode("utf-8"), "@frmTesteE2EDock.lfm.lua")
+        validate_lua_buffer(dll, sheet_lua.encode("utf-8"), "@frmTesteE2ESheet.lfm.lua")
+
+        assert 'require("v20_loader.lua");' in dock_lua
+        assert 'obj._e_form_event0 = obj:addEventListener("OnShow",' in dock_lua
+        assert 'obj._e_form_event1 = obj:addEventListener("OnHide",' in dock_lua
+        assert "__o_rrpgObjs.removeEventListenerById(self._e_form_event1);" in dock_lua
+        assert "__o_rrpgObjs.removeEventListenerById(self._e_form_event0);" in dock_lua
+        assert (
+            dock_lua.index("__o_rrpgObjs.removeEventListenerById(self._e_form_event1);")
+            < dock_lua.index("__o_rrpgObjs.removeEventListenerById(self._e_form_event0);")
+        ), "Eventos diretos do <form> devem ser liberados em ordem reversa"
+        assert "if self._onBeforeDestroy ~= nil then self:_onBeforeDestroy(); end;" in dock_lua
+        assert "Firecast.registrarSpecialForm(_frmTesteE2EDock);" in dock_lua
+        assert (
+            dock_lua.index("Firecast.registrarDataType(_frmTesteE2EDock);")
+            < dock_lua.index("Firecast.registrarSpecialForm(_frmTesteE2EDock);")
+        )
+
+        assert "if self._onBeforeDestroy ~= nil then self:_onBeforeDestroy(); end;" in sheet_lua
+        assert "registrarSpecialForm" not in sheet_lua, "sheetTemplate NÃO deve chamar registrarSpecialForm"
+
+        dock_lua_path = os.path.join(sandbox_dir, "frmTesteE2EDock.lfm.lua")
+        with open(dock_lua_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(dock_lua)
+        dock_lua_escaped = dock_lua_path.replace("\\", "/")
+
+        runtime_probe = f"""
+local specialForms = {{}}
+local activeListeners = {{}}
+local allControls = {{}}
+local nextHandle = 10
+local nextListenerId = 1
+
+local ctrlProto = {{}}
+local ctrlMeta = {{ __index = ctrlProto }}
+for _, mName in ipairs({{
+    "setAlign", "setWidth", "setHeight", "setName", "setFormType",
+    "setDataType", "setTitle", "setTheme", "setText"
+}}) do
+    ctrlProto[mName] = function(self, val) self._props[mName] = val end
+end
+function ctrlProto:beginUpdate() end
+function ctrlProto:endUpdate() end
+function ctrlProto:setParent(p) table.insert(p._children, self) end
+function ctrlProto:setNodeObject(n) self._nodeObject = n end
+function ctrlProto:setNodeDatabase(n) self:setNodeObject(n) end
+function ctrlProto:addEventListener(evName, fn, ctx)
+    local id = nextListenerId
+    nextListenerId = nextListenerId + 1
+    activeListeners[id] = {{ id = id, ctrl = self, evName = evName, fn = fn, ctx = ctx }}
+    return id
+end
+function ctrlProto:destroy()
+    assert(not self._destroyed)
+    for _, ch in ipairs(self._children) do assert(ch._destroyed == true) end
+    self._destroyed = true
+end
+
+_G._obj_newObject = function(tag)
+    nextHandle = nextHandle + 1
+    local h = nextHandle
+    allControls[h] = setmetatable({{ handle = h, _tag = tag, _props = {{}}, _children = {{}}, _destroyed = false }}, ctrlMeta)
+    return h
+end
+_G.GUI = {{ fromHandle = function(h) return assert(allControls[h]) end }}
+_G._gui_assignInitialParentForForm = function(_) end
+_G.Firecast = {{
+    registrarForm = function(_) end,
+    registrarDataType = function(_) end,
+    registrarSpecialForm = function(spec) specialForms[spec.name] = spec end,
+}}
+package.preload["firecast.lua"] = function() return _G.Firecast end
+package.preload["rrpgObjs.lua"] = function()
+    return {{
+        beginObjectsLoading = function() end,
+        endObjectsLoading = function() end,
+        removeEventListenerById = function(id)
+            assert(activeListeners[id] ~= nil, "Listener inválido: " .. tostring(id))
+            activeListeners[id] = nil
+        end,
+    }}
+end
+package.preload["rrpgGUI.lua"] = function() return _G.GUI end
+package.preload["rrpgDialogs.lua"] = function() return {{ showMessage = function() end }} end
+package.preload["rrpgLFM.lua"] = function() return true end
+package.preload["ndb.lua"] = function() return {{}} end
+package.preload["locale.lua"] = function() return true end
+package.preload["utils.lua"] = function()
+    return {{ tryFinally = function(t, f) local ok, e = pcall(t); f(); if not ok then error(e, 0) end end }}
+end
+package.preload["v20_loader.lua"] = function() return true end
+
+local spec = dofile("{dock_lua_escaped}")
+assert(specialForms["frmTesteE2EDock"] == spec, "tablesDock deve registrar via Firecast.registrarSpecialForm")
+local inst = spec.new()
+for _, rec in pairs(activeListeners) do
+    rec.fn(rec.ctrl)
+end
+assert(inst._onShowFired == true and inst._onHideFired == true and inst._pingClicked == true)
+assert(inst._beforeDestroyFired == nil)
+inst:destroy()
+assert(inst._beforeDestroyFired == true, "_onBeforeDestroy deve disparar em inst:destroy()")
+assert(inst._destroyed == true)
+local rem = 0
+for _, _ in pairs(activeListeners) do rem = rem + 1 end
+assert(rem == 0, "Todos os listeners (incluindo _e_form_event) devem ser removidos em destroy()")
+"""
+        run_lua_in_isolated_state(dll, runtime_probe, "@test_09_tablesdock_compiler_probe")
+    finally:
+        shutil.rmtree(sandbox_dir, ignore_errors=True)
+
+
+def verify_rpk_forms_runtime_pf4(dll: ctypes.CDLL, rpk_path: str) -> None:
+    """
+    PF-4: Extrai Vampiro_V20_Suite.rpk para sandbox isolada, carrega v20_loader.lua e
     TODOS os 15 Sheets/frm*.lfm.lua dentro da lua54x64.dll (sem acesso ao workspace externo),
     instancia newfrmBrujah() .. newfrmMortal(), vincula mockSheet [TESTE_E2E] via :setNodeObject(),
     aciona todos os eventos compilados e executa :destroy() em ordem reversa provando 0 erros.
     """
-    extract_dir = os.path.join(ROOT, "output", "test_e2e_rpk_runtime")
-    shutil.rmtree(extract_dir, ignore_errors=True)
-    os.makedirs(extract_dir, exist_ok=True)
+    extract_dir = tempfile.mkdtemp(prefix="test_e2e_rpk_runtime_")
     try:
-        with zipfile.ZipFile(RPK_PATH, "r") as zf:
+        with zipfile.ZipFile(rpk_path, "r") as zf:
             zf.extractall(extract_dir)
 
         rpk_dir_lua = extract_dir.replace("\\", "/")
@@ -435,6 +590,8 @@ assert(type(_G.V20) == "table" and type(_G.V20Bridge) == "table", "V20 e V20Brid
 assert(type(_G.V20.ClanWeaknesses) == "table", "V20.ClanWeaknesses deve estar carregado")
 assert(type(_G.V20.BloodMagicCatalog) == "table", "V20.BloodMagicCatalog deve estar carregado")
 assert(type(_G.V20.BloodMagicEngine) == "table", "V20.BloodMagicEngine deve estar carregado")
+assert(type(_G.V20.CombatManeuvers) == "table", "V20.CombatManeuvers deve estar carregado")
+assert(type(_G.V20.CoterieTracker) == "table", "V20.CoterieTracker deve estar carregado")
 assert(#vhdSearchPaths >= 4, "vhd.addSearchPath deve registrar /Data, /Core, /Adapter")
 
 -- 2. Carregar, instanciar, vincular [TESTE_E2E], exercitar eventos e destruir TODAS as 15 fichas
@@ -564,7 +721,7 @@ assert(#createdHandles == #destroyedHandles, "Todos os handles criados devem ser
         shutil.rmtree(extract_dir, ignore_errors=True)
 
 
-def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL) -> None:
+def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL, rpk_path: str) -> None:
     """
     Reproduz fielmente o auto-boot VHD do Firecast SDK 3.7b, que executa todos os arquivos .lua
     (exceto sdk/, *.lfm.lua e *.dlua) em ordem alfabética de caminho — executando
@@ -572,11 +729,9 @@ def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL) -> None:
     binding [TESTE_E2E], disparo de todos os listeners e destruição reversa de TODOS os 15
     formulários (newfrmBrujah() .. newfrmMortal()).
     """
-    extract_dir = os.path.join(ROOT, "output", "test_e2e_rpk_autoboot")
-    shutil.rmtree(extract_dir, ignore_errors=True)
-    os.makedirs(extract_dir, exist_ok=True)
+    extract_dir = tempfile.mkdtemp(prefix="test_e2e_rpk_autoboot_")
     try:
-        with zipfile.ZipFile(RPK_PATH, "r") as zf:
+        with zipfile.ZipFile(rpk_path, "r") as zf:
             names = zf.namelist()
             zf.extractall(extract_dir)
 
@@ -591,7 +746,14 @@ def verify_rpk_vhd_sorted_autoboot_round1(dll: ctypes.CDLL) -> None:
         assert boot_entries[-1] == "v20_loader.lua", (
             f"v20_loader.lua deve ser o último script no auto-boot alfabético, obteve: {boot_entries[-1]}"
         )
-        for req_boot in ("Core/blood_magic_engine.lua", "Core/clan_weaknesses.lua", "Data/blood_magic_catalog.lua"):
+        for req_boot in (
+            "Core/blood_magic_engine.lua",
+            "Core/clan_weaknesses.lua",
+            "Core/combat_maneuvers.lua",
+            "Core/coterie_tracker.lua",
+            "Data/blood_magic_catalog.lua",
+            "Data/combat_maneuvers_catalog.lua",
+        ):
             assert req_boot in boot_entries, f"{req_boot} deve participar do auto-boot VHD"
         assert all(not n.endswith(".dlua") for n in boot_entries), (
             "Arquivos .dlua JAMAIS devem entrar no auto-boot do VHD"
@@ -781,6 +943,7 @@ for idx, relEntry in ipairs(BOOT_ENTRIES) do
         assert(_G.__v20_loader_ready == true, "__v20_loader_ready deve estar ativo já no 1º script do boot!")
         assert(type(_G.V20) == "table" and type(_G.V20Bridge) == "table")
         assert(type(_G.V20.ClanWeaknesses) == "table" and type(_G.V20.BloodMagicEngine) == "table")
+        assert(type(_G.V20.CombatManeuvers) == "table" and type(_G.V20.CoterieTracker) == "table")
     end
 end
 
@@ -828,133 +991,146 @@ assert(#createdHandles == #destroyedHandles, "Handles vazados no auto-boot: " ..
 
 def main() -> None:
     assert os.path.exists(BUILD_SCRIPT), f"Script compilador não encontrado: {BUILD_SCRIPT}"
-    subprocess.run([sys.executable, BUILD_SCRIPT], check=True)
-    assert os.path.exists(RPK_PATH), "Vampiro_V20_Suite.rpk não foi gerado em dist/"
-    assert os.path.exists(RDK_PATH), "Vampiro_V20_Suite.rdk não foi gerado em dist/"
-
-    with open(RPK_PATH, "rb") as f1, open(RDK_PATH, "rb") as f2:
-        assert hashlib.sha256(f1.read()).hexdigest() == hashlib.sha256(f2.read()).hexdigest(), (
-            "Vampiro_V20_Suite.rdk deve ser cópia idêntica do .rpk"
-        )
-
     dll = setup_lua_dll()
-    expected_dt_ids = [s[2] for s in EXPECTED_SHEETS]
+    verify_tablesdock_compiler_enhancements(dll)
 
-    with zipfile.ZipFile(RPK_PATH, "r") as zf:
-        names = set(zf.namelist())
-        assert "module.xml" in names
-        assert "v20_loader.lua" in names, "v20_loader.lua obrigatório na raiz do ZIP"
-        assert "v20_shim.dlua" in names, "v20_shim.dlua obrigatório na raiz do ZIP"
-        assert "_rdkCompiledLang.cln" in names, "_rdkCompiledLang.cln obrigatório na raiz do ZIP"
-        assert "sdk/firecast.lua" in names and "sdk/rrpgGUI.lua" in names and "sdk/rrpgObjs.lua" in names, (
-            "sdk/ obrigatório no ZIP"
-        )
-        assert "firecast.lua" not in names, "Arquivos do SDK não devem ficar soltos na raiz do ZIP"
+    tmp_out_dir = tempfile.mkdtemp(prefix="test_e2e_rpk_out_")
+    try:
+        subprocess.run([sys.executable, BUILD_SCRIPT, "--output-dir", tmp_out_dir], check=True)
+        rpk_path = os.path.join(tmp_out_dir, "Vampiro_V20_Suite.rpk")
+        rdk_path = os.path.join(tmp_out_dir, "Vampiro_V20_Suite.rdk")
+        assert os.path.exists(rpk_path), "Vampiro_V20_Suite.rpk não foi gerado no --output-dir temporário"
+        assert os.path.exists(rdk_path), "Vampiro_V20_Suite.rdk não foi gerado no --output-dir temporário"
 
-        mod_xml = zf.read("module.xml").decode("utf-8")
-        mod_root = ET.fromstring(mod_xml)
-        assert mod_root.attrib.get("sdkVersion") == "3.7b"
-        assert mod_root.attrib.get("sdkApiVersion") == "88"
-        assert mod_root.attrib.get("sdkMinorApiVersion") == "2"
-        assert mod_root.attrib.get("originalPluginFileName") == "Vampiro_V20_Suite.rpk"
-        assert mod_root.findtext("id") == "br.com.v20.suite"
+        with open(rpk_path, "rb") as f1, open(rdk_path, "rb") as f2:
+            assert hashlib.sha256(f1.read()).hexdigest() == hashlib.sha256(f2.read()).hexdigest(), (
+                "Vampiro_V20_Suite.rdk deve ser cópia idêntica do .rpk"
+            )
 
-        dt_els = mod_root.findall("./dataTypes/dataType")
-        asm_els = mod_root.findall("./assembledFeatures/dataTypes/dataType")
-        dt_ids = [(el.text or "").strip() for el in dt_els]
-        assembled_ids = [el.attrib.get("id") for el in asm_els]
+        expected_dt_ids = [s[2] for s in EXPECTED_SHEETS]
 
-        actual_version = mod_root.findtext("version")
-        assert actual_version == EXPECTED_VERSION, (
-            f"Versão esperada {EXPECTED_VERSION!r} em module.xml, obteve {actual_version!r} "
-            f"(dataTypes empacotados: {len(dt_ids)}/15 -> {dt_ids})"
-        )
-        assert dt_ids == expected_dt_ids, f"Lista ./dataTypes/dataType inesperada ({len(dt_ids)}/15): {dt_ids}"
-        assert assembled_ids == expected_dt_ids, (
-            f"Lista ./assembledFeatures/dataTypes/dataType inesperada ({len(assembled_ids)}/15): {assembled_ids}"
-        )
+        with zipfile.ZipFile(rpk_path, "r") as zf:
+            names = set(zf.namelist())
+            assert "module.xml" in names
+            assert "v20_loader.lua" in names, "v20_loader.lua obrigatório na raiz do ZIP"
+            assert "v20_shim.dlua" in names, "v20_shim.dlua obrigatório na raiz do ZIP"
+            assert "_rdkCompiledLang.cln" in names, "_rdkCompiledLang.cln obrigatório na raiz do ZIP"
+            assert "sdk/firecast.lua" in names and "sdk/rrpgGUI.lua" in names and "sdk/rrpgObjs.lua" in names, (
+                "sdk/ obrigatório no ZIP"
+            )
+            assert "firecast.lua" not in names, "Arquivos do SDK não devem ficar soltos na raiz do ZIP"
 
-        for idx, (_, exp_lfm, exp_dt, exp_form, exp_title) in enumerate(EXPECTED_SHEETS):
-            dt_node = dt_els[idx]
-            asm_node = asm_els[idx]
-            assert dt_node.attrib.get("name") == exp_form
-            assert dt_node.attrib.get("lfmFile") == exp_lfm
-            assert dt_node.attrib.get("title") == exp_title
-            assert asm_node.attrib.get("id") == exp_dt
-            assert asm_node.attrib.get("formType") == "sheetTemplate"
-            assert asm_node.attrib.get("lfmFile") == exp_lfm
-            assert asm_node.attrib.get("formName") == exp_form
-            asm_info = asm_node.find("info")
-            assert asm_info is not None and asm_info.attrib.get("title") == exp_title
+            mod_xml = zf.read("module.xml").decode("utf-8")
+            mod_root = ET.fromstring(mod_xml)
+            assert mod_root.attrib.get("sdkVersion") == "3.7b"
+            assert mod_root.attrib.get("sdkApiVersion") == "88"
+            assert mod_root.attrib.get("sdkMinorApiVersion") == "2"
+            assert mod_root.attrib.get("originalPluginFileName") == "Vampiro_V20_Suite.rpk"
+            assert mod_root.findtext("id") == "br.com.v20.suite"
 
-        info_el = mod_root.find("info")
-        assert info_el is not None and info_el.attrib.get("lang") == "pt-BR"
-        for meta_tag in ("name", "description", "author", "site", "contact"):
-            info_val = (info_el.findtext(meta_tag) or "").strip()
-            root_val = (mod_root.findtext(meta_tag) or "").strip()
-            assert info_val and info_val == root_val, f"Tag <{meta_tag}> inconsistente no module.xml assemblado"
+            dt_els = mod_root.findall("./dataTypes/dataType")
+            asm_els = mod_root.findall("./assembledFeatures/dataTypes/dataType")
+            dt_ids = [(el.text or "").strip() for el in dt_els]
+            assembled_ids = [el.attrib.get("id") for el in asm_els]
 
-        # Garante presença de todas as 30 entradas de fichas (15 .lfm + 15 .lfm.lua)
-        for _, exp_lfm, _, _, _ in EXPECTED_SHEETS:
-            assert exp_lfm in names, f"LFM ausente no .rpk: {exp_lfm}"
-            assert f"{exp_lfm}.lua" in names, f"LFM compilado ausente no .rpk: {exp_lfm}.lua"
+            actual_version = mod_root.findtext("version")
+            assert actual_version == EXPECTED_VERSION, (
+                f"Versão esperada {EXPECTED_VERSION!r} em module.xml, obteve {actual_version!r} "
+                f"(dataTypes empacotados: {len(dt_ids)}/15 -> {dt_ids})"
+            )
+            assert dt_ids == expected_dt_ids, f"Lista ./dataTypes/dataType inesperada ({len(dt_ids)}/15): {dt_ids}"
+            assert assembled_ids == expected_dt_ids, (
+                f"Lista ./assembledFeatures/dataTypes/dataType inesperada ({len(assembled_ids)}/15): {assembled_ids}"
+            )
 
-        # Garante presença explícita dos catálogos e motores Subprojeto 1 + Subprojeto 2
-        for req_mod in (
-            "Data/blood_magic_catalog.lua",
-            "Core/clan_weaknesses.lua",
-            "Core/blood_magic_engine.lua",
-            "Core/v20_init.lua",
-            "Adapter/firecast_bridge.lua",
-        ):
-            assert req_mod in names, f"Módulo obrigatório ausente no .rpk: {req_mod}"
+            for idx, (_, exp_lfm, exp_dt, exp_form, exp_title) in enumerate(EXPECTED_SHEETS):
+                dt_node = dt_els[idx]
+                asm_node = asm_els[idx]
+                assert dt_node.attrib.get("name") == exp_form
+                assert dt_node.attrib.get("lfmFile") == exp_lfm
+                assert dt_node.attrib.get("title") == exp_title
+                assert asm_node.attrib.get("id") == exp_dt
+                assert asm_node.attrib.get("formType") == "sheetTemplate"
+                assert asm_node.attrib.get("lfmFile") == exp_lfm
+                assert asm_node.attrib.get("formName") == exp_form
+                asm_info = asm_node.find("info")
+                assert asm_info is not None and asm_info.attrib.get("title") == exp_title
 
-        for folder in ("Data", "Core", "Adapter"):
-            for ws_file in sorted(glob.glob(os.path.join(ROOT, folder, "*.lua"))):
-                rel_mod = f"{folder}/{os.path.basename(ws_file)}"
-                assert rel_mod in names, f"Arquivo do workspace não empacotado no .rpk: {rel_mod}"
+            info_el = mod_root.find("info")
+            assert info_el is not None and info_el.attrib.get("lang") == "pt-BR"
+            for meta_tag in ("name", "description", "author", "site", "contact"):
+                info_val = (info_el.findtext(meta_tag) or "").strip()
+                root_val = (mod_root.findtext(meta_tag) or "").strip()
+                assert info_val and info_val == root_val, f"Tag <{meta_tag}> inconsistente no module.xml assemblado"
 
-        sdk_concat = (
-            zf.read("sdk/rrpgGUI.lua").decode("utf-8", errors="ignore")
-            + "\n"
-            + zf.read("sdk/rrpgObjs.lua").decode("utf-8", errors="ignore")
-        )
+            # Garante presença de todas as 30 entradas de fichas (15 .lfm + 15 .lfm.lua)
+            for _, exp_lfm, _, _, _ in EXPECTED_SHEETS:
+                assert exp_lfm in names, f"LFM ausente no .rpk: {exp_lfm}"
+                assert f"{exp_lfm}.lua" in names, f"LFM compilado ausente no .rpk: {exp_lfm}.lua"
 
-        for _, exp_lfm, exp_dt, exp_form, _ in EXPECTED_SHEETS:
-            compiled_lfm = f"{exp_lfm}.lua"
-            code = zf.read(compiled_lfm).decode("utf-8")
-            assert 'require("v20_loader.lua");' in code
-            assert 'rawset(obj, "_oldSetNodeObjectFunction", obj.setNodeObject);' in code
-            assert 'rawget(obj, "setNodeObject")' not in code
-            assert 'cacheMode = "none"' in code
-            assert f'obj:setDataType("{exp_dt}");' in code
-            assert f'obj:setName("{exp_form}");' in code
+            # Garante presença explícita dos catálogos e motores Subprojeto 1 + Subprojeto 2 + Subprojeto 3
+            for req_mod in (
+                "Data/blood_magic_catalog.lua",
+                "Data/combat_maneuvers_catalog.lua",
+                "Core/clan_weaknesses.lua",
+                "Core/blood_magic_engine.lua",
+                "Core/combat_maneuvers.lua",
+                "Core/coterie_tracker.lua",
+                "Core/v20_init.lua",
+                "Adapter/firecast_bridge.lua",
+            ):
+                assert req_mod in names, f"Módulo obrigatório ausente no .rpk: {req_mod}"
 
-            methods = set(re.findall(r":(set[A-Za-z0-9_]+)\(", code))
-            missing = [
-                m
-                for m in sorted(methods)
-                if m not in ("setNodeObject", "setNodeDatabase") and m not in sdk_concat
-            ]
-            assert not missing, f"Métodos inválidos em {compiled_lfm} frente a rrpgGUI+rrpgObjs: {missing}"
+            for folder in ("Data", "Core", "Adapter"):
+                for ws_file in sorted(glob.glob(os.path.join(ROOT, folder, "*.lua"))):
+                    rel_mod = f"{folder}/{os.path.basename(ws_file)}"
+                    assert rel_mod in names, f"Arquivo do workspace não empacotado no .rpk: {rel_mod}"
 
-        # Valida sintaxe Lua 5.4 via lua54x64.dll para todos os scripts Lua e DLua empacotados no .rpk
-        for entry in sorted(names):
-            if entry.endswith((".lua", ".dlua")):
-                validate_lua_buffer(dll, zf.read(entry), f"@{entry}", allow_bom=entry.startswith("sdk/"))
+            sdk_concat = (
+                zf.read("sdk/rrpgGUI.lua").decode("utf-8", errors="ignore")
+                + "\n"
+                + zf.read("sdk/rrpgObjs.lua").decode("utf-8", errors="ignore")
+            )
 
-        # Verifica prefixo require("v20_shim.dlua"); na linha 1 de todos os módulos Core/ e Adapter/
-        assert 'require("v20_shim.dlua")' in zf.read("v20_loader.lua").decode("utf-8")
-        for entry in sorted(names):
-            if entry.startswith(("Core/", "Adapter/")) and entry.endswith(".lua"):
-                first_line = zf.read(entry).decode("utf-8").splitlines()[0]
-                assert first_line.startswith('require("v20_shim.dlua"); '), (
-                    f'{entry} no .rpk deve iniciar com require("v20_shim.dlua"); na linha 1'
-                )
+            for _, exp_lfm, exp_dt, exp_form, _ in EXPECTED_SHEETS:
+                compiled_lfm = f"{exp_lfm}.lua"
+                code = zf.read(compiled_lfm).decode("utf-8")
+                assert 'require("v20_loader.lua");' in code
+                assert 'rawset(obj, "_oldSetNodeObjectFunction", obj.setNodeObject);' in code
+                assert 'rawget(obj, "setNodeObject")' not in code
+                assert 'cacheMode = "none"' in code
+                assert "if self._onBeforeDestroy ~= nil then self:_onBeforeDestroy(); end;" in code
+                assert "registrarSpecialForm" not in code
+                assert f'obj:setDataType("{exp_dt}");' in code
+                assert f'obj:setName("{exp_form}");' in code
 
-    verify_rpk_vhd_sorted_autoboot_round1(dll)
-    verify_xml_escaping_pf4()
-    verify_rpk_forms_runtime_pf4(dll)
+                methods = set(re.findall(r":(set[A-Za-z0-9_]+)\(", code))
+                missing = [
+                    m
+                    for m in sorted(methods)
+                    if m not in ("setNodeObject", "setNodeDatabase") and m not in sdk_concat
+                ]
+                assert not missing, f"Métodos inválidos em {compiled_lfm} frente a rrpgGUI+rrpgObjs: {missing}"
+
+            # Valida sintaxe Lua 5.4 via lua54x64.dll para todos os scripts Lua e DLua empacotados no .rpk
+            for entry in sorted(names):
+                if entry.endswith((".lua", ".dlua")):
+                    validate_lua_buffer(dll, zf.read(entry), f"@{entry}", allow_bom=entry.startswith("sdk/"))
+
+            # Verifica prefixo require("v20_shim.dlua"); na linha 1 de todos os módulos Core/ e Adapter/
+            assert 'require("v20_shim.dlua")' in zf.read("v20_loader.lua").decode("utf-8")
+            for entry in sorted(names):
+                if entry.startswith(("Core/", "Adapter/")) and entry.endswith(".lua"):
+                    first_line = zf.read(entry).decode("utf-8").splitlines()[0]
+                    assert first_line.startswith('require("v20_shim.dlua"); '), (
+                        f'{entry} no .rpk deve iniciar com require("v20_shim.dlua"); na linha 1'
+                    )
+
+        verify_rpk_vhd_sorted_autoboot_round1(dll, rpk_path)
+        verify_xml_escaping_pf4()
+        verify_rpk_forms_runtime_pf4(dll, rpk_path)
+    finally:
+        shutil.rmtree(tmp_out_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

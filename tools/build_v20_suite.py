@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""tools/build_v20_suite.py — Compilador Multi-DataType e Empacotador SDK 3.7b para Vampiro_V20_Suite.rpk (15 Modelos)."""
+"""tools/build_v20_suite.py — Compilador Multi-DataType e Empacotador SDK 3.7b para Vampiro_V20_Suite.rpk."""
+import argparse
 import datetime
 import glob
 import hashlib
@@ -54,6 +55,101 @@ def load_base_compiler():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def compile_v20_lfm(compiler, lfm_path: str) -> str:
+    """
+    Compila um arquivo .lfm via compilador base SDK 3.7b e aplica pós-processamento V20:
+    1. Injeta require("v20_loader.lua"); após utils.lua;
+    2. Propaga width/height na raiz <form> (ex.: tablesDock 340x580);
+    3. Compila tags <event name="..."> filhas diretas de <form> em obj._e_form_event{k}
+       e libera em ordem reversa dentro de obj:_releaseEvents();
+    4. Injeta hook if self._onBeforeDestroy ~= nil then self:_onBeforeDestroy(); end; no início de obj:destroy();
+    5. Quando formType == "tablesDock", injeta Firecast.registrarSpecialForm(_{form_name}); após registrarDataType.
+    """
+    root = ET.parse(lfm_path).getroot()
+    form_name = root.attrib.get("name", "frmFicha")
+    form_type = root.attrib.get("formType", "sheetTemplate")
+    theme = root.attrib.get("theme", "dark")
+
+    raw_lua = compiler.compile_lfm_to_lua(lfm_path)
+    header_anchor = 'local __o_Utils = require("utils.lua");'
+    if header_anchor not in raw_lua:
+        raise RuntimeError(f"Âncora de cabeçalho SDK não encontrada ao compilar {lfm_path}")
+    injected = raw_lua.replace(
+        header_anchor,
+        header_anchor + '\nrequire("v20_loader.lua");',
+        1,
+    )
+
+    dim_lines: list[str] = []
+    if "width" in root.attrib:
+        dim_lines.append(f'    obj:setWidth({root.attrib["width"]});')
+    if "height" in root.attrib:
+        dim_lines.append(f'    obj:setHeight({root.attrib["height"]});')
+    if dim_lines:
+        theme_anchor = f'    obj:setTheme("{theme}");'
+        if theme_anchor in injected:
+            injected = injected.replace(
+                theme_anchor,
+                theme_anchor + "\n" + "\n".join(dim_lines),
+                1,
+            )
+
+    form_events: list[tuple[str, str]] = []
+    for child in root:
+        if child.tag == "event":
+            ev_name = child.attrib["name"]
+            ev_code = (child.text or "").strip()
+            form_events.append((ev_name, ev_code))
+
+    release_anchor = "    function obj:_releaseEvents()"
+    if release_anchor not in injected:
+        raise RuntimeError(f"Âncora _releaseEvents não encontrada ao compilar {lfm_path}")
+
+    if form_events:
+        add_lines: list[str] = []
+        for k, (ev_name, ev_code) in enumerate(form_events):
+            esc_ev = ev_name.replace("\\", "\\\\").replace('"', '\\"')
+            add_lines.append(f'    obj._e_form_event{k} = obj:addEventListener("{esc_ev}",')
+            add_lines.append("        function (_)")
+            for line in ev_code.splitlines():
+                add_lines.append("            " + line)
+            add_lines.append("        end, obj);")
+            add_lines.append("")
+
+        rem_lines: list[str] = []
+        for k in range(len(form_events) - 1, -1, -1):
+            rem_lines.append(f"        __o_rrpgObjs.removeEventListenerById(self._e_form_event{k});")
+
+        injected = injected.replace(
+            release_anchor,
+            "\n".join(add_lines) + "\n" + release_anchor + "\n" + "\n".join(rem_lines),
+            1,
+        )
+
+    destroy_anchor = "    function obj:destroy()\n        self:_releaseEvents();"
+    if destroy_anchor not in injected:
+        raise RuntimeError(f"Âncora obj:destroy() não encontrada ao compilar {lfm_path}")
+    injected = injected.replace(
+        destroy_anchor,
+        "    function obj:destroy()\n"
+        "        if self._onBeforeDestroy ~= nil then self:_onBeforeDestroy(); end;\n"
+        "        self:_releaseEvents();",
+        1,
+    )
+
+    if form_type == "tablesDock":
+        dt_reg_anchor = f"Firecast.registrarDataType(_{form_name});"
+        if dt_reg_anchor not in injected:
+            raise RuntimeError(f"Âncora registrarDataType não encontrada ao compilar {lfm_path}")
+        injected = injected.replace(
+            dt_reg_anchor,
+            f"{dt_reg_anchor}\nFirecast.registrarSpecialForm(_{form_name});",
+            1,
+        )
+
+    return injected
 
 
 def build_multi_assembled_xml(mod_path: str, lfm_entries: list[str], rpk_filename: str) -> str:
@@ -119,16 +215,32 @@ def build_multi_assembled_xml(mod_path: str, lfm_entries: list[str], rpk_filenam
     return assembled_xml
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Compila e empacota a suíte Vampiro: A Máscara V20 para o RRPG Firecast (SDK 3.7b)."
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=os.path.join(ROOT, "dist"),
+        help="Diretório de saída para Vampiro_V20_Suite.rpk/.rdk (padrão: <ROOT>/dist).",
+    )
+    parser.add_argument(
+        "--skip-regenerate",
+        action="store_true",
+        help="Pula a regeneração prévia dos arquivos .lfm em Sheets/.",
+    )
+    args = parser.parse_args(argv)
+
     compiler = load_base_compiler()
-    subprocess.run(
-        [sys.executable, os.path.join(ROOT, "Templates", "generate_vampire_lfm.py"), "--all-clans"],
-        check=True,
-    )
-    subprocess.run(
-        [sys.executable, os.path.join(ROOT, "Templates", "generate_mortal_lfm.py")],
-        check=True,
-    )
+    if not args.skip_regenerate:
+        subprocess.run(
+            [sys.executable, os.path.join(ROOT, "Templates", "generate_vampire_lfm.py"), "--all-clans"],
+            check=True,
+        )
+        subprocess.run(
+            [sys.executable, os.path.join(ROOT, "Templates", "generate_mortal_lfm.py")],
+            check=True,
+        )
 
     if not os.path.exists(REF_CLN):
         raise FileNotFoundError(f"_rdkCompiledLang.cln não encontrado em {REF_CLN}")
@@ -164,16 +276,8 @@ def main() -> None:
             packaged_modules[rel_entry] = src_txt
 
     compiled_map: dict[str, str] = {}
-    anchor = 'local __o_Utils = require("utils.lua");'
     for rel in LFM_ENTRIES:
-        raw_lua = compiler.compile_lfm_to_lua(os.path.join(ROOT, rel))
-        if anchor not in raw_lua:
-            raise RuntimeError(f"Âncora de cabeçalho SDK não encontrada ao compilar {rel}")
-        injected = raw_lua.replace(
-            anchor,
-            anchor + '\nrequire("v20_loader.lua");',
-            1,
-        )
+        injected = compile_v20_lfm(compiler, os.path.join(ROOT, rel))
         compiler.validate_lua_syntax(injected, f"@{rel}.lua")
         methods = set(re.findall(r":(set[A-Za-z0-9_]+)\(", injected))
         missing = [
@@ -185,7 +289,7 @@ def main() -> None:
             raise RuntimeError(f"Métodos inválidos em {rel} frente a sdk/rrpgGUI.lua + sdk/rrpgObjs.lua: {missing}")
         compiled_map[rel] = injected
 
-    dist_dir = os.path.join(ROOT, "dist")
+    dist_dir = os.path.abspath(args.output_dir)
     os.makedirs(dist_dir, exist_ok=True)
     out_rpk = os.path.join(dist_dir, "Vampiro_V20_Suite.rpk")
     out_rdk = os.path.join(dist_dir, "Vampiro_V20_Suite.rdk")

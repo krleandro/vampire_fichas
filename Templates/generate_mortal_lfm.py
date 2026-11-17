@@ -377,6 +377,19 @@ def generate_mortal_lfm() -> str:
     return xml_out
 
 
+def _write_if_changed(out_path: str, xml_content: str) -> None:
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    if os.path.exists(out_path):
+        with open(out_path, "r", encoding="utf-8") as existing_f:
+            existing = existing_f.read()
+        if existing.replace("\r\n", "\n") == xml_content.replace("\r\n", "\n"):
+            print(f"[OK] Inalterado {os.path.relpath(out_path, ROOT)}")
+            return
+    with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(xml_content)
+    print(f"[OK] Gerado {os.path.relpath(out_path, ROOT)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Gera a ficha Mortal LFM (Sheets/frmMortal.lfm) para o Firecast SDK 3.7b.")
     parser.add_argument("--out", default="", help="Caminho opcional de saída .lfm.")
@@ -384,10 +397,7 @@ def main() -> None:
 
     xml_content = generate_mortal_lfm()
     out_path = args.out or os.path.join(ROOT, "Sheets", "frmMortal.lfm")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(xml_content)
-    print(f"[OK] Gerado {os.path.relpath(out_path, ROOT)}")
+    _write_if_changed(out_path, xml_content)
 
 
 if __name__ == "__main__":
