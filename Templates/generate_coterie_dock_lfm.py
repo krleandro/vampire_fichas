@@ -159,6 +159,9 @@ def generate_coterie_dock_lfm() -> str:
     <script>
         <![CDATA[
         local CoterieDockBridge = _G.V20CoterieDockBridge or require("Adapter.coterie_dock_bridge")
+        if CoterieDockBridge ~= nil and CoterieDockBridge.installLocalUiGuard ~= nil then
+            CoterieDockBridge.installLocalUiGuard(self)
+        end
         self._onBeforeDestroy = function(fObj)
             if CoterieDockBridge ~= nil and CoterieDockBridge.disconnectDock ~= nil then
                 CoterieDockBridge.disconnectDock(fObj)
@@ -175,6 +178,7 @@ def generate_coterie_dock_lfm() -> str:
     </rectangle>
 
 {datalinks}
+    <event name="OnNodeReady">if CoterieDockBridge ~= nil and CoterieDockBridge.ensureIsolatedSheet ~= nil then CoterieDockBridge.ensureIsolatedSheet(self) end</event>
     <event name="OnShow">if CoterieDockBridge ~= nil then CoterieDockBridge.connectDock(self) end</event>
     <event name="OnHide">if CoterieDockBridge ~= nil then CoterieDockBridge.disconnectDock(self) end</event>
 </form>

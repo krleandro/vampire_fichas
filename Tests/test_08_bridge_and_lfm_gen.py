@@ -2311,6 +2311,14 @@ bibItemsBySheet[tremereSheet] = itemTremere
 bibItemsBySheet[brujahSheet] = itemBrujah
 bibItemsBySheet[nosferatuHiddenSheet] = itemNosferatu
 
+local pastaSecreta = {{
+    tipo = "diretorio",
+    nome = "[TESTE_E2E] Pasta NPCs Secretos",
+    visivel = false,
+    visivelRecursivamente = false,
+    filhos = {{ itemNosferatu }},
+}}
+
 local simulatedMesa = {{
     nome = "[TESTE_E2E] Sala Crônica Noturna",
     meuJogador = setmetatable({{}}, {{
@@ -2324,13 +2332,7 @@ local simulatedMesa = {{
         filhos = {{
             itemTremere,
             itemBrujah,
-            {{
-                tipo = "diretorio",
-                nome = "[TESTE_E2E] Pasta NPCs Secretos",
-                visivel = false,
-                visivelRecursivamente = false,
-                filhos = {{ itemNosferatu }},
-            }},
+            pastaSecreta,
         }},
     }},
     abrirNDBDeMesa = function(_, ndbName, cb, opcoes)
@@ -2361,15 +2363,33 @@ _G.Firecast = {{
             end,
         }}
     end,
-    getMesaDe = function(_) return simulatedMesa end,
+    getMesaDe = function(obj)
+        if type(obj) == "table" and rawget(obj, "_isMemNdb") == true then
+            return nil
+        end
+        return simulatedMesa
+    end,
     getPersonagemDe = function(s) return bibItemsBySheet[s] end,
     getBibliotecaItemDe = function(s) return bibItemsBySheet[s] end,
 }}
 _G.RRPG = _G.Firecast
 _G.rrpg = _G.Firecast
 
+local memNdbAllocCount = 0
 _G.NDB = {{
     getChildNodes = function(_) return {{}} end,
+    newMemNodeDatabase = function(initial)
+        memNdbAllocCount = memNdbAllocCount + 1
+        local memNode, _ = makeStrictNodeFacade(initial or {{}})
+        rawset(memNode, "_isMemNdb", true)
+        return memNode
+    end,
+    getNodeHandle = function(nodeObj)
+        if type(nodeObj) == "table" and rawget(nodeObj, "__nodeFacadeFlag") == true then
+            return 9001
+        end
+        return nil
+    end,
     newObserver = function(nodeObj)
         local obs = {{ node = nodeObj, enabled = true, onChanged = nil }}
         table.insert(createdObservers, obs)
@@ -2614,6 +2634,129 @@ for idx, obs in ipairs(createdObservers) do
     assert(obs.enabled == false, "Observer #" .. idx .. " continuou ativo após disconnectDock!")
 end
 stDock:destroy()
+
+-- 4.3 Regressão Finding #1: _localUiNode via NDB.newMemNodeDatabase() + isolamento contra NDB de sala em setNodeObject (pré e pós OnShow)
+createdObservers = {{}}
+currentIsMestre = true
+local hostSharedDockNdbPre, hostSharedStorePre = makeStrictNodeFacade({{}})
+local hostSharedDockNdbPost, hostSharedStorePost = makeStrictNodeFacade({{}})
+
+local memCountBefore = memNdbAllocCount
+local isoDock = dockSpec.new()
+-- Host do Firecast injeta o NDB compartilhado de tablesDock ANTES de OnShow
+isoDock:setNodeObject(hostSharedDockNdbPre)
+DockBridge.connectDock(isoDock, _G.Firecast, _G.NDB)
+
+assert(memNdbAllocCount > memCountBefore, "connectDock/guard deve alocar _localUiNode via NDB.newMemNodeDatabase()")
+assert(type(isoDock.sheet) == "table" and rawget(isoDock.sheet, "__nodeFacadeFlag") == true and rawget(isoDock.sheet, "_isMemNdb") == true,
+    "isoDock.sheet deve ser um NodeFacade de memória (_isMemNdb) para que _gui_assignNodeObject vincule controles Delphi reais")
+assert(_G.NDB.getNodeHandle(isoDock.sheet) ~= nil, "ndb.getNodeHandle(isoDock.sheet) não pode ser nil!")
+assert(isoDock.sheet ~= hostSharedDockNdbPre, "isoDock.sheet jamais pode permanecer apontando para NDB compartilhado de sala")
+
+-- Narrador preenche rascunho de NPC oculto e rola + Rolar NPC
+chatMessages = {{}}
+isoDock.sheet.npc_init_nome = "[TESTE_E2E] Sabbat Infiltrado"
+isoDock.sheet.npc_init_mod = 6
+isoDock.sheet.npc_init_oculto = true
+nextDiceFaces = {{ 8 }}
+local isoQuickRes = DockBridge.addQuickNpcInitiative(isoDock, _G.Firecast, _G.Dialogs)
+assert(isoQuickRes.ok == true and isoQuickRes.hidden == true and isoQuickRes.total == 14)
+assert(#chatMessages == 0, "NPC rápido oculto jamais pode vazar rolagem no activeChat!")
+for k, _ in pairs(hostSharedStorePre) do
+    error("Vazamento proibido no NDB compartilhado pré-OnShow: chave " .. tostring(k))
+end
+
+-- Host do Firecast injeta outro NDB compartilhado DEPOIS de OnShow (ex.: OnNodeReady / carga assíncrona)
+isoDock:setNodeDatabase(hostSharedDockNdbPost)
+assert(isoDock.sheet == rawget(isoDock, "_localUiNode") and isoDock.sheet ~= hostSharedDockNdbPost,
+    "setNodeObject/setNodeDatabase pós-OnShow não pode substituir _localUiNode por NDB de sala!")
+isoDock.sheet.npc_init_nome = "[TESTE_E2E] Arconte Secreto"
+for k, _ in pairs(hostSharedStorePost) do
+    error("Vazamento proibido no NDB compartilhado pós-OnShow: chave " .. tostring(k))
+end
+assertRoomNodeHasZeroPrivateData()
+
+-- 4.4 Regressão Finding #3: Alternância dinâmica de visivel / visivelRecursivamente no meio da sessão antes de rollInitiative
+-- Tremere estava visível no cache; Narrador oculta Tremere p/ emboscada e rola Iniciativa
+DockBridge.clearInitiative(isoDock, _G.Firecast, _G.Dialogs)
+tremereSheet.em_torpor = false
+Bridge.syncDerivedFields(tremereSheet)
+itemTremere.visivel = false
+itemTremere.visivelRecursivamente = false
+nextDiceFaces = {{ 4 }}
+Bridge.rollInitiative(tremereSheet, _G.Firecast, _G.Dialogs)
+assert(tostring(roomNode.init_row1_txt or "") == "",
+    "Tremere recém-ocultado NÃO pode aparecer em init_row1_txt público, obteve: " .. tostring(roomNode.init_row1_txt))
+assert(tostring(isoDock.lblInitRow1._props.setText):find("[Oculto] [TESTE_E2E] Tremere", 1, true) ~= nil,
+    "Dock do Narrador deve refletir imediatamente [Oculto] após ocultar Tremere: " .. tostring(isoDock.lblInitRow1._props.setText))
+
+-- Nosferatu estava oculto no cache; Narrador revela pasta + Nosferatu e rola Iniciativa
+pastaSecreta.visivel = true
+pastaSecreta.visivelRecursivamente = true
+itemNosferatu.visivel = true
+itemNosferatu.visivelRecursivamente = true
+nextDiceFaces = {{ 9 }}
+Bridge.rollInitiative(nosferatuHiddenSheet, _G.Firecast, _G.Dialogs)
+assert(tostring(roomNode.init_row1_txt or ""):find("Nosferatu", 1, true) ~= nil,
+    "Nosferatu recém-revelado DEVE entrar em init_row1_txt público, obteve: " .. tostring(roomNode.init_row1_txt))
+
+DockBridge.disconnectDock(isoDock)
+isoDock:destroy()
+for _, obs in ipairs(createdObservers) do
+    assert(obs.enabled == false, "Todos os observers do isoDock devem estar desativados")
+end
+
+-- 4.5 Regressão Finding #2: abrirNDBDeMesa assíncrono (estilo setTimeout) em batchNewTurn e batchEndScene
+local deferredCallbacks = {{}}
+local asyncChatLog = {{}}
+local asyncRoomNode, _ = makeStrictNodeFacade({{
+    cena_titulo = "[TESTE_E2E] Cena Assíncrona",
+    rodada_atual = 4,
+    combate_fase = "acao",
+}})
+local asyncMesa = {{
+    nome = "[TESTE_E2E] Sala Async NDB",
+    meuJogador = {{ isMestre = true, login = "test_e2e_narrador_async" }},
+    biblioteca = {{ filhos = {{ itemBrujah }} }},
+    abrirNDBDeMesa = function(_, ndbName, cb, opcoes)
+        assert(ndbName == "v20_coterie_dock_v1" and opcoes and opcoes.criar == true)
+        table.insert(deferredCallbacks, function() cb(asyncRoomNode) end)
+    end,
+    activeChat = {{
+        enviarMensagem = function(_, msg) table.insert(asyncChatLog, tostring(msg)) end,
+    }},
+}}
+local asyncFc = {{
+    getMesaDe = function(obj)
+        if type(obj) == "table" and rawget(obj, "_isMemNdb") == true then return nil end
+        return asyncMesa
+    end,
+}}
+
+local asyncTurnForm = {{}}
+brujahSheet.sangue_gasto_turno = 1
+DockBridge.batchNewTurn(asyncTurnForm, asyncFc, _G.Dialogs)
+assert(#asyncChatLog == 0, "batchNewTurn assíncrono NÃO pode enviar boletim antes do callback de abrirNDBDeMesa!")
+assert(#deferredCallbacks == 1, "Deve haver 1 callback pendente de abrirNDBDeMesa")
+deferredCallbacks[1]()
+deferredCallbacks = {{}}
+assert(tonumber(asyncRoomNode.rodada_atual) == 5 and asyncRoomNode.combate_fase == "declaracao",
+    "Após callback async, rodada_atual deve avançar 4 -> 5, obteve: " .. tostring(asyncRoomNode.rodada_atual))
+assert(#asyncChatLog == 1 and asyncChatLog[1]:find("Rodada 5", 1, true) ~= nil,
+    "Boletim de batchNewTurn deve anunciar 'Rodada 5' (e não Rodada 2!): " .. tostring(asyncChatLog[1]))
+
+asyncChatLog = {{}}
+asyncRoomNode.combate_fase = "acao"
+local asyncSceneForm = {{}}
+brujahSheet.buff_forca = 2
+DockBridge.batchEndScene(asyncSceneForm, asyncFc, _G.Dialogs)
+assert(#asyncChatLog == 0 and tonumber(asyncRoomNode.rodada_atual) == 5,
+    "batchEndScene assíncrono NÃO pode anunciar nem mutar roomNode antes do callback de abrirNDBDeMesa!")
+assert(#deferredCallbacks == 1)
+deferredCallbacks[1]()
+deferredCallbacks = {{}}
+assert(tonumber(asyncRoomNode.rodada_atual) == 1 and asyncRoomNode.combate_fase == "declaracao")
+assert(#asyncChatLog == 1, "Boletim de batchEndScene deve ser enviado dentro do callback de abrirNDBDeMesa")
 ''')
         run_lua_file(probe_dock_lua)
     finally:

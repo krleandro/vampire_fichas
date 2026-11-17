@@ -230,12 +230,28 @@ local function makeCharKey(bibItem, fallbackIdx)
     return "char_" .. tostring(fallbackIdx or 1)
 end
 
-local function findBibMetaForSheet(mesa, sheet, fc)
-    local cached = SHEET_TO_BIB_CACHE[sheet]
-    if type(cached) == "table" and cached.bibItem ~= nil then
-        return cached.bibItem, cached.visible
+local function isAncestorChainVisible(bibItem)
+    local cur = bibItem
+    local seen = {}
+    while type(cur) == "table" and not seen[cur] do
+        seen[cur] = true
+        if not isBibItemOwnVisible(cur) then
+            return false
+        end
+        local nextParent = cur.pai
+        if nextParent == nil and type(cur.getPai) == "function" then
+            local okP, resP = pcall(cur.getPai, cur)
+            if okP then nextParent = resP end
+        end
+        if nextParent == nil then
+            nextParent = rawget(cur, "parent")
+        end
+        cur = nextParent
     end
+    return type(bibItem) == "table"
+end
 
+local function findBibMetaForSheet(mesa, sheet, fc)
     local directBib = nil
     if fc ~= nil then
         if type(fc.getPersonagemDe) == "function" then
@@ -246,24 +262,27 @@ local function findBibMetaForSheet(mesa, sheet, fc)
         end
     end
 
+    if directBib == nil then
+        local cached = SHEET_TO_BIB_CACHE[sheet]
+        if type(cached) == "table" and cached.bibItem ~= nil then
+            directBib = cached.bibItem
+        end
+    end
+
     if mesa ~= nil and type(mesa.biblioteca) == "table" then
         local allItems = collectV20BibItems(mesa.biblioteca, false)
         for _, entry in ipairs(allItems) do
-            if directBib ~= nil and entry.bibItem == directBib then
-                SHEET_TO_BIB_CACHE[sheet] = { bibItem = entry.bibItem, visible = entry.visible }
-                return entry.bibItem, entry.visible
-            end
-            if rawget(entry.bibItem, "sheet") == sheet then
-                SHEET_TO_BIB_CACHE[sheet] = { bibItem = entry.bibItem, visible = entry.visible }
-                return entry.bibItem, entry.visible
+            if (directBib ~= nil and entry.bibItem == directBib) or (rawget(entry.bibItem, "sheet") == sheet) then
+                SHEET_TO_BIB_CACHE[sheet] = { bibItem = entry.bibItem }
+                local liveVis = (entry.visible == true) and isAncestorChainVisible(entry.bibItem)
+                return entry.bibItem, liveVis
             end
         end
     end
 
     if directBib ~= nil then
-        local vis = isBibItemOwnVisible(directBib)
-        SHEET_TO_BIB_CACHE[sheet] = { bibItem = directBib, visible = vis }
-        return directBib, vis
+        SHEET_TO_BIB_CACHE[sheet] = { bibItem = directBib }
+        return directBib, isAncestorChainVisible(directBib)
     end
 
     return nil, true
@@ -380,7 +399,7 @@ function CoterieDockBridge.scanLibrarySheets(mesa, onUpdated, opts)
 
         local function acceptCharNode(charNode)
             if type(charNode) ~= "table" then return end
-            SHEET_TO_BIB_CACHE[charNode] = { bibItem = bibItem, visible = entry.visible }
+            SHEET_TO_BIB_CACHE[charNode] = { bibItem = bibItem }
             slots[idx] = {
                 key = key,
                 id = key,
@@ -685,6 +704,107 @@ function CoterieDockBridge.refreshDock(formObj, firecastApi, ndbApi)
     return { ok = true }
 end
 
+local function seedLocalUiDefaults(node)
+    if type(node) ~= "table" then return end
+    if node.npc_init_nome == nil then
+        node.npc_init_nome = "NPC"
+    end
+    if node.npc_init_mod == nil then
+        node.npc_init_mod = 4
+    end
+    if node.npc_init_oculto == nil then
+        node.npc_init_oculto = false
+    end
+end
+
+local function ensureLocalUiNode(formObj, ndbApi)
+    if type(formObj) ~= "table" then return {} end
+    local ndb = getNdbApi(ndbApi, formObj)
+    local existing = rawget(formObj, "_localUiNode")
+    local canUpgradeToMemNdb = (existing == nil or not rawget(existing, "__nodeFacadeFlag"))
+        and ndb ~= nil and type(ndb.newMemNodeDatabase) == "function"
+    if canUpgradeToMemNdb then
+        local ok, memNode = pcall(ndb.newMemNodeDatabase)
+        if ok and type(memNode) == "table" then
+            if type(existing) == "table" then
+                if existing.npc_init_nome ~= nil then memNode.npc_init_nome = existing.npc_init_nome end
+                if existing.npc_init_mod ~= nil then memNode.npc_init_mod = existing.npc_init_mod end
+                if existing.npc_init_oculto ~= nil then memNode.npc_init_oculto = existing.npc_init_oculto end
+            end
+            existing = memNode
+        end
+    end
+    if type(existing) ~= "table" then
+        existing = {}
+    end
+    seedLocalUiDefaults(existing)
+    rawset(formObj, "_localUiNode", existing)
+    return existing
+end
+
+local function isRoomBoundNode(nodeObj, formObj, firecastApi)
+    if type(nodeObj) ~= "table" then return false end
+    if type(formObj) == "table" and nodeObj == rawget(formObj, "_localUiNode") then
+        return false
+    end
+    local fc = firecastApi or (type(formObj) == "table" and rawget(formObj, "_dockFc")) or _G.Firecast
+    if fc ~= nil and type(fc.getMesaDe) == "function" then
+        local okM, m = pcall(fc.getMesaDe, nodeObj)
+        if okM and m ~= nil then
+            if type(formObj) == "table" and rawget(formObj, "_mesa") == nil then
+                rawset(formObj, "_mesa", m)
+            end
+            return true
+        end
+    end
+    return false
+end
+
+function CoterieDockBridge.installLocalUiGuard(formObj, firecastApi, ndbApi)
+    if type(formObj) ~= "table" then return end
+    if firecastApi ~= nil then rawset(formObj, "_dockFc", firecastApi) end
+    if ndbApi ~= nil then rawset(formObj, "_dockNdb", ndbApi) end
+
+    if not rawget(formObj, "_v20LocalGuardInstalled") and type(formObj.setNodeObject) == "function" then
+        local baseSetNodeObject = formObj.setNodeObject
+        rawset(formObj, "_v20BaseSetNodeObject", baseSetNodeObject)
+        rawset(formObj, "_v20LocalGuardInstalled", true)
+
+        formObj.setNodeObject = function(self, nodeObject)
+            if nodeObject == nil then
+                return baseSetNodeObject(self, nil)
+            end
+            local ndb = getNdbApi(nil, self)
+            local localUi = ensureLocalUiNode(self, ndb)
+            if nodeObject == localUi then
+                return baseSetNodeObject(self, localUi)
+            end
+            if isRoomBoundNode(nodeObject, self, nil) then
+                return baseSetNodeObject(self, localUi)
+            end
+            return baseSetNodeObject(self, nodeObject)
+        end
+    end
+end
+
+function CoterieDockBridge.ensureIsolatedSheet(formObj, firecastApi, ndbApi)
+    if type(formObj) ~= "table" then return nil end
+    CoterieDockBridge.installLocalUiGuard(formObj, firecastApi, ndbApi)
+    local localUi = ensureLocalUiNode(formObj, ndbApi)
+    local curSheet = formObj.sheet
+    local needsRebind = (curSheet == nil)
+        or isRoomBoundNode(curSheet, formObj, firecastApi)
+        or (curSheet ~= localUi and not rawget(curSheet, "__nodeFacadeFlag") and rawget(localUi, "__nodeFacadeFlag") == true)
+    if needsRebind then
+        if type(formObj.setNodeObject) == "function" then
+            formObj:setNodeObject(localUi)
+        else
+            formObj.sheet = localUi
+        end
+    end
+    return formObj.sheet
+end
+
 function CoterieDockBridge.connectDock(formObj, firecastApi, ndbApi)
     if type(formObj) ~= "table" then return { ok = false } end
     CoterieDockBridge.disconnectDock(formObj)
@@ -699,15 +819,7 @@ function CoterieDockBridge.connectDock(formObj, firecastApi, ndbApi)
     rawset(formObj, "_loadedChars", {})
     rawset(formObj, "_currentCards", {})
 
-    if formObj.sheet == nil then
-        local localUi = rawget(formObj, "_localUiNode") or {}
-        rawset(formObj, "_localUiNode", localUi)
-        if type(formObj.setNodeObject) == "function" then
-            formObj:setNodeObject(localUi)
-        else
-            formObj.sheet = localUi
-        end
-    end
+    CoterieDockBridge.ensureIsolatedSheet(formObj, fc, ndb)
 
     ACTIVE_DOCKS[formObj] = { fc = fc, ndb = ndb }
     local mesa = resolveMesa(formObj, fc)
@@ -1145,27 +1257,29 @@ function CoterieDockBridge.batchNewTurn(formObj, firecastApi, dialogsApi)
         end
     end
 
-    local nextRound = 2
+    local nextRound = nil
+    local sentMsg = nil
     withRoomNode(formObj, mesa, fc, ndb, function(roomNode)
         nextRound = math.max(1, safeInt(roomNode.rodada_atual, 1)) + 1
         setAttrIfChanged(roomNode, "rodada_atual", nextRound)
         setAttrIfChanged(roomNode, "combate_fase", "declaracao")
         local entries = readInitiativeEntries(roomNode)
         writeInitiativeEntries(roomNode, entries, "declaracao")
+
+        sentMsg = string.format(
+            "🔄 [Coterie • Novo Turno] Rodada %d iniciada — Fase de Declaração (Menor -> Maior Iniciativa) | %d ficha(s) sincronizada(s).",
+            nextRound,
+            updatedCount
+        )
+        sendRoomBulletin(mesa, dlg, sentMsg)
+
+        notifyActiveDocks()
+        if type(formObj) == "table" and ACTIVE_DOCKS[formObj] == nil then
+            CoterieDockBridge.refreshDock(formObj, fc, ndb)
+        end
     end)
 
-    local msg = string.format(
-        "🔄 [Coterie • Novo Turno] Rodada %d iniciada — Fase de Declaração (Menor -> Maior Iniciativa) | %d ficha(s) sincronizada(s).",
-        nextRound,
-        updatedCount
-    )
-    sendRoomBulletin(mesa, dlg, msg)
-
-    notifyActiveDocks()
-    if type(formObj) == "table" and ACTIVE_DOCKS[formObj] == nil then
-        CoterieDockBridge.refreshDock(formObj, fc, ndb)
-    end
-    return { ok = true, round = nextRound, phase = "declaracao", updatedCount = updatedCount, message = msg }
+    return { ok = true, round = nextRound, phase = "declaracao", updatedCount = updatedCount, message = sentMsg }
 end
 
 function CoterieDockBridge.batchEndScene(formObj, firecastApi, dialogsApi)
@@ -1210,24 +1324,26 @@ function CoterieDockBridge.batchEndScene(formObj, firecastApi, dialogsApi)
         end
     end
 
+    local sentMsg = nil
     withRoomNode(formObj, mesa, fc, ndb, function(roomNode)
         setAttrIfChanged(roomNode, "rodada_atual", 1)
         setAttrIfChanged(roomNode, "combate_fase", "declaracao")
         local entries = readInitiativeEntries(roomNode)
         writeInitiativeEntries(roomNode, entries, "declaracao")
+
+        sentMsg = string.format(
+            "🧹 [Coterie • Fim de Cena] Buffs físicos, poderes de cena e agarrões encerrados (%d ficha(s)); Rodada reiniciada para 1.",
+            updatedCount
+        )
+        sendRoomBulletin(mesa, dlg, sentMsg)
+
+        notifyActiveDocks()
+        if type(formObj) == "table" and ACTIVE_DOCKS[formObj] == nil then
+            CoterieDockBridge.refreshDock(formObj, fc, ndb)
+        end
     end)
 
-    local msg = string.format(
-        "🧹 [Coterie • Fim de Cena] Buffs físicos, poderes de cena e agarrões encerrados (%d ficha(s)); Rodada reiniciada para 1.",
-        updatedCount
-    )
-    sendRoomBulletin(mesa, dlg, msg)
-
-    notifyActiveDocks()
-    if type(formObj) == "table" and ACTIVE_DOCKS[formObj] == nil then
-        CoterieDockBridge.refreshDock(formObj, fc, ndb)
-    end
-    return { ok = true, round = 1, updatedCount = updatedCount, message = msg }
+    return { ok = true, round = 1, updatedCount = updatedCount, message = sentMsg }
 end
 
 _G.V20CoterieDockBridge = CoterieDockBridge
